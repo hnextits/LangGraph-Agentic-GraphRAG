@@ -1,0 +1,14 @@
+{
+    "processed_folders": [
+        "/home/nextits2/.conda/envs/workbox/image_test/nextits_data/Results/3.Crop_image/PDF/논 팥재배 핵심 기술 입니다/image",
+        "/home/nextits2/.conda/envs/workbox/image_test/nextits_data/Results/3.Crop_image/PDF/농업관측_2504/image",
+        "/home/nextits2/.conda/envs/workbox/image_test/nextits_data/Results/3.Crop_image/PDF/파이썬을위한수학/image"
+    ],
+    "last_processed_index": 4,
+    "total_folders": 8,
+    "start_time": 1749703306.5672362,
+    "errors": [],
+    "last_update_time": 1753164658.4387188,
+    "end_time": 1753164658.4387186,
+    "completed": true
+}

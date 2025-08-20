@@ -24,9 +24,17 @@ target/
 
 /logs
 
-#backend 항목목
-/backend/nextits_data/doc
-/backend/nextits_data/Results
-/backend/nextits_data/UVDoc/data
-/backend/nextits_data/temp
+#backend 항목
+/backend/nextits_data/doc/*
+/backend/nextits_data/Results/1.Converted_images/IMG/*
+/backend/nextits_data/Results/1.Converted_images/PDF/*
+/backend/nextits_data/Results/2.LayoutDetection/PDF/*
+/backend/nextits_data/Results/2.LayoutDetection/IMG/*
+/backend/nextits_data/Results/3.Crop_image/IMG/*
+/backend/nextits_data/Results/3.Crop_image/PDF/*
+/backend/nextits_data/Results/3.OCR_results/*
+/backend/nextits_data/Results/5.Completion_results/*
+/backend/nextits_data/UVDoc/data/doc3D/*
+/backend/nextits_data/UVDoc/data/UVDoc/*
+/backend/nextits_data/temp/*
 
