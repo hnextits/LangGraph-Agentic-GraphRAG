@@ -1,0 +1,192 @@
+import os
+import sys
+import importlib.util
+import logging
+import re
+from utils.helpers import process_response_with_images, encode_image_to_base64
+
+logger = logging.getLogger(__name__)
+
+def initialize_rag_pipeline():
+    """
+    애플리케이션 시작 시 RAG 파이프라인을 초기화하고 인스턴스를 반환합니다.
+    """
+    logger.info("RAG 파이프라인 초기화를 시작합니다...")
+    
+    # RAG 시스템의 실제 경로를 설정합니다.
+    rag_path = '/home/nextits2/.conda/envs/workbox/gui/chatbot/backend/notebooklm'
+    logger.info(f"RAG 파이프라인 경로: {rag_path}")
+
+    if not os.path.isdir(rag_path):
+        logger.error(f"RAG 파이프라인 디렉터리를 찾을 수 없습니다: {rag_path}")
+        return None
+
+    original_cwd = os.getcwd()
+    original_sys_path = list(sys.path)
+    
+    # config 모듈 충돌을 피하기 위해 캐시를 관리합니다.
+    original_config_module = sys.modules.get('config')
+
+    try:
+        # RAG 파이프라인의 config를 로드하기 전에 캐시된 config를 제거합니다.
+        if 'config' in sys.modules:
+            del sys.modules['config']
+
+        sys.path.insert(0, rag_path)
+        os.chdir(rag_path)
+
+        from rag_pipeline import RAGPipeline
+        pipeline_instance = RAGPipeline()
+        logger.info("RAG 파이프라인 인스턴스 생성 성공!")
+        return pipeline_instance
+
+    except Exception as e:
+        logger.error(f"RAG 파이프라인 초기화 중 예외 발생: {e}", exc_info=True)
+        return None
+    finally:
+        os.chdir(original_cwd)
+        sys.path = original_sys_path
+        
+        # 원래의 config 모듈이 있었다면 복원합니다.
+        if 'config' in sys.modules:
+            del sys.modules['config'] # rag의 config를 제거
+        if original_config_module:
+            sys.modules['config'] = original_config_module
+
+        logger.info("작업 디렉터리와 시스템 경로를 복원했습니다.")
+
+def process_markdown_tables(text):
+    """
+    마크다운 테이블의 줄바꿈 문제를 해결하는 함수입니다.
+    테이블 내의 줄바꿈을 HTML <br> 태그로 변환하여 표시합니다.
+    """
+    # 마크다운 테이블 패턴 정의
+    table_pattern = re.compile(r'(\|[^\n]*\|\n)(\|\s*[-:]+[-\s:]*\|\n)((\|[^\n]*\|\n)+)', re.MULTILINE)
+    
+    def process_table(match):
+        header = match.group(1)  # 테이블 헤더 행
+        separator = match.group(2)  # 구분선
+        body = match.group(3)  # 테이블 본문
+        
+        # 테이블 본문의 각 행 처리
+        rows = body.split('\n')
+        processed_rows = []
+        
+        for row in rows:
+            if not row.strip():  # 빈 행 건너뛰기
+                continue
+                
+            # 행을 셀로 분리
+            cells = row.split('|')
+            processed_cells = []
+            
+            for cell in cells:
+                # 셀 내용의 줄바꿈을 <br>로 변환
+                processed_cell = cell.replace('\n', '<br>')
+                processed_cells.append(processed_cell)
+            
+            processed_rows.append('|'.join(processed_cells))
+        
+        # 처리된 테이블 재구성
+        return header + separator + '\n'.join(processed_rows)
+    
+    # 마크다운 테이블 패턴을 찾아 처리
+    processed_text = table_pattern.sub(process_table, text)
+    
+    # 위 패턴으로 처리되지 않은 테이블을 위한 백업 처리 방법
+    # 테이블 행을 식별하는 정규식
+    table_row_pattern = re.compile(r'^\s*\|(.+?)\|\s*$', re.MULTILINE)
+    
+    # 텍스트를 줄 단위로 분리
+    lines = processed_text.split('\n')
+    result_lines = []
+    in_table = False
+    table_header = None
+    table_separator = None
+    table_rows = []
+    
+    for i, line in enumerate(lines):
+        # 테이블 행인지 확인
+        is_table_row = bool(table_row_pattern.match(line))
+        
+        # 테이블 구분선인지 확인 (|---|---|
+        is_separator = is_table_row and bool(re.search(r'\|\s*[-:]+\s*\|', line))
+        
+        # 테이블 시작 감지
+        if is_table_row and not in_table:
+            in_table = True
+            table_header = line
+            result_lines.append(line)
+            continue
+        
+        # 테이블 구분선 감지
+        if in_table and is_separator and table_header and not table_separator:
+            table_separator = line
+            result_lines.append(line)
+            continue
+        
+        # 테이블 데이터 행 감지
+        if in_table and is_table_row and table_header and table_separator:
+            # 셀 내용의 줄바꿈을 <br>로 변환
+            cells = line.split('|')
+            processed_cells = []
+            
+            for cell in cells:
+                processed_cell = cell.replace('\n', '<br>')
+                processed_cells.append(processed_cell)
+            
+            result_lines.append('|'.join(processed_cells))
+            continue
+        
+        # 테이블 종료 감지
+        if in_table and not is_table_row:
+            in_table = False
+            table_header = None
+            table_separator = None
+        
+        # 테이블이 아닌 경우 그대로 추가
+        result_lines.append(line)
+    
+    return '\n'.join(result_lines)
+
+def get_rag_response(query: str, sources: list, rag_pipeline):
+    """
+    사용자 질문과 소스 정보를 받아 RAG 파이프라인을 통해 답변과 이미지를 생성합니다.
+    """
+    try:
+        # RAG 파이프라인 실행
+        results = rag_pipeline.process_query(query=query, top_k=5)
+        raw_answer = results.get('answer', '답변을 생성하는 데 실패했습니다.')
+        
+        # 마크다운 테이블 처리 - 줄바꿈 문제 해결
+        raw_answer = process_markdown_tables(raw_answer)
+
+        # 1. 텍스트 응답(answer)에 포함된 마크다운 이미지 처리
+        processed_result = process_response_with_images(raw_answer)
+        final_answer = processed_result['text']
+        images = processed_result['images']  # 마크다운에서 추출된 이미지
+        processed_image_paths = {img['path'] for img in images}
+
+        # 2. RAG 파이프라인이 직접 반환한 이미지 처리 (핵심)
+        pipeline_images = results.get('images', [])
+        if pipeline_images:
+            logger.info(f"RAG 파이프라인에서 직접 반환된 {len(pipeline_images)}개의 이미지를 처리합니다.")
+            for img_item in pipeline_images:
+                # file_path가 있고, 아직 추가되지 않았으며, base64 데이터가 있는지 확인
+                if 'file_path' in img_item and img_item['file_path'] not in processed_image_paths and 'base64' in img_item:
+                    images.append({
+                        'path': img_item['file_path'],
+                        'alt': os.path.basename(img_item.get('title', img_item['file_path'])),
+                        'title': img_item.get('title', os.path.basename(img_item['file_path'])),
+                        'base64': img_item['base64']
+                    })
+                    processed_image_paths.add(img_item['file_path'])
+        
+        # routes.py의 ChatResponse 모델은 List[str]을 기대하므로 base64 문자열 리스트로 변환
+        final_images = [img['base64'] for img in images if img.get('base64')]
+
+        return {"answer": final_answer, "images": final_images}
+
+    except Exception as e:
+        logger.error(f"RAG 응답 생성 중 오류 발생: {e}")
+        return {"answer": "답변 생성 중 오류가 발생했습니다.", "images": []}

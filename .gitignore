@@ -1,0 +1,32 @@
+# Node.js 
+node_modules/
+npm-debug.log*
+.env
+dist/
+
+# Python 
+__pycache__/
+*.pyc
+venv/
+.env
+
+# Java 
+target/
+*.class
+*.jar
+
+# 일반적인 항목들
+.DS_Store
+*.log
+*.tmp
+.idea/
+.vscode/
+
+/logs
+
+#backend 항목목
+/backend/nextits_data/doc
+/backend/nextits_data/Results
+/backend/nextits_data/UVDoc/data
+/backend/nextits_data/temp
+
