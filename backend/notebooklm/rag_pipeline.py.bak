@@ -1,0 +1,291 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# FlashAttention 모듈과의 잠재적 충돌을 피하기 위해 비활성화하는 환경 변수 설정
+# 특정 하드웨어나 라이브러리 버전에서 예기치 않은 오류가 발생하는 것을 방지합니다.
+import os
+import sys
+
+os.environ["DISABLE_FLASH_ATTENTION"] = "1"
+os.environ["TRANSFORMERS_NO_ADVISORY_WARNINGS"] = "1"
+
+# 시스템 모듈 경로에서 flash_attn 관련 모듈 제거 (안전장치)
+sys.modules.pop('flash_attn', None)
+sys.modules.pop('flash_attn_2_cuda', None)
+
+"""
+RAG 시스템 통합 파이프라인 - 전체 RAG 시스템을 통합하고 실행합니다. (수정된 최종 버전)
+"""
+
+import json
+import logging
+import argparse
+from typing import List, Dict, Any, Optional
+
+# 컴포넌트 임포트
+from image_processor import image_processor 
+
+
+from config import RAGConfig
+from router import RAGRouter
+from generator import Generator
+from evaluator import Evaluator
+from refiner import Refiner
+
+# 로깅 설정
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+class RAGPipeline:
+    """
+    RAG 시스템 통합 파이프라인
+    전체 RAG 시스템을 통합하고 실행합니다.
+    """
+    
+    def __init__(self):
+        """
+        파이프라인 초기화
+        """
+        self.config = RAGConfig()
+        
+        # 컴포넌트 초기화
+        self.router = RAGRouter(self.config)
+        self.generator = Generator(self.config)
+        self.evaluator = Evaluator(self.config)
+        # Generator가 성공적으로 로드되었을 때만 Refiner를 초기화합니다.
+        if self.generator and self.generator.model and self.generator.tokenizer:
+            self.refiner = Refiner(self.generator, self.config)
+            logger.info("Refiner 초기화 완료.")
+        else:
+            self.refiner = None
+            logger.warning("Generator 로딩 실패로 인해 Refiner가 초기화되지 않았습니다.")
+        
+        logger.info("RAG 파이프라인 초기화 완료")
+    
+    def process_query(self, query: str, top_k: int = 5) -> Dict[str, Any]:
+        """
+        질문 처리 및 답변 생성 (수정된 메서드)
+        
+        Args:
+            query: 사용자 질문
+            top_k: 각 파이프라인에서 반환할 최대 결과 수
+            
+        Returns:
+            처리 결과 딕셔너리
+        """
+        logger.info(f"질문 처리 시작: '{query}'")
+        
+
+        
+        # 2. 라우팅 및 검색
+        search_results = self.router.search(query, top_k=top_k)
+        
+        # 검색 결과 로깅
+        for searcher_name, results_data in search_results.items():
+            if searcher_name == "metadata":
+                continue
+            # 'results' 키를 가진 딕셔너리 또는 리스트 형태의 결과를 처리
+            count = 0
+            if isinstance(results_data, dict) and 'results' in results_data:
+                count = len(results_data['results'])
+            elif isinstance(results_data, list):
+                count = len(results_data)
+            logger.info(f"{searcher_name} 검색기 결과: {count}개 항목 검색됨")
+
+        # 3. 답변 생성
+        results = self.generator.generate_response(query, search_results)
+        
+        # 4. 피드백 루프 (필요시)
+        if self.config.use_feedback_loop:
+            results = self.evaluator.feedback_loop(
+                query, 
+                results, 
+                self.router, 
+                self.generator
+            )
+        
+        # 5. 이미지 결과 처리 및 base64 변환
+        processed_images = []
+        image_paths = []
+        
+        # search_results에서 이미지 문서 추출 및 처리
+        logger.info(f"search_results 구조: {list(search_results.keys()) if isinstance(search_results, dict) else type(search_results)}")
+        
+        # 직접 image_documents 키가 있는지 확인 (parallel_search.py에서 직접 반환)
+        if isinstance(search_results, dict) and 'image_documents' in search_results:
+            image_docs = search_results['image_documents']
+            logger.info(f"직접 image_documents에서 {len(image_docs)}개의 이미지 문서 처리 시작")
+            
+            for img_doc in image_docs:
+                file_path = img_doc.get('file_path')
+                logger.info(f"이미진 문서 처리 시도: {file_path}")
+                if file_path:
+                    # 이미지 경로 저장
+                    image_paths.append(file_path)
+                    
+                    # 파일 존재 여부 확인
+                    import os
+                    if not os.path.exists(file_path):
+                        logger.error(f"이미지 파일이 존재하지 않음: {file_path}")
+                        continue
+                        
+                    logger.info(f"이미지 파일 확인됨, base64 변환 시도: {file_path}")
+                    # base64 변환 시도
+                    try:
+                        base64_data = image_processor.encode_image_to_base64(file_path)
+                        if base64_data:
+                            img_doc['base64'] = base64_data
+                            img_doc['image_available'] = True
+                            processed_images.append(img_doc)
+                            logger.info(f"이미지 base64 변환 성공: {file_path}, base64 길이: {len(base64_data)}")
+                        else:
+                            img_doc['image_available'] = False
+                            logger.warning(f"이미지 base64 변환 실패 (None 반환): {file_path}")
+                    except Exception as e:
+                        logger.error(f"이미지 base64 변환 중 오류: {file_path}, 오류: {str(e)}")
+                        img_doc['image_available'] = False
+                else:
+                    logger.warning(f"이미진 문서에 file_path가 없음: {img_doc}")
+        
+        # 기존 searcher별 구조도 확인 (하위 호환성)
+        for searcher_name, searcher_results in search_results.items():
+            if searcher_name in ["text_documents", "image_documents", "metadata"]:
+                continue
+                
+            # searcher별 분리된 구조 처리
+            if isinstance(searcher_results, dict) and 'image_documents' in searcher_results:
+                image_docs = searcher_results['image_documents']
+                logger.info(f"{searcher_name}에서 {len(image_docs)}개의 이미지 문서 처리 시작")
+                
+                for img_doc in image_docs:
+                    file_path = img_doc.get('file_path')
+                    logger.info(f"이미직 문서 처리 시도: {file_path}")
+                    if file_path:
+                        # 이미지 경로 저장
+                        image_paths.append(file_path)
+                        
+                        # 파일 존재 여부 확인
+                        import os
+                        if not os.path.exists(file_path):
+                            logger.error(f"이미진 파일이 존재하지 않음: {file_path}")
+                            continue
+                            
+                        logger.info(f"이미직 파일 확인됨, base64 변환 시도: {file_path}")
+                        # base64 변환 시도
+                        try:
+                            base64_data = image_processor.encode_image_to_base64(file_path)
+                            if base64_data:
+                                img_doc['base64'] = base64_data
+                                img_doc['image_available'] = True
+                                processed_images.append(img_doc)
+                                logger.info(f"이미직 base64 변환 성공: {file_path}, base64 길이: {len(base64_data)}")
+                            else:
+                                img_doc['image_available'] = False
+                                logger.warning(f"이미직 base64 변환 실패 (None 반환): {file_path}")
+                        except Exception as e:
+                            logger.error(f"이미지 base64 변환 중 오류: {file_path}, 오류: {str(e)}")
+                            img_doc['image_available'] = False
+                    else:
+                        logger.warning(f"이미직 문서에 file_path가 없음: {img_doc}")
+        
+        # 처리된 이미지를 결과에 추가
+        logger.info(f"processed_images 리스트 길이: {len(processed_images)}")
+        if processed_images:
+            results['images'] = processed_images
+            results['image_count'] = len(processed_images)
+            logger.info(f"최종 처리된 이미지 수: {len(processed_images)}개")
+            # 첫 번째 이미지 정보 로깅
+            if processed_images:
+                first_img = processed_images[0]
+                logger.info(f"첫 번째 이미지 키: {list(first_img.keys()) if isinstance(first_img, dict) else type(first_img)}")
+        else:
+            logger.warning("processed_images가 비어있어서 results['images']에 추가하지 않음")
+        
+        # 이미지 경로도 별도로 저장 (이미지 변환에 실패한 경우를 대비)
+        if image_paths:
+            results['image_paths'] = image_paths
+            logger.info(f"이미지 경로 수: {len(image_paths)}개")
+
+        # 6. 답변 정제 (필요시)
+        if self.config.use_refiner and "answer" in results:
+            original_answer = results.get("answer", "")
+            logger.info(f"Refiner 입력 (원본 답변): {original_answer[:150]}...")
+            
+            refined_answer = self.refiner.refine_answer(query, original_answer)
+            results["answer"] = refined_answer
+            logger.info(f"Refiner 출력 (정제된 답변): {refined_answer[:150]}...")
+
+        # 7. 최종 결과 정리
+        # 최종적으로 사용할 context 정보 저장
+        results["context"] = results.get("context_used", "")
+        # 최종 결과에 검색 결과 포함
+        results["search_results"] = search_results
+
+        # 디버그 모드가 아닐 경우, 응답에 불필요한 중간 데이터 제거
+        if not self.config.debug_mode:
+            keys_to_delete = ["context_used", "evaluation", "feedback_history"]
+            for key in keys_to_delete:
+                if key in results:
+                    del results[key]
+        
+        logger.info("질문 처리 완료. 최종 결과 키: %s", list(results.keys()))
+        return results
+
+def main():
+    """명령줄 인터페이스"""
+    parser = argparse.ArgumentParser(description="RAG 시스템 실행")
+    parser.add_argument("--query", type=str, help="처리할 질문")
+    parser.add_argument("--top-k", type=int, default=5, help="반환할 최대 결과 수")
+    parser.add_argument("--debug", action="store_true", help="디버그 모드 활성화")
+    parser.add_argument("--interactive", action="store_true", help="대화형 모드 실행")
+    
+    args = parser.parse_args()
+    
+    # 파이프라인 초기화
+    pipeline = RAGPipeline()
+    
+    # 디버그 모드 설정
+    if args.debug:
+        pipeline.config["debug_mode"] = True
+    
+    # 대화형 모드
+    if args.interactive:
+        print("\n=== RAG 시스템 대화형 모드 ===")
+        print("종료하려면 'exit' 또는 'quit'을 입력하세요.\n")
+        
+        while True:
+            try:
+                query = input("\n질문: ")
+                if query.lower() in ["exit", "quit", "종료"]:
+                    break
+                
+                final_results = pipeline.process_query(query, args.top_k)
+                print(f"\n답변: {final_results.get('answer', '답변을 생성하지 못했습니다.')}")
+
+                if args.debug:
+                    print("\n--- DEBUG INFO ---")
+                    print(json.dumps(final_results, indent=2, ensure_ascii=False))
+                    print("--- END DEBUG INFO ---")
+
+            except (KeyboardInterrupt, EOFError):
+                break
+        print("\n대화형 모드를 종료합니다.")
+
+    # 단일 질문 처리
+    elif args.query:
+        final_results = pipeline.process_query(args.query, args.top_k)
+        
+        print(f"\n질문: {args.query}")
+        print(f"\n답변: {final_results.get('answer', '답변을 생성하지 못했습니다.')}")
+        
+        if args.debug:
+            print("\n--- DEBUG INFO ---")
+            # 디버그 모드에서는 전체 결과를 예쁘게 출력
+            print(json.dumps(final_results, indent=2, ensure_ascii=False))
+            print("--- END DEBUG INFO ---")
+
+    else:
+        parser.print_help()
+
+if __name__ == "__main__":
+    main()
