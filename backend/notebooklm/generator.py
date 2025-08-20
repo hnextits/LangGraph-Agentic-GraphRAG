@@ -11,7 +11,7 @@ import logging
 import copy  # FIX: deepcopy를 위해 import 추가
 import torch
 from typing import List, Dict, Any, Optional
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -65,41 +65,17 @@ class Generator:
             raise
 
     def _load_model(self):
-        """모델을 GPU에 로드 (양자화 설정 조건부 적용)"""
-        # bitsandbytes 패키지 사용 가능 여부 확인
-        use_quantization = False
-        try:
-            import importlib.metadata
-            importlib.metadata.version("bitsandbytes")
-            use_quantization = True
-            logger.info(f"모델을 GPU에 로딩 중... ({self.model_name}) - 4bit 양자화 적용")
-        except (ImportError, importlib.metadata.PackageNotFoundError):
-            logger.info(f"모델을 GPU에 로딩 중... ({self.model_name}) - 양자화 없이 일반 모드 사용")
-        
+        """모델을 GPU에 로드"""
+        logger.info(f"모델을 GPU에 로딩 중... ({self.model_name})")
         try:
             model_kwargs = {"torch_dtype": self.torch_dtype}
             
-            # bitsandbytes가 있는 경우에만 4bit 양자화 적용
-            if use_quantization:
-                # 4bit 양자화 설정
-                quantization_config = BitsAndBytesConfig(
-                    load_in_4bit=True,                  # 4bit 양자화 활성화
-                    bnb_4bit_quant_type="nf4",         # 4bit 양자화 타입 (NF4)
-                    bnb_4bit_compute_dtype=self.torch_dtype,  # 계산 시 사용할 데이터 타입
-                    bnb_4bit_use_double_quant=True     # 이중 양자화로 메모리 추가 절약
-                )
-                model_kwargs["quantization_config"] = quantization_config
-            
-            # 장치 매핑 설정
-            model_kwargs["device_map"] = self.device
-            
-            # 양자화된 모델 로드
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
                 cache_dir=self.config.CACHE_DIR,
                 local_files_only=True,
                 **model_kwargs
-            )
+            ).to(self.device)
             
             self.model_loaded_on_gpu = True
             logger.info("모델 GPU 로딩 완료")
@@ -296,9 +272,6 @@ class Generator:
                         "top_p": self.config.GENERATOR_TOP_P,
                         "top_k": self.config.GENERATOR_TOP_K
                     })
-                
-                # 양자화된 모델에 대한 최적화 설정
-                generation_params["use_cache"] = True  # KV 캐시 사용
 
                 outputs = self.model.generate(**inputs, **generation_params)
             
