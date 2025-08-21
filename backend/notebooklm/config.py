@@ -64,7 +64,8 @@ class RAGConfig:
         self.QUERY_REWRITE_MODEL_NAME = "naver-hyperclovax/HyperCLOVAX-SEED-Text-Instruct-1.5B"
         
         # 생성 모델
-        self.LLM_MODEL = "Qwen/Qwen3-30B-A3B"
+        # self.LLM_MODEL = "Qwen/Qwen3-30B-A3B"
+        self.LLM_MODEL = "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
         
         # 정제 모델
         self.REFINER_MODEL = "Qwen/Qwen2.5-1.5B-Instruct"
@@ -78,9 +79,9 @@ class RAGConfig:
         
         # 생성기(GENERATOR) 파라미터
         self.GENERATOR_MAX_TOKENS = 8192
-        self.GENERATOR_TEMPERATURE = 0.6
+        self.GENERATOR_TEMPERATURE = 0.7
         self.GENERATOR_TOP_P = 0.9
-        self.GENERATOR_TOP_K = 3
+        self.GENERATOR_TOP_K = 5
         self.GENERATOR_DO_SAMPLE = True  # 샘플링 활성화
         self.GENERATOR_NUM_BEAMS = 1     # 빔 서치 비활성화 (그리디 서치)
         self.GENERATOR_PAD_TOKEN_ID = None  # 토크나이저에서 설정
@@ -431,6 +432,7 @@ class RAGConfig:
             model_kwargs = {}
             if device.startswith("cuda") and torch.cuda.is_available():
                 model_kwargs["torch_dtype"] = torch.float16  # 모든 GPU 모델을 float16으로 통일
+                model_kwargs["device_map"] = "cuda"  # 명시적으로 CUDA 디바이스에 로드
                 # device_map="auto" 대신 특정 GPU로 지정
                 # model_kwargs["device_map"] = "auto" 
             else:

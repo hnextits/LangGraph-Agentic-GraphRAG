@@ -55,7 +55,7 @@ class Generator:
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name,
                 cache_dir=self.config.CACHE_DIR,
-                local_files_only=True
+                # local_files_only=True
             )
             if self.tokenizer.pad_token_id is None:
                 self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
@@ -70,12 +70,21 @@ class Generator:
         try:
             model_kwargs = {"torch_dtype": self.torch_dtype}
             
+            # FP8 모델을 위한 device_map 매개변수 추가
+            if "FP8" in self.model_name:
+                model_kwargs["device_map"] = "cuda"
+                logger.info("FP8 모델 감지: device_map='cuda' 설정 적용")
+            
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
                 cache_dir=self.config.CACHE_DIR,
-                local_files_only=True,
+                # local_files_only=True,
                 **model_kwargs
-            ).to(self.device)
+            )
+            
+            # device_map이 설정되지 않은 경우에만 .to(device) 호출
+            if "device_map" not in model_kwargs:
+                self.model = self.model.to(self.device)
             
             self.model_loaded_on_gpu = True
             logger.info("모델 GPU 로딩 완료")
