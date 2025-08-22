@@ -45,7 +45,7 @@ pipeline {
                                     cd backend/
                                     nohup python main.py > /tmp/backend.log 2>&1 &
                                     BACKEND_PID=\$!
-                                    echo \"Backend started successfully (PID: \$BACKEND_PID)\"
+                                    echo \"Backend started successfully - PID: \$BACKEND_PID\"
                                     cd ..
                                 else
                                     echo 'ERROR: Backend directory or main.py not found!'
@@ -65,7 +65,7 @@ pipeline {
                                         fi
                                         nohup npm start > /tmp/frontend.log 2>&1 &
                                         FRONTEND_PID=\$!
-                                        echo \"Frontend started successfully (PID: \$FRONTEND_PID)\"
+                                        echo \"Frontend started successfully - PID: \$FRONTEND_PID\"
                                     else
                                         echo 'ERROR: npm not found. Please install Node.js'
                                     fi
@@ -84,7 +84,7 @@ pipeline {
                                 # Python 프로세스 확인
                                 PYTHON_PROCESSES=\$(ps aux | grep '[p]ython.*main.py' | wc -l)
                                 if [ \$PYTHON_PROCESSES -gt 0 ]; then
-                                    echo \"Backend: \$PYTHON_PROCESSES python process(es) running\"
+                                    echo \"Backend: \$PYTHON_PROCESSES python processes running\"
                                     ps aux | grep '[p]ython.*main.py'
                                 else
                                     echo 'Backend: No python processes running'
@@ -93,7 +93,7 @@ pipeline {
                                 # npm/node 프로세스 확인
                                 NPM_PROCESSES=\$(ps aux | grep '[n]pm\\|[n]ode' | grep -v grep | wc -l)
                                 if [ \$NPM_PROCESSES -gt 0 ]; then
-                                    echo \"Frontend: \$NPM_PROCESSES npm/node process(es) running\"
+                                    echo \"Frontend: \$NPM_PROCESSES npm/node processes running\"
                                     ps aux | grep '[n]pm\\|[n]ode' | grep -v grep
                                 else
                                     echo 'Frontend: No npm/node processes running'
@@ -102,14 +102,14 @@ pipeline {
                                 # 로그 파일 확인
                                 echo 'Log file status:'
                                 if [ -f /tmp/backend.log ]; then
-                                    echo 'Backend log (last 5 lines):'
+                                echo 'Backend log - last 5 lines:'
                                     tail -n 5 /tmp/backend.log
                                 else
                                     echo 'No backend log file found'
                                 fi
                                 
                                 if [ -f /tmp/frontend.log ]; then
-                                    echo 'Frontend log (last 5 lines):'
+                                    echo 'Frontend log - last 5 lines:'
                                     tail -n 5 /tmp/frontend.log
                                 else
                                     echo 'No frontend log file found'
