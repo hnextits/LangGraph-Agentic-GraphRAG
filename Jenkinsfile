@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     stages {
-        stage('Copy Files') {
+        stage('Deploy Files') {
             steps {
                 sshagent(credentials: ['nextits_ai_4_ssh']) {
                     script {
@@ -16,141 +16,60 @@ pipeline {
             }
         }
         
-        stage('Setup Environment') {
+        stage('Start Services') {
             steps {
                 sshagent(credentials: ['nextits_ai_4_ssh']) {
                     script {
                         sh '''
                             ssh -o StrictHostKeyChecking=no -p 2226 nextits4@127.0.0.1 '
                                 cd /home/nextits4/workspace/quantas
-                                
-                                echo "=== Installing process tools ==="
-                                sudo dnf install -y procps-ng 2>/dev/null || echo "procps install failed or already installed"
                                 
                                 echo "=== Environment Setup ==="
                                 if [ -f /opt/conda/bin/activate ]; then
                                     source /opt/conda/bin/activate quantas
-                                    echo "Conda environment activated"
-                                else
-                                    echo "Using system Python"
-                                    which python3
+                                    echo "Conda activated"
                                 fi
                                 
-                                echo "=== Stopping existing processes ==="
-                                pgrep -f "python.*main.py" | xargs -r kill -9 || true
-                                pgrep -f "npm.*start" | xargs -r kill -9 || true
+                                echo "=== Cleanup existing services ==="
+                                # 간단한 포트 기반 정리
+                                lsof -ti:8502 | xargs -r kill -9 2>/dev/null || true
+                                lsof -ti:8503 | xargs -r kill -9 2>/dev/null || true
                                 sleep 2
-                                echo "Process cleanup completed"
-                            '
-                        '''
-                    }
-                }
-            }
-        }
-        
-        stage('Start Backend') {
-            steps {
-                sshagent(credentials: ['nextits_ai_4_ssh']) {
-                    script {
-                        sh '''
-                            ssh -o StrictHostKeyChecking=no -p 2226 nextits4@127.0.0.1 '
-                                cd /home/nextits4/workspace/quantas
                                 
-                                if [ -f /opt/conda/bin/activate ]; then
-                                    source /opt/conda/bin/activate quantas
-                                fi
-                                
-                                echo "=== Starting backend ==="
+                                echo "=== Starting Backend ==="
                                 if [ -f backend/main.py ]; then
                                     cd backend
-                                    pip install uvicorn fastapi python-multipart || echo "Dependencies already installed"
+                                    pip install uvicorn fastapi python-multipart --quiet || echo "Deps install failed"
                                     nohup python main.py > /tmp/backend.log 2>&1 &
-                                    echo "Backend started with PID: $!"
+                                    echo "Backend started"
                                     cd ..
                                     sleep 3
-                                    echo "Backend startup completed"
-                                else
-                                    echo "Backend main.py not found"
                                 fi
-                            '
-                        '''
-                    }
-                }
-            }
-        }
-        
-        stage('Start Frontend') {
-            steps {
-                sshagent(credentials: ['nextits_ai_4_ssh']) {
-                    script {
-                        sh '''
-                            ssh -o StrictHostKeyChecking=no -p 2226 nextits4@127.0.0.1 '
-                                cd /home/nextits4/workspace/quantas
                                 
-                                echo "=== Starting frontend ==="
+                                echo "=== Starting Frontend ==="
                                 if [ -f frontend/package.json ]; then
                                     cd frontend
                                     
-                                    # .env 파일 생성
-                                    cat > .env << EOF
-REACT_APP_API_URL=http://127.0.0.1:8502
-REACT_APP_ENV=production
-EOF
+                                    # .env 생성
+                                    echo "REACT_APP_API_URL=http://127.0.0.1:8502" > .env
+                                    echo "REACT_APP_ENV=production" >> .env
                                     
-                                    if command -v npm >/dev/null 2>&1; then
-                                        if [ ! -d node_modules ]; then
-                                            echo "Installing npm dependencies..."
-                                            timeout 300 npm install || echo "npm install timeout or failed"
-                                        fi
+                                    if command -v npm >/dev/null; then
+                                        [ ! -d node_modules ] && npm install --silent
                                         nohup npm start > /tmp/frontend.log 2>&1 &
-                                        echo "Frontend started with PID: $!"
-                                    else
-                                        echo "npm not found"
+                                        echo "Frontend started"
                                     fi
                                     cd ..
-                                else
-                                    echo "Frontend package.json not found"
                                 fi
-                            '
-                        '''
-                    }
-                }
-            }
-        }
-        
-        stage('Verify Deployment') {
-            steps {
-                sshagent(credentials: ['nextits_ai_4_ssh']) {
-                    script {
-                        sh '''
-                            ssh -o StrictHostKeyChecking=no -p 2226 nextits4@127.0.0.1 '
-                                echo "=== Process Status Check ==="
+                                
+                                echo "=== Services started ==="
                                 sleep 5
                                 
-                                BACKEND_COUNT=$(pgrep -f "python.*main.py" | wc -l)
-                                FRONTEND_COUNT=$(pgrep -f "npm.*start" | wc -l)
+                                # 포트 확인
+                                lsof -i:8502 && echo "Backend port active" || echo "Backend port inactive"
+                                lsof -i:8503 && echo "Frontend port active" || echo "Frontend port inactive"
                                 
-                                echo "Backend processes: $BACKEND_COUNT"
-                                echo "Frontend processes: $FRONTEND_COUNT"
-                                
-                                echo "=== Port Status ==="
-                                if command -v ss >/dev/null 2>&1; then
-                                    ss -tlnp | grep ":8502" && echo "Backend port 8502 active" || echo "Backend port 8502 not active"
-                                    ss -tlnp | grep ":8503" && echo "Frontend port 8503 active" || echo "Frontend port 8503 not active"
-                                fi
-                                
-                                echo "=== Logs ==="
-                                if [ -f /tmp/backend.log ]; then
-                                    echo "Backend log (last 3 lines):"
-                                    tail -n 3 /tmp/backend.log
-                                fi
-                                
-                                if [ -f /tmp/frontend.log ]; then
-                                    echo "Frontend log (last 3 lines):"
-                                    tail -n 3 /tmp/frontend.log
-                                fi
-                                
-                                echo "=== Access URLs ==="
+                                echo "=== Deployment Complete ==="
                                 echo "Backend: http://127.0.0.1:8502"
                                 echo "Frontend: http://127.0.0.1:8503"
                             '
@@ -163,16 +82,16 @@ EOF
     
     post {
         success {
-            echo 'Deployment successful!'
+            echo '🎉 Deployment Successful!'
             echo '================================'
-            echo 'Access your application at:'
+            echo 'Access your application:'
             echo 'Frontend: http://127.0.0.1:8503'
-            echo 'Backend API: http://127.0.0.1:8502'
+            echo 'Backend: http://127.0.0.1:8502'
             echo 'API Docs: http://127.0.0.1:8502/docs'
             echo '================================'
         }
         failure {
-            echo 'Deployment failed. Check individual stage logs.'
+            echo '❌ Deployment failed. Check logs above.'
         }
     }
 }
