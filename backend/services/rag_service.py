@@ -13,8 +13,11 @@ def initialize_rag_pipeline():
     """
     logger.info("RAG 파이프라인 초기화를 시작합니다...")
     
-    # RAG 시스템의 실제 경로를 설정합니다.
-    rag_path = '/home/nextits2/.conda/envs/workbox/gui/chatbot/backend/notebooklm'
+    # RAG 시스템의 실제 경로를 동적으로 설정합니다.
+    # 현재 파일의 위치를 기준으로 'backend' 디렉토리를 찾고, 그 하위의 'notebooklm' 경로를 구성합니다.
+    current_file_path = os.path.abspath(__file__)
+    backend_dir = os.path.dirname(os.path.dirname(current_file_path))
+    rag_path = os.path.join(backend_dir, 'notebooklm')
     logger.info(f"RAG 파이프라인 경로: {rag_path}")
 
     if not os.path.isdir(rag_path):
