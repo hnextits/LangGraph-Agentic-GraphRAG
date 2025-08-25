@@ -1,70 +1,77 @@
-# Getting Started with Create React App
+# Chatbot Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Next.js, TypeScript, Tailwind CSS로 구현된 챗봇 프론트엔드 애플리케이션입니다.
 
-## Available Scripts
+## 기능
 
-In the project directory, you can run:
+- 파일 업로드 및 관리
+- 파일 내용 조회
+- 마크다운 렌더링
+- 질문-답변 채팅 인터페이스
+- 문서 요약 기능
+- 반응형 디자인
 
-### `npm start`
+## 기술 스택
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **프레임워크**: Next.js 14
+- **언어**: TypeScript
+- **스타일링**: Tailwind CSS
+- **HTTP 클라이언트**: Axios
+- **마크다운 렌더링**: react-markdown, remark-gfm
+- **파일 업로드**: react-dropzone
+- **코드 하이라이팅**: react-syntax-highlighter
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## 시작하기
 
-### `npm test`
+### 환경 설정
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+1. 프로젝트 루트에 `.env.local` 파일을 생성하고 다음 내용을 추가합니다:
 
-### `npm run build`
+```
+NEXT_PUBLIC_API_URL=http://localhost:8503
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### 설치
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+```bash
+npm install
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### 개발 서버 실행
 
-### `npm run eject`
+```bash
+npm run dev
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### 빌드
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+npm run build
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### 프로덕션 서버 실행
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```bash
+npm start
+```
 
-## Learn More
+## 프로젝트 구조
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```
+frontend/
+├── public/
+├── src/
+│   ├── components/      # 재사용 가능한 UI 컴포넌트
+│   ├── hooks/           # 커스텀 React 훅
+│   ├── lib/             # 유틸리티 함수 및 API 클라이언트
+│   ├── pages/           # Next.js 페이지
+│   └── styles/          # 전역 스타일
+├── .env.local           # 환경 변수
+├── package.json
+├── tailwind.config.js
+└── tsconfig.json
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## 백엔드 연동
 
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+이 프론트엔드는 FastAPI 백엔드와 통신하도록 설계되었습니다. 백엔드는 기본적으로 포트 8503에서 실행되어야 합니다.
