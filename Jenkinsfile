@@ -46,8 +46,8 @@ pipeline {
                                 
                                 echo "=== Cleanup existing services ==="
                                 # 간단한 포트 기반 정리
-                                lsof -ti:6010 | xargs -r kill -9 2>/dev/null || true
-                                lsof -ti:6009 | xargs -r kill -9 2>/dev/null || true
+                                lsof -ti:8502 | xargs -r kill -9 2>/dev/null || true
+                                lsof -ti:8503 | xargs -r kill -9 2>/dev/null || true
                                 sleep 2
                                 
                                 echo "=== Starting Backend ==="
@@ -80,12 +80,12 @@ pipeline {
                                 sleep 5
                                 
                                 # 포트 확인
-                                lsof -i:6010 && echo "Backend port active" || echo "Backend port inactive"
-                                lsof -i:6009 && echo "Frontend port active" || echo "Frontend port inactive"
+                                lsof -i:8502 && echo "Backend port active" || echo "Backend port inactive"
+                                lsof -i:8503 && echo "Frontend port active" || echo "Frontend port inactive"
                                 
                                 echo "=== Deployment Complete ==="
-                                echo "Backend: http://127.0.0.1:6010"
-                                echo "Frontend: http://127.0.0.1:6009"
+                                echo "Backend: http://127.0.0.1:8502"
+                                echo "Frontend: http://127.0.0.1:8503"
                             '
                         '''
                     }
@@ -106,15 +106,15 @@ pipeline {
                                 
                                 # 실행 중인 서비스 확인
                                 echo "Current running services:"
-                                lsof -i:6010 2>/dev/null && echo "Backend (6010) is running" || echo "Backend (6010) not running"
-                                lsof -i:6009 2>/dev/null && echo "Frontend (6009) is running" || echo "Frontend (6009) not running"
+                                lsof -i:8502 2>/dev/null && echo "Backend (8502) is running" || echo "Backend (8502) not running"
+                                lsof -i:8503 2>/dev/null && echo "Frontend (8503) is running" || echo "Frontend (8503) not running"
                                 
                                 # 포트 기반으로 프로세스 종료
-                                echo "Stopping backend (port 6010)..."
-                                lsof -ti:6010 | xargs -r kill -9 2>/dev/null || echo "No backend process found"
+                                echo "Stopping backend (port 8502)..."
+                                lsof -ti:8502 | xargs -r kill -9 2>/dev/null || echo "No backend process found"
                                 
-                                echo "Stopping frontend (port 6009)..."
-                                lsof -ti:6009 | xargs -r kill -9 2>/dev/null || echo "No frontend process found"
+                                echo "Stopping frontend (port 8503)..."
+                                lsof -ti:8503 | xargs -r kill -9 2>/dev/null || echo "No frontend process found"
                                 
                                 # 프로세스 이름으로도 정리
                                 echo "Cleaning up by process name..."
@@ -126,8 +126,8 @@ pipeline {
                                 
                                 # 최종 확인
                                 echo "=== Final Status Check ==="
-                                lsof -i:6010 2>/dev/null && echo "⚠️ Backend (6010) still running!" || echo "✅ Backend (6010) stopped"
-                                lsof -i:6009 2>/dev/null && echo "⚠️ Frontend (6009) still running!" || echo "✅ Frontend (6009) stopped"
+                                lsof -i:8502 2>/dev/null && echo "⚠️ Backend (8502) still running!" || echo "✅ Backend (8502) stopped"
+                                lsof -i:8503 2>/dev/null && echo "⚠️ Frontend (8503) still running!" || echo "✅ Frontend (8503) stopped"
                                 
                                 echo "=== Services Stop Complete ==="
                             '
@@ -145,9 +145,9 @@ pipeline {
                     echo '🎉 Deployment Successful!'
                     echo '================================'
                     echo 'Access your application:'
-                    echo 'Frontend: http://127.0.0.1:6009'
-                    echo 'Backend: http://127.0.0.1:6010'
-                    echo 'API Docs: http://127.0.0.1:6010/docs'
+                    echo 'Frontend: http://127.0.0.1:8503'
+                    echo 'Backend: http://127.0.0.1:8502'
+                    echo 'API Docs: http://127.0.0.1:8502/docs'
                     echo '================================'
                 } else {
                     echo '🛑 Services Stopped Successfully!'
