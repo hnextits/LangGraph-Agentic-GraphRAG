@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import api from '@/lib/api';
+import { FileContext } from '@/contexts/FileContext';
 
 // 아이콘 임포트
 import {
@@ -18,14 +19,13 @@ import {
 interface RightboxProps {
   collapsed?: boolean;
   onToggleCollapse?: () => void;
-  checkedFiles?: string[];
 }
 
 const Rightbox: React.FC<RightboxProps> = ({ 
   collapsed = false, 
-  onToggleCollapse = () => {},
-  checkedFiles = []
+  onToggleCollapse = () => {}
 }) => {
+  const { checkedFiles } = useContext(FileContext);
   const [summary, setSummary] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);

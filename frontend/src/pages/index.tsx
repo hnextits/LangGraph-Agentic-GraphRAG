@@ -1,16 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import { useWindowSize } from '@/hooks/useWindowSize';
+import { FileContext } from '@/contexts/FileContext';
 
-// 컴포넌트 동적 임포트
-const Leftbox = dynamic(() => import('@/components/Leftbox'), { ssr: false });
-const Centerbox = dynamic(() => import('@/components/Centerbox'), { ssr: false });
-const Rightbox = dynamic(() => import('@/components/Rightbox'), { ssr: false });
-const FileUploadModal = dynamic(() => import('@/components/FileUploadModal'), { ssr: false });
+// 컴포넌트 일반 임포트
+import Leftbox from '@/components/Leftbox';
+import Centerbox from '@/components/Centerbox';
+import Rightbox from '@/components/Rightbox';
+import FileUploadModal from '@/components/FileUploadModal';
 
 export default function Home() {
   const { width, height } = useWindowSize();
+  const { checkedFiles, setCheckedFiles } = useContext(FileContext);
   
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
@@ -46,6 +48,20 @@ export default function Home() {
     }
   };
 
+  // 체크된 파일 목록 이벤트 리스너
+  useEffect(() => {
+    const handleCheckedFilesUpdated = (event: CustomEvent) => {
+      // FileContext의 setCheckedFiles 사용
+      setCheckedFiles(event.detail.files);
+    };
+
+    window.addEventListener('checkedFilesUpdated', handleCheckedFilesUpdated as EventListener);
+    
+    return () => {
+      window.removeEventListener('checkedFilesUpdated', handleCheckedFilesUpdated as EventListener);
+    };
+  }, [setCheckedFiles]); // setCheckedFiles를 의존성에 추가
+
   // 반응형 레이아웃 설정
   const isMobile = width < 768;
   const isTablet = width >= 768 && width < 1024;
@@ -74,8 +90,9 @@ export default function Home() {
           />
         </div>
 
-        {/* 중앙 영역 */}
-        <div className="flex-1 h-1/3 md:h-full overflow-hidden flex justify-center items-center">
+        {/* 중앙 패널 */}
+        <div className="w-full md:w-auto flex-shrink-0 h-1/3 md:h-full overflow-hidden flex justify-center items-center" 
+             style    ={{ width: leftCollapsed && rightCollapsed ? '100%' : 'calc(100% - ' + leftWidth + ' - ' + rightWidth + ')' }}>
           <Centerbox />
         </div>
 

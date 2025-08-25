@@ -1,7 +1,10 @@
+"use client";
+
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import api from '@/lib/api';
 import FileContentBox from './FileContentBox';
+import Searchbox from './Searchbox';
 
 // 아이콘 임포트
 import {
@@ -36,11 +39,11 @@ interface LeftboxProps {
   onFileUploadClick?: () => void;
 }
 
-const Leftbox = ({ 
+const Leftbox: React.FC<LeftboxProps> = ({ 
   collapsed = false, 
   onToggleCollapse = () => {}, 
   onFileUploadClick 
-}: LeftboxProps) => {
+}) => {
   const [sources, setSources] = useState<SourceItem[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [checkedFiles, setCheckedFiles] = useState<string[]>([]);
@@ -51,7 +54,7 @@ const Leftbox = ({
   const [fileContent, setFileContent] = useState('');
   const [fileContentModalOpen, setFileContentModalOpen] = useState(false);
 
-  // 체크된 파일 목록이 변경될 때마다 전역 이벤트 발생
+  // 체크된 파일 목록이 변경될 때마다 이벤트 발생
   useEffect(() => {
     // 커스텀 이벤트를 통해 체크된 파일 목록 공유
     const event = new CustomEvent('checkedFilesUpdated', {
@@ -537,25 +540,12 @@ const Leftbox = ({
         </div>
       )}
       
-      {/* 검색 모달 - 나중에 구현 */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-medium">문서 검색</h3>
-              <button
-                onClick={handleCloseModal}
-                className="p-1 rounded-md hover:bg-gray-100"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
-              </button>
-            </div>
-            <div className="p-4">
-              <p>검색 기능은 추후 구현 예정입니다.</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 검색 모달 */}
+      <Searchbox 
+        open={isModalOpen} 
+        onClose={handleCloseModal}
+        onProcessingStart={handleProcessingStart}
+      />
     </div>
   );
 };

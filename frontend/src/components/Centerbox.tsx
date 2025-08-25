@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, KeyboardEvent, useContext } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import api from '@/lib/api';
+import { FileContext } from '@/contexts/FileContext';
 
 // 아이콘 임포트
 import {
@@ -19,11 +20,10 @@ interface Message {
   images?: string[];
 }
 
-interface CenterboxProps {
-  checkedFiles?: string[];
-}
+interface CenterboxProps {}
 
-const Centerbox: React.FC<CenterboxProps> = ({ checkedFiles = [] }) => {
+const Centerbox: React.FC<CenterboxProps> = () => {
+  const { checkedFiles } = useContext(FileContext);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);

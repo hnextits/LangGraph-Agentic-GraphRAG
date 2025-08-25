@@ -1,16 +1,27 @@
 import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { 
+  Modal, 
+  Box, 
+  Typography, 
+  Button, 
+  LinearProgress, 
+  IconButton,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  ListItemSecondaryAction,
+  Paper,
+  Divider
+} from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
+import UploadIcon from '@mui/icons-material/Upload';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
+import CircularProgress from '@mui/material/CircularProgress';
 import api from '@/lib/api';
-
-// 아이콘 임포트
-import {
-  X,
-  Upload,
-  File,
-  Loader2,
-  CheckCircle,
-  AlertCircle
-} from 'lucide-react';
 
 interface FileUploadModalProps {
   isOpen: boolean;
@@ -146,129 +157,158 @@ const FileUploadModal: React.FC<FileUploadModalProps> = ({ isOpen, onClose, onFi
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-lg max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h3 className="text-lg font-medium">파일 업로드</h3>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-md hover:bg-gray-100"
-          >
-            <X size={20} />
-          </button>
-        </div>
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      aria-labelledby="file-upload-modal-title"
+      aria-describedby="file-upload-modal-description"
+    >
+      <Paper
+        sx={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '100%',
+          maxWidth: 500,
+          maxHeight: '90vh',
+          borderRadius: 2,
+          boxShadow: 24,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}
+      >
+        {/* 헤더 */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 2, borderBottom: '1px solid #e0e0e0' }}>
+          <Typography variant="h6" id="file-upload-modal-title">
+            파일 업로드
+          </Typography>
+          <IconButton onClick={onClose} size="small">
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </Box>
         
-        <div className="p-4 flex-grow overflow-y-auto">
+        {/* 본문 */}
+        <Box sx={{ p: 2, flexGrow: 1, overflow: 'auto' }}>
           {/* 드롭존 */}
-          <div
+          <Box
             {...getRootProps()}
-            className={`border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer transition-colors ${
-              isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'
-            }`}
+            sx={{
+              border: '2px dashed',
+              borderColor: isDragActive ? 'primary.main' : 'grey.300',
+              borderRadius: 1,
+              p: 3,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              bgcolor: isDragActive ? 'primary.50' : 'background.paper',
+              '&:hover': {
+                borderColor: 'primary.light'
+              }
+            }}
           >
             <input {...getInputProps()} />
-            <Upload size={36} className={`mb-2 ${isDragActive ? 'text-blue-500' : 'text-gray-400'}`} />
-            <p className="text-center text-gray-600">
+            <UploadIcon sx={{ fontSize: 40, mb: 1, color: isDragActive ? 'primary.main' : 'grey.400' }} />
+            <Typography align="center" color="textSecondary">
               {isDragActive
                 ? '파일을 여기에 놓으세요...'
                 : '파일을 드래그 앤 드롭하거나 클릭하여 선택하세요'}
-            </p>
-            <p className="text-xs text-gray-500 mt-1">
+            </Typography>
+            <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5 }}>
               지원 형식: TXT, PDF, DOC, DOCX, MD, JPG, PNG
-            </p>
-          </div>
+            </Typography>
+          </Box>
           
           {/* 업로드 파일 목록 */}
           {uploadingFiles.length > 0 && (
-            <div className="mt-4">
-              <h4 className="font-medium mb-2">업로드 파일 ({uploadingFiles.length})</h4>
-              <ul className="space-y-2">
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                업로드 파일 ({uploadingFiles.length})
+              </Typography>
+              <List dense disablePadding>
                 {uploadingFiles.map((item, index) => (
-                  <li key={index} className="border rounded-md p-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center">
-                        <File size={16} className="mr-2 text-gray-500" />
-                        <span className="text-sm truncate max-w-[200px]">{item.file.name}</span>
-                        <span className="text-xs text-gray-500 ml-2">
+                  <ListItem key={index} sx={{ border: '1px solid #e0e0e0', borderRadius: 1, mb: 1, p: 1 }}>
+                    <ListItemIcon sx={{ minWidth: 36 }}>
+                      <InsertDriveFileIcon fontSize="small" color="action" />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={
+                        <Typography variant="body2" noWrap sx={{ maxWidth: 200 }}>
+                          {item.file.name}
+                        </Typography>
+                      }
+                      secondary={
+                        <Typography variant="caption" color="textSecondary">
                           {(item.file.size / 1024).toFixed(1)} KB
-                        </span>
-                      </div>
+                        </Typography>
+                      }
+                    />
+                    <ListItemSecondaryAction>
                       {item.status === 'pending' && (
-                        <button
-                          onClick={() => handleRemoveFile(index)}
-                          className="p-1 rounded-md hover:bg-gray-100 text-gray-500"
-                        >
-                          <X size={16} />
-                        </button>
+                        <IconButton edge="end" size="small" onClick={() => handleRemoveFile(index)}>
+                          <CloseIcon fontSize="small" />
+                        </IconButton>
                       )}
                       {item.status === 'uploading' && (
-                        <div className="text-xs text-blue-500">
+                        <Typography variant="caption" color="primary">
                           {item.progress.toFixed(0)}%
-                        </div>
+                        </Typography>
                       )}
                       {item.status === 'success' && (
-                        <CheckCircle size={16} className="text-green-500" />
+                        <CheckCircleIcon fontSize="small" color="success" />
                       )}
                       {item.status === 'error' && (
-                        <AlertCircle size={16} className="text-red-500" />
+                        <ErrorIcon fontSize="small" color="error" />
                       )}
-                    </div>
+                    </ListItemSecondaryAction>
                     
                     {/* 진행 상태 바 */}
                     {item.status === 'uploading' && (
-                      <div className="w-full bg-gray-200 rounded-full h-1.5">
-                        <div
-                          className="bg-blue-500 h-1.5 rounded-full"
-                          style={{ width: `${item.progress}%` }}
-                        ></div>
-                      </div>
+                      <Box sx={{ width: '100%', mt: 1 }}>
+                        <LinearProgress variant="determinate" value={item.progress} />
+                      </Box>
                     )}
                     
                     {/* 오류 메시지 */}
                     {item.status === 'error' && item.error && (
-                      <p className="text-xs text-red-500 mt-1">{item.error}</p>
+                      <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block' }}>
+                        {item.error}
+                      </Typography>
                     )}
-                  </li>
+                  </ListItem>
                 ))}
-              </ul>
-            </div>
+              </List>
+            </Box>
           )}
-        </div>
+        </Box>
         
-        <div className="p-4 border-t flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 mr-2"
+        {/* 푸터 */}
+        <Box sx={{ p: 2, borderTop: '1px solid #e0e0e0', display: 'flex', justifyContent: 'flex-end' }}>
+          <Button 
+            onClick={onClose} 
+            variant="outlined" 
+            color="inherit" 
+            sx={{ mr: 1 }}
           >
             취소
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleUpload}
+            variant="contained"
+            color="primary"
             disabled={uploadingFiles.length === 0 || isUploading}
-            className={`px-4 py-2 rounded-md flex items-center ${
-              uploadingFiles.length === 0 || isUploading
-                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                : 'bg-blue-500 text-white hover:bg-blue-600'
-            }`}
+            startIcon={isUploading ? <CircularProgress size={16} /> : <UploadIcon />}
           >
-            {isUploading ? (
-              <>
-                <Loader2 size={16} className="mr-2 animate-spin" />
-                업로드 중...
-              </>
-            ) : (
-              <>
-                <Upload size={16} className="mr-2" />
-                업로드
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
+            {isUploading ? '업로드 중...' : '업로드'}
+          </Button>
+        </Box>
+      </Paper>
+    </Modal>
   );
 };
 
