@@ -45,6 +45,7 @@ pipeline {
                                 fi
                                 
                                 echo "=== Cleanup existing services ==="
+                                # 간단한 포트 기반 정리
                                 lsof -ti:6010 | xargs -r kill -9 2>/dev/null || true
                                 lsof -ti:6009 | xargs -r kill -9 2>/dev/null || true
                                 sleep 2
@@ -64,7 +65,7 @@ pipeline {
                                     cd frontend
                                     
                                     # .env 생성
-                                    echo "REACT_APP_API_URL=http://127.0.0.1:6010" > .env
+                                    echo "REACT_APP_API_URL=http://127.0.0.1:8502" > .env
                                     echo "REACT_APP_ENV=production" >> .env
                                     
                                     if command -v npm >/dev/null; then
