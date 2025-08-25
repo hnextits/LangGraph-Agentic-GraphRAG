@@ -41,9 +41,37 @@ cd /home/nextits4/workspace/quantas
 echo "=== Environment Setup ==="
 echo "Current user: $(whoami)"
 echo "Current directory: $(pwd)"
-echo "Available Python versions:"
-which python3 && python3 --version || echo "Python3 not found"
-which python && python --version || echo "Python not found"
+
+# Conda 환경 활성화
+echo "Activating Conda environment..."
+if [ -f /opt/conda/bin/activate ]; then
+    source /opt/conda/bin/activate quantas
+    echo "✅ Conda quantas environment activated"
+    echo "Active environment: $(conda info --envs | grep '*' | awk '{print $1}')"
+    echo "Python location: $(which python)"
+    echo "Python version: $(python --version)"
+    echo "Pip location: $(which pip)"
+elif [ -f ~/miniconda3/bin/activate ]; then
+    source ~/miniconda3/bin/activate quantas
+    echo "✅ Miniconda quantas environment activated"
+    echo "Python version: $(python --version)"
+elif [ -f ~/anaconda3/bin/activate ]; then
+    source ~/anaconda3/bin/activate quantas
+    echo "✅ Anaconda quantas environment activated"
+    echo "Python version: $(python --version)"
+else
+    echo "❌ Conda not found in expected locations"
+    echo "Checking conda in PATH..."
+    if command -v conda >/dev/null 2>&1; then
+        conda activate quantas
+        echo "✅ Conda quantas environment activated via PATH"
+        echo "Python version: $(python --version)"
+    else
+        echo "❌ Conda not available - using system Python"
+        which python3 && python3 --version || echo "Python3 not found"
+        which python && python --version || echo "Python not found"
+    fi
+fi
 
 echo ""
 echo "=== Cleanup existing services ==="
@@ -77,33 +105,55 @@ fi
 
 echo "✅ Found backend/main.py"
 
-# Backend 실행 (더 간단하게)
-echo "Starting backend in background..."
+# Backend 실행 (Conda 환경에서)
+echo "Starting backend in Conda environment..."
 
 cd backend
 echo "Current backend directory: $(pwd)"
 
-# Python 명령어 결정
-PYTHON_CMD="python3"
-if ! command -v python3 >/dev/null 2>&1; then
-    PYTHON_CMD="python"
+# Conda 환경 재확인 (디렉토리 이동 후)
+if [ -f /opt/conda/bin/activate ]; then
+    source /opt/conda/bin/activate quantas
+    echo "✅ Conda environment re-activated in backend directory"
+elif [ -f ~/miniconda3/bin/activate ]; then
+    source ~/miniconda3/bin/activate quantas
+    echo "✅ Miniconda environment re-activated in backend directory"
+elif [ -f ~/anaconda3/bin/activate ]; then
+    source ~/anaconda3/bin/activate quantas
+    echo "✅ Anaconda environment re-activated in backend directory"
+elif command -v conda >/dev/null 2>&1; then
+    conda activate quantas
+    echo "✅ Conda environment re-activated via PATH"
 fi
 
-echo "Using Python command: $PYTHON_CMD"
+echo "Active Python: $(which python)"
+echo "Python version: $(python --version)"
 
-# 의존성 설치 (간단히)
-echo "Installing basic dependencies..."
-$PYTHON_CMD -m pip install fastapi uvicorn python-multipart --quiet --user 2>/dev/null || echo "Pip install failed, continuing..."
+# 의존성 확인 및 설치
+echo "Checking dependencies in Conda environment..."
+if [ -f requirements.txt ]; then
+    echo "Installing from requirements.txt..."
+    pip install -r requirements.txt --quiet
+else
+    echo "Installing basic FastAPI dependencies..."
+    pip install fastapi uvicorn python-multipart --quiet
+fi
+
+# FastAPI 설치 확인
+python -c "import fastapi, uvicorn; print('✅ FastAPI and Uvicorn are available')" 2>/dev/null || {
+    echo "❌ FastAPI import failed, installing again..."
+    pip install fastapi uvicorn python-multipart
+}
 
 # main.py 미리보기
 echo "main.py preview:"
 head -5 main.py 2>/dev/null || echo "Cannot preview main.py"
 
-# 백엔드 시작 (더 간단한 방법)
-echo "Starting backend server..."
-nohup $PYTHON_CMD main.py > /tmp/backend.log 2>&1 &
+# 백엔드 시작 (Conda 환경에서)
+echo "Starting backend server in Conda environment..."
+nohup python main.py > /tmp/backend.log 2>&1 &
 BACKEND_PID=$!
-echo "Backend started with PID: $BACKEND_PID"
+echo "Backend started with PID: $BACKEND_PID (using Conda Python)"
 
 # 원래 디렉토리로 돌아가기
 cd ..
@@ -159,6 +209,7 @@ if [ -f frontend/package.json ]; then
     echo "REACT_APP_API_URL=http://127.0.0.1:6010" > .env
     echo "REACT_APP_ENV=production" >> .env
     
+    # Conda 환경에서 npm 확인
     if command -v npm >/dev/null; then
         echo "Installing frontend dependencies..."
         [ ! -d node_modules ] && npm install --silent 2>/dev/null || echo "npm install failed"
@@ -167,7 +218,12 @@ if [ -f frontend/package.json ]; then
         nohup npm start > /tmp/frontend.log 2>&1 &
         echo "Frontend started"
     else
-        echo "npm not found"
+        echo "npm not found - checking if Node.js is available in Conda environment"
+        # Conda에서 Node.js 설치 시도
+        if command -v conda >/dev/null 2>&1; then
+            echo "Installing Node.js in Conda environment..."
+            conda install nodejs npm -c conda-forge -y --quiet 2>/dev/null || echo "Failed to install Node.js via conda"
+        fi
     fi
     cd ..
 else
