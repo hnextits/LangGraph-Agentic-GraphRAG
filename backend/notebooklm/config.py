@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import torch
+from pathlib import Path
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -43,12 +44,11 @@ class RAGConfig:
         #############################################
         # 1. 경로 및 파일 설정
         #############################################
-        # self.DATA_PATH = "/home/nextits2/.conda/envs/workbox/zone/rag_text/data/documents.json"
-        self.DATA_PATH = "/home/nextits2/.conda/envs/workbox/gui/chatbot/backend/nextits_data"
-        # self.IMAGE_BASE_PATH = ""
-        # self.INDEX_DIR = "/home/nextits2/.conda/envs/workbox/zone/rag_test_ocr/faiss_test"
+        current_file = Path(__file__).resolve()
+        self.PROJECT_ROOT = current_file.parent.parent.parent
+        self.DATA_PATH = self.DATA_PATH = self.PROJECT_ROOT / "data" / "nextits_data"
         self.INDEX_DIR = os.path.join(os.path.dirname(__file__), "faiss_test")
-        self.CACHE_DIR = "/home/nextits2/.cache/huggingface/hub"
+        self.CACHE_DIR = Path.home() / ".cache" / "huggingface" / "hub"
         
         #############################################
         # 2. 모델 설정 (모델 이름)
@@ -64,11 +64,10 @@ class RAGConfig:
         self.QUERY_REWRITE_MODEL_NAME = "naver-hyperclovax/HyperCLOVAX-SEED-Text-Instruct-1.5B"
         
         # 생성 모델
-        # self.LLM_MODEL = "Qwen/Qwen3-30B-A3B"
         self.LLM_MODEL = "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
         
         # 정제 모델
-        self.REFINER_MODEL = "Qwen/Qwen2.5-1.5B-Instruct"
+        self.REFINER_MODEL = "Qwen/Qwen3-1.7B-FP8"
         
         #############################################
         # 3. 모델 파라미터 설정

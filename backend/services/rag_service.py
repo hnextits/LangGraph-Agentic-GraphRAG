@@ -18,7 +18,7 @@ def initialize_rag_pipeline():
     current_file_path = os.path.abspath(__file__)
     backend_dir = os.path.dirname(os.path.dirname(current_file_path))
     rag_path = os.path.join(backend_dir, 'notebooklm')
-    logger.info(f"RAG 파이프라인 경로: {rag_path}")
+
 
     if not os.path.isdir(rag_path):
         logger.error(f"RAG 파이프라인 디렉터리를 찾을 수 없습니다: {rag_path}")

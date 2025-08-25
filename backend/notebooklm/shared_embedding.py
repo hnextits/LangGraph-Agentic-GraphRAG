@@ -46,13 +46,14 @@ class SharedEmbeddingModel:
         self._model_name = config.EMBEDDING_MODEL
         self._device = config.EMBEDDING_DEVICE
         self.dimension = config.VECTOR_DIMENSION
+        self.CACHE_DIR = config.CACHE_DIR  # <--- 이 줄을 추가하세요.
         self.max_length = 32768
         
         logger.info(f"공유 임베딩 모델 초기화: {self._model_name} on {self._device}")
         
         try:
             # 기존 캐시 경로 설정
-            cache_dir = "/home/nextits2/.cache/huggingface/hub"
+            cache_dir = self.CACHE_DIR  # <--- 이제 정상적으로 동작합니다.
             
             # 토크나이저 로드 (기존 캐시 사용)
             self._tokenizer = AutoTokenizer.from_pretrained(

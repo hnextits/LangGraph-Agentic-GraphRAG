@@ -64,8 +64,8 @@ class Refiner:
         self.generator = generator  # 디바이스 정보 참조용
         
         # Refiner 전용 모델 설정
-        self.refiner_model_name = "Qwen/Qwen3-1.7B"
-        self.device = generator.device  # Generator와 같은 디바이스 사용
+        self.refiner_model_name = self.config.REFINER_MODEL # 'self.config.' 를 추가하여 수정
+        self.device = self.config.REFINER_DEVICE # Refiner 전용 디바이스 설정을 사용하도록 변경
         self.torch_dtype = generator.torch_dtype
         
         # 모델 즉시 로딩
@@ -84,7 +84,7 @@ class Refiner:
             self.refiner_tokenizer = AutoTokenizer.from_pretrained(
                 self.refiner_model_name,
                 cache_dir=self.config.CACHE_DIR,
-                local_files_only=True
+                local_files_only=False
             )
             if self.refiner_tokenizer.pad_token_id is None:
                 self.refiner_tokenizer.pad_token_id = self.refiner_tokenizer.eos_token_id
@@ -103,7 +103,7 @@ class Refiner:
             self.refiner_model = AutoModelForCausalLM.from_pretrained(
                 self.refiner_model_name,
                 cache_dir=self.config.CACHE_DIR,
-                local_files_only=True,
+                local_files_only=False,
                 **model_kwargs
             ).to(self.device)
             

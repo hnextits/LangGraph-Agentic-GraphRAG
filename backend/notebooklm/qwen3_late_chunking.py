@@ -747,7 +747,8 @@ class Qwen3LateChunker:
     
     def __init__(self, 
                  model_name: str = "Qwen/Qwen3-Embedding-4B",
-                 max_length: int = 32768,
+                #  max_length: int = 32768,
+                 max_length: int = 10000,
                  device: str = "auto",
                  embedding_dim: int = 2560,
                  chunk_size: int = 1000,
