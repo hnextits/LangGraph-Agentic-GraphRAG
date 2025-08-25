@@ -1,8 +1,19 @@
 pipeline {
     agent any
+    
+    parameters {
+        choice(
+            name: 'ACTION',
+            choices: ['DEPLOY', 'STOP'],
+            description: 'Select action to perform'
+        )
+    }
 
     stages {
         stage('Deploy Files') {
+            when {
+                expression { params.ACTION == 'DEPLOY' }
+            }
             steps {
                 sshagent(credentials: ['nextits_ai_4_ssh']) {
                     script {
@@ -17,6 +28,9 @@ pipeline {
         }
         
         stage('Start Services') {
+            when {
+                expression { params.ACTION == 'DEPLOY' }
+            }
             steps {
                 sshagent(credentials: ['nextits_ai_4_ssh']) {
                     script {
@@ -31,7 +45,6 @@ pipeline {
                                 fi
                                 
                                 echo "=== Cleanup existing services ==="
-                                # 간단한 포트 기반 정리
                                 lsof -ti:8502 | xargs -r kill -9 2>/dev/null || true
                                 lsof -ti:8503 | xargs -r kill -9 2>/dev/null || true
                                 sleep 2
@@ -78,20 +91,79 @@ pipeline {
                 }
             }
         }
+        
+        stage('Stop Services') {
+            when {
+                expression { params.ACTION == 'STOP' }
+            }
+            steps {
+                sshagent(credentials: ['nextits_ai_4_ssh']) {
+                    script {
+                        sh '''
+                            ssh -o StrictHostKeyChecking=no -p 2226 nextits4@127.0.0.1 '
+                                echo "=== Stopping Services ==="
+                                
+                                # 실행 중인 서비스 확인
+                                echo "Current running services:"
+                                lsof -i:8502 2>/dev/null && echo "Backend (8502) is running" || echo "Backend (8502) not running"
+                                lsof -i:8503 2>/dev/null && echo "Frontend (8503) is running" || echo "Frontend (8503) not running"
+                                
+                                # 포트 기반으로 프로세스 종료
+                                echo "Stopping backend (port 8502)..."
+                                lsof -ti:8502 | xargs -r kill -9 2>/dev/null || echo "No backend process found"
+                                
+                                echo "Stopping frontend (port 8503)..."
+                                lsof -ti:8503 | xargs -r kill -9 2>/dev/null || echo "No frontend process found"
+                                
+                                # 프로세스 이름으로도 정리
+                                echo "Cleaning up by process name..."
+                                pkill -f "python main.py" 2>/dev/null || echo "No Python main.py process found"
+                                pkill -f "npm start" 2>/dev/null || echo "No npm start process found"
+                                pkill -f "node.*react-scripts" 2>/dev/null || echo "No React process found"
+                                
+                                sleep 3
+                                
+                                # 최종 확인
+                                echo "=== Final Status Check ==="
+                                lsof -i:8502 2>/dev/null && echo "⚠️ Backend (8502) still running!" || echo "✅ Backend (8502) stopped"
+                                lsof -i:8503 2>/dev/null && echo "⚠️ Frontend (8503) still running!" || echo "✅ Frontend (8503) stopped"
+                                
+                                echo "=== Services Stop Complete ==="
+                            '
+                        '''
+                    }
+                }
+            }
+        }
     }
     
     post {
         success {
-            echo '🎉 Deployment Successful!'
-            echo '================================'
-            echo 'Access your application:'
-            echo 'Frontend: http://127.0.0.1:8503'
-            echo 'Backend: http://127.0.0.1:8502'
-            echo 'API Docs: http://127.0.0.1:8502/docs'
-            echo '================================'
+            script {
+                if (params.ACTION == 'DEPLOY') {
+                    echo '🎉 Deployment Successful!'
+                    echo '================================'
+                    echo 'Access your application:'
+                    echo 'Frontend: http://127.0.0.1:8503'
+                    echo 'Backend: http://127.0.0.1:8502'
+                    echo 'API Docs: http://127.0.0.1:8502/docs'
+                    echo '================================'
+                } else {
+                    echo '🛑 Services Stopped Successfully!'
+                    echo '================================'
+                    echo 'All quantas services have been stopped'
+                    echo '================================'
+                }
+            }
         }
         failure {
-            echo '❌ Deployment failed. Check logs above.'
+            script {
+                if (params.ACTION == 'DEPLOY') {
+                    echo '❌ Deployment failed. Check logs above.'
+                } else {
+                    echo '❌ Stop operation failed. Check logs above.'
+                }
+            }
         }
     }
 }
