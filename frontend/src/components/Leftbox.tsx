@@ -67,7 +67,7 @@ const Leftbox: React.FC<LeftboxProps> = ({
     try {
       setIsLoading(true);
       console.log('파일 목록 새로고침 중...');
-      const response = await api.get('/api/files');
+      const response = await api.get('/files');
       const data = response.data;
       
       // 백엔드는 파일 이름 문자열의 배열을 반환합니다.
@@ -142,7 +142,7 @@ const Leftbox: React.FC<LeftboxProps> = ({
 
     const interval = setInterval(() => {
       processingSources.forEach(source => {
-        api.get(`/api/task_status/${source.taskId}`)
+        api.get(`/task_status/${source.taskId}`)
           .then(response => {
             const task = response.data;
             if (task.status === 'completed' || task.status === 'failed' || task.status === 'index_completed' || task.status === 'index_failed') {
@@ -247,7 +247,7 @@ const Leftbox: React.FC<LeftboxProps> = ({
     setSelectedSource(source);
 
     try {
-      const response = await api.get(`/api/file/${source.title}`);
+      const response = await api.get(`/file/${source.title}`);
       const data = response.data;
       setFileContent(data.content);
     } catch (error) {

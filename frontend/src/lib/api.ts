@@ -50,7 +50,7 @@ api.interceptors.response.use(
 const apiMethods = {
   // 검색 요청
   search: (data: SearchRequest) => {
-    return api.post('/api/search', data);
+    return api.post('/search', data);
   },
   
   // 파일 업로드
@@ -60,7 +60,7 @@ const apiMethods = {
       formData.append('files', file);
     });
     
-    return api.post('/api/upload', formData, {
+    return api.post('/upload', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
@@ -69,22 +69,22 @@ const apiMethods = {
   
   // 파일 목록 가져오기
   getFiles: () => {
-    return api.get('/api/files');
+    return api.get('/files');
   },
   
   // 파일 내용 가져오기
   getFileContent: (fileName: string) => {
-    return api.get(`/api/file/${fileName}`);
+    return api.get(`/file/${fileName}`);
   },
   
   // 요약 요청
   summarize: (data: SummarizeRequest) => {
-    return api.post('/api/summarize', data);
+    return api.post('/summarize', data);
   },
   
   // 작업 상태 확인
   getTaskStatus: (taskId: string) => {
-    return api.get(`/api/task_status/${taskId}`);
+    return api.get(`/task_status/${taskId}`);
   }
 };
 

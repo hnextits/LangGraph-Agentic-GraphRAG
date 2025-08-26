@@ -133,7 +133,7 @@ const Searchbox: React.FC<SearchboxProps> = ({ open, onClose, onProcessingStart 
 
     try {
       const promises = selectedDocs.map(doc => 
-        api.post('/api/add_document_from_search', {
+        api.post('/add_document_from_search', {
           title: doc.title,
           link: doc.link,
           snippet: doc.snippet

@@ -29,7 +29,7 @@ export default function Home() {
 
     try {
       // API 호출은 lib/api.ts로 이동
-      const response = await fetch('/api/upload', {
+      const response = await fetch('/upload', {
         method: 'POST',
         body: formData,
       });

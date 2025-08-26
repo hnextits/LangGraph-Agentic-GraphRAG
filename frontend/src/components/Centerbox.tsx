@@ -72,7 +72,7 @@ const Centerbox: React.FC<CenterboxProps> = () => {
       // HTTP API 호출
       abortControllerRef.current = new AbortController();
       
-      const response = await api.post('/api/v1/chat', {
+      const response = await api.post('/v1/chat', {
         query: input,
         sources: checkedFiles
       }, {
