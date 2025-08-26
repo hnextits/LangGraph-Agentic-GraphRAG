@@ -26,7 +26,7 @@ pipeline {
         TEST_SERVER = '127.0.0.1'
         TEST_PORT = '2226'
         TEST_USER = 'nextits_test'
-        TEST_WORKSPACE = '/home/nextits_test/workspace/quantas'
+        TEST_WORKSPACE = '/home/nextits_test/workspace/quantas'  // 실제 사용자명으로 수정
         
         // 테스트 서버 포트 범위
         TEST_FRONTEND_PORT_MIN = '6007'
@@ -37,22 +37,21 @@ pipeline {
         // 운영 서버 정보
         PROD_SERVER = '127.0.0.1' // 실제 운영 서버로 변경 필요
         PROD_PORT = '2227' // 실제 운영 서버 포트로 변경 필요
-        PROD_USER = 'nextits_test' // 실제 운영 서버 사용자로 변경 필요
-        PROD_WORKSPACE = '/home/nextits4/workspace/quantas-prod'
+        PROD_USER = 'nextits4' // 실제 운영 서버 사용자로 변경 필요
+        PROD_WORKSPACE = '/home/nextits4/workspace/quantas'
         PROD_BACKEND_PORT = '7010'
         PROD_FRONTEND_PORT = '7009'
         
-        // Conda 환경명 설정
-        CONDA_ENV_PREFIX = 'test_server'       // 기본 접두사
-        TEST_CONDA_ENV_SUFFIX = 'test_server'  // 테스트 환경 접미사
-        PROD_CONDA_ENV_SUFFIX = 'prod'         // 운영 환경 접미사
+        // Conda 환경명 (직접 지정)
+        TEST_CONDA_ENV = 'quantas'
+        PROD_CONDA_ENV = 'quantas'
         
         // 프로젝트 실행 명령어
         FRONTEND_START_CMD = 'npm run dev'     // Next.js 개발 서버 명령어
         BACKEND_START_CMD = 'python main.py'  // FastAPI 서버 명령어
         
         // SSH Credentials
-        TEST_SSH_CREDENTIAL = 'nextits_ai_4_ssh'
+        TEST_SSH_CREDENTIAL = 'nextits4'  // 실제 credential ID로 수정
         PROD_SSH_CREDENTIAL = 'nextits_ai_4_ssh' // 운영용 별도 credential 권장
     }
 
@@ -188,143 +187,62 @@ pipeline {
 
 cd ${env.TEST_WORKSPACE}
 
-# Conda 환경명 생성 함수 (Jenkins 환경 변수 사용)
-get_conda_env_name() {
-    local branch_name="\$1"
-    local env_type="\$2"
-    local deployer="\$3"
-    
-    # 브랜치명에서 특수문자 제거 및 소문자 변환
-    clean_branch=\$(echo "\$branch_name" | sed 's/[^a-zA-Z0-9]/_/g' | tr '[:upper:]' '[:lower:]')
-    
-    # 최대 길이 제한 (15자)
-    if [ \${#clean_branch} -gt 15 ]; then
-        clean_branch=\$(echo "\$clean_branch" | cut -c1-15)
-    fi
-    
-    if [ "\$env_type" = "test" ]; then
-        echo "${env.CONDA_ENV_PREFIX}_${env.TEST_CONDA_ENV_SUFFIX}_\${clean_branch}"
-    elif [ "\$env_type" = "prod" ]; then
-        if [ -n "\$deployer" ]; then
-            # 배포자명 정리
-            clean_deployer=\$(echo "\$deployer" | sed 's/[^a-zA-Z0-9]/_/g' | tr '[:upper:]' '[:lower:]')
-            if [ \${#clean_deployer} -gt 12 ]; then
-                clean_deployer=\$(echo "\$clean_deployer" | cut -c1-12)
-            fi
-            echo "${env.CONDA_ENV_PREFIX}_${env.PROD_CONDA_ENV_SUFFIX}_\${clean_deployer}"
-        else
-            echo "${env.CONDA_ENV_PREFIX}_${env.PROD_CONDA_ENV_SUFFIX}_default"
-        fi
+# 브랜치명 추출 함수
+get_branch_name() {
+    if [ -n "\${GIT_BRANCH}" ]; then
+        echo "\${GIT_BRANCH}" | sed 's|origin/||g'
+    elif [ -d ".git" ]; then
+        git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'dev'
     else
-        echo "${env.CONDA_ENV_PREFIX}_unknown"
+        echo "dev"
     fi
 }
 
-# 사용 가능한 포트 찾기 함수
-find_available_port() {
-    local min_port=\$1
-    local max_port=\$2
-    local port_type=\$3
+# 사용 가능한 포트 찾기 함수 (완전히 새로 작성)
+get_free_port() {
+    local start_port=\$1
+    local end_port=\$2
     
-    echo "사용 가능한 \$port_type 포트 찾는 중 (범위: \$min_port-\$max_port)"
-    
-    for port in \$(seq \$min_port \$max_port); do
-        if command -v lsof >/dev/null 2>&1; then
+    for port in \$(seq \$start_port \$end_port); do
+        if ! netstat -tln 2>/dev/null | grep -q ":\$port "; then
             if ! lsof -Pi :\$port -sTCP:LISTEN >/dev/null 2>&1; then
-                echo \$port
-                return 0
-            fi
-        else
-            if ! netstat -tln 2>/dev/null | grep ":\$port " >/dev/null; then
                 echo \$port
                 return 0
             fi
         fi
     done
     
-    echo "ERROR: 사용 가능한 \$port_type 포트가 없습니다 (범위: \$min_port-\$max_port)" >&2
-    return 1
+    # 모든 포트가 사용 중이면 첫 번째 포트 반환 (fallback)
+    echo \$start_port
 }
 
-# Conda 환경 활성화 함수
-activate_conda_env() {
-    local env_name="\$1"
-    
-    echo "Conda 환경 활성화 시도: \$env_name"
-    
-    # Conda 설치 경로 확인
-    local conda_base=""
-    if [ -f /opt/conda/bin/activate ]; then
-        conda_base="/opt/conda"
-    elif [ -f ~/miniconda3/bin/activate ]; then
-        conda_base="~/miniconda3"
-    elif [ -f ~/anaconda3/bin/activate ]; then
-        conda_base="~/anaconda3"
-    elif command -v conda >/dev/null 2>&1; then
-        conda_base=\$(conda info --base)
-    else
-        echo "❌ Conda를 찾을 수 없습니다"
-        return 1
-    fi
-    
-    echo "Conda 기본 경로: \$conda_base"
-    
-    # Conda 환경 존재 확인
-    if conda env list | grep -q "^\$env_name "; then
-        echo "기존 Conda 환경 사용: \$env_name"
-    else
-        echo "새 Conda 환경 생성: \$env_name"
-        conda create -n "\$env_name" python=3.9 -y --quiet
-        if [ \$? -ne 0 ]; then
-            echo "❌ Conda 환경 생성 실패: \$env_name"
-            return 1
-        fi
-    fi
-    
-    # 환경 활성화
-    if [ -f "\$conda_base/bin/activate" ]; then
-        source "\$conda_base/bin/activate" "\$env_name"
-    elif command -v conda >/dev/null 2>&1; then
-        conda activate "\$env_name"
-    else
-        echo "❌ Conda 환경 활성화 실패"
-        return 1
-    fi
-    
-    echo "✅ Conda 환경 활성화 성공: \$env_name"
-    echo "Python 경로: \$(which python)"
-    echo "Python 버전: \$(python --version)"
-    
-    return 0
+# Conda 환경명 생성 함수 (단순화)
+get_env_name() {
+    local branch=\$1
+    local clean_name=\$(echo "\$branch" | sed 's/[^a-zA-Z0-9]/_/g' | tr '[:upper:]' '[:lower:]')
+    echo "quantas_test_\${clean_name}"
 }
 
 echo "=== 테스트 서버 시작 ==="
 echo "Current user: \$(whoami)"
 echo "Current directory: \$(pwd)"
 
-# 현재 브랜치명 (Jenkins에서 전달받거나 Git에서 추출)
-CURRENT_BRANCH="\${GIT_BRANCH:-\$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'unknown')}"
-CURRENT_BRANCH=\$(echo "\$CURRENT_BRANCH" | sed 's|origin/||g')
+# 브랜치명 추출
+CURRENT_BRANCH=\$(get_branch_name)
 echo "브랜치: \$CURRENT_BRANCH"
 
 # Conda 환경명 생성
-CONDA_ENV=\$(get_conda_env_name "\$CURRENT_BRANCH" "test" "")
+CONDA_ENV=\$(get_env_name "\$CURRENT_BRANCH")
 echo "Conda 환경명: \$CONDA_ENV"
 
-# 사용 가능한 포트 찾기
-BACKEND_PORT=\$(find_available_port ${env.TEST_BACKEND_PORT_MIN} ${env.TEST_BACKEND_PORT_MAX} "backend")
-if [ \$? -ne 0 ]; then
-    echo "❌ Backend 포트를 찾을 수 없습니다"
-    exit 1
-fi
+# 포트 할당
+echo "포트 할당 중..."
+BACKEND_PORT=\$(get_free_port ${env.TEST_BACKEND_PORT_MIN} ${env.TEST_BACKEND_PORT_MAX})
+FRONTEND_PORT=\$(get_free_port ${env.TEST_FRONTEND_PORT_MIN} ${env.TEST_FRONTEND_PORT_MAX})
 
-FRONTEND_PORT=\$(find_available_port ${env.TEST_FRONTEND_PORT_MIN} ${env.TEST_FRONTEND_PORT_MAX} "frontend")
-if [ \$? -ne 0 ]; then
-    echo "❌ Frontend 포트를 찾을 수 없습니다"
-    exit 1
-fi
-
-echo "할당된 포트 - Backend: \$BACKEND_PORT, Frontend: \$FRONTEND_PORT"
+echo "할당된 포트:"
+echo "  Backend: \$BACKEND_PORT"
+echo "  Frontend: \$FRONTEND_PORT"
 
 # 기존 프로세스 정리 (해당 포트만)
 echo "기존 프로세스 정리 중..."
@@ -388,7 +306,7 @@ if [ -f backend/main.py ]; then
         echo "생성된 .env 파일:"
         cat .env
         
-        # 프론트엔드 시작 (Next.js 포트 지정 개선)
+        # 프론트엔드 시작 (수정됨)
         if command -v npm >/dev/null; then
             echo "프론트엔드 의존성 확인 중..."
             [ ! -d node_modules ] && npm install --silent
@@ -396,34 +314,17 @@ if [ -f backend/main.py ]; then
             echo "테스트 프론트엔드 시작 중... (포트: \$FRONTEND_PORT)"
             TEST_FRONTEND_LOG="/tmp/test_frontend_\${FRONTEND_PORT}.log"
             
-            # Next.js 실행 방법 개선
-            if [ -f "next.config.js" ] || [ -f "next.config.mjs" ] || grep -q "next" package.json 2>/dev/null; then
-                # Next.js 프로젝트
+            # Next.js 실행 (간단하고 확실한 방법)
+            if [ -f "package.json" ] && grep -q "next" package.json 2>/dev/null; then
                 echo "Next.js 프로젝트 감지"
-                
-                # package.json에서 사용 가능한 스크립트 확인
-                if npm run | grep -q "dev"; then
-                    echo "npm run dev 명령어로 시작"
-                    nohup npm run dev -- -p \$FRONTEND_PORT > \$TEST_FRONTEND_LOG 2>&1 &
-                elif npm run | grep -q "start"; then
-                    echo "npm run start 명령어로 시작 (포트 환경변수 설정)"
-                    PORT=\$FRONTEND_PORT nohup npm run start > \$TEST_FRONTEND_LOG 2>&1 &
-                else
-                    echo "기본 Next.js 개발 서버로 시작"
-                    nohup npx next dev -p \$FRONTEND_PORT > \$TEST_FRONTEND_LOG 2>&1 &
-                fi
-            elif grep -q "react-scripts" package.json 2>/dev/null; then
-                # Create React App
-                echo "React App 감지 (포트 환경변수 설정)"
+                echo "npm run dev 명령어로 시작 (포트: \$FRONTEND_PORT)"
+                nohup npm run dev -- -p \$FRONTEND_PORT > \$TEST_FRONTEND_LOG 2>&1 &
+            elif [ -f "package.json" ]; then
+                echo "일반 Node.js 프로젝트로 시작"
                 PORT=\$FRONTEND_PORT nohup npm start > \$TEST_FRONTEND_LOG 2>&1 &
-            elif grep -q "vite" package.json 2>/dev/null; then
-                # Vite 프로젝트
-                echo "Vite 프로젝트 감지"
-                nohup npm run dev -- --port \$FRONTEND_PORT > \$TEST_FRONTEND_LOG 2>&1 &
             else
-                # 일반적인 방법
-                echo "일반 프론트엔드 프로젝트 (포트 환경변수 사용)"
-                PORT=\$FRONTEND_PORT nohup npm start > \$TEST_FRONTEND_LOG 2>&1 &
+                echo "❌ package.json을 찾을 수 없습니다"
+                exit 1
             fi
             
             echo "✅ 테스트 프론트엔드 시작됨 (포트: \$FRONTEND_PORT)"
@@ -434,18 +335,36 @@ if [ -f backend/main.py ]; then
         cd ..
     fi
     
-    # 서비스 확인
+    # 서비스 확인 (수정됨)
     echo "서비스 시작 대기 중..."
     sleep 8
     
     echo ""
     echo "=== 테스트 서버 상태 확인 ==="
     if command -v lsof >/dev/null 2>&1; then
-        lsof -i:\$BACKEND_PORT && echo "✅ 백엔드 실행 중 (포트: \$BACKEND_PORT)" || echo "❌ 백엔드 실행 실패 (포트: \$BACKEND_PORT)"
-        lsof -i:\$FRONTEND_PORT && echo "✅ 프론트엔드 실행 중 (포트: \$FRONTEND_PORT)" || echo "❌ 프론트엔드 실행 실패 (포트: \$FRONTEND_PORT)"
+        if lsof -i:\$BACKEND_PORT >/dev/null 2>&1; then
+            echo "✅ 백엔드 실행 중 (포트: \$BACKEND_PORT)"
+        else
+            echo "❌ 백엔드 실행 실패 (포트: \$BACKEND_PORT)"
+        fi
+        
+        if lsof -i:\$FRONTEND_PORT >/dev/null 2>&1; then
+            echo "✅ 프론트엔드 실행 중 (포트: \$FRONTEND_PORT)"
+        else
+            echo "❌ 프론트엔드 실행 실패 (포트: \$FRONTEND_PORT)"
+        fi
     else
-        netstat -tln 2>/dev/null | grep :\$BACKEND_PORT && echo "✅ 백엔드 실행 중 (포트: \$BACKEND_PORT)" || echo "❌ 백엔드 실행 실패 (포트: \$BACKEND_PORT)"
-        netstat -tln 2>/dev/null | grep :\$FRONTEND_PORT && echo "✅ 프론트엔드 실행 중 (포트: \$FRONTEND_PORT)" || echo "❌ 프론트엔드 실행 실패 (포트: \$FRONTEND_PORT)"
+        if netstat -tln 2>/dev/null | grep ":\$BACKEND_PORT " >/dev/null; then
+            echo "✅ 백엔드 실행 중 (포트: \$BACKEND_PORT)"
+        else
+            echo "❌ 백엔드 실행 실패 (포트: \$BACKEND_PORT)"
+        fi
+        
+        if netstat -tln 2>/dev/null | grep ":\$FRONTEND_PORT " >/dev/null; then
+            echo "✅ 프론트엔드 실행 중 (포트: \$FRONTEND_PORT)"
+        else
+            echo "❌ 프론트엔드 실행 실패 (포트: \$FRONTEND_PORT)"
+        fi
     fi
     
     echo ""
@@ -459,11 +378,14 @@ if [ -f backend/main.py ]; then
     echo "  - Backend: \$TEST_BACKEND_LOG"
     echo "  - Frontend: \$TEST_FRONTEND_LOG"
     
-    # 포트 정보 파일 저장 (다음 빌드에서 사용할 수 있도록)
+    # 포트 정보 파일 저장 (수정됨)
     echo "BACKEND_PORT=\$BACKEND_PORT" > /tmp/test_server_ports.env
     echo "FRONTEND_PORT=\$FRONTEND_PORT" >> /tmp/test_server_ports.env
     echo "CONDA_ENV=\$CONDA_ENV" >> /tmp/test_server_ports.env
     echo "BRANCH=\$CURRENT_BRANCH" >> /tmp/test_server_ports.env
+    
+    echo "포트 정보 파일 저장됨:"
+    cat /tmp/test_server_ports.env
     
 else
     echo "❌ backend/main.py를 찾을 수 없습니다"
@@ -546,23 +468,9 @@ EOF
 
 cd ${env.PROD_WORKSPACE}
 
-# 운영 Conda 환경명 생성 함수 (Jenkins 환경 변수 사용)
+# 운영 Conda 환경명 생성 함수 (단순화)
 get_prod_conda_env_name() {
-    local deployer="\$1"
-    
-    if [ -n "\$deployer" ]; then
-        # 배포자명 정리 (특수문자 제거, 소문자 변환)
-        clean_deployer=\$(echo "\$deployer" | sed 's/[^a-zA-Z0-9]/_/g' | tr '[:upper:]' '[:lower:]')
-        
-        # 최대 길이 제한
-        if [ \${#clean_deployer} -gt 12 ]; then
-            clean_deployer=\$(echo "\$clean_deployer" | cut -c1-12)
-        fi
-        
-        echo "${env.CONDA_ENV_PREFIX}_${env.PROD_CONDA_ENV_SUFFIX}_\${clean_deployer}"
-    else
-        echo "${env.CONDA_ENV_PREFIX}_${env.PROD_CONDA_ENV_SUFFIX}_default"
-    fi
+    echo "${env.PROD_CONDA_ENV}"
 }
 
 # Conda 환경 활성화 함수 (운영용)
@@ -622,7 +530,7 @@ echo "Backend port: ${env.PROD_BACKEND_PORT}"
 echo "Frontend port: ${env.PROD_FRONTEND_PORT}"
 
 # 운영 Conda 환경명 생성
-PROD_CONDA_ENV=\$(get_prod_conda_env_name "${env.DEPLOYER_NAME ?: 'system'}")
+PROD_CONDA_ENV="${env.PROD_CONDA_ENV}"
 echo "운영 Conda 환경명: \$PROD_CONDA_ENV"
 
 # 기존 프로세스 정리
@@ -892,20 +800,9 @@ echo "✅ 운영서버 프로세스 중지 완료"
 # 2단계: 서비스 재시작
 cd ${env.PROD_WORKSPACE}
 
-# 기존 Conda 환경 활성화
-echo "기존 운영 Conda 환경 활성화: \$PROD_CONDA_ENV"
-if [ -f /opt/conda/bin/activate ]; then
-    source /opt/conda/bin/activate "\$PROD_CONDA_ENV"
-elif [ -f ~/miniconda3/bin/activate ]; then
-    source ~/miniconda3/bin/activate "\$PROD_CONDA_ENV"
-elif [ -f ~/anaconda3/bin/activate ]; then
-    source ~/anaconda3/bin/activate "\$PROD_CONDA_ENV"
-elif command -v conda >/dev/null 2>&1; then
-    conda activate "\$PROD_CONDA_ENV"
-else
-    echo "❌ Conda 환경 활성화 실패"
-    exit 1
-fi
+# 기존 운영 Conda 환경 활성화: ${env.PROD_CONDA_ENV}
+echo "기존 운영 Conda 환경 활성화: ${env.PROD_CONDA_ENV}"
+conda activate "${env.PROD_CONDA_ENV}"
 
 echo "Python 경로: \$(which python)"
 
