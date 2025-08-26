@@ -44,7 +44,7 @@ pipeline {
         
         // Conda 환경명 (직접 지정)
         TEST_CONDA_ENV = 'test_server'
-        PROD_CONDA_ENV = 'quantas_prod'
+        PROD_CONDA_ENV = 'prod'
         
         // 프로젝트 실행 명령어
         FRONTEND_START_CMD = 'npm run dev'     // Next.js 개발 서버 명령어
@@ -258,6 +258,14 @@ echo "Python: \$(which python)"
 if [ -f "backend/main.py" ]; then
     cd backend
     
+    # Backend .env 파일 생성
+    echo "PORT=\$BACKEND_PORT" > .env
+    echo "HOST=0.0.0.0" >> .env
+    echo "ENV=development" >> .env
+    
+    echo "Backend .env 파일 생성됨:"
+    cat .env
+    
     # 의존성 설치
     if [ -f "requirements.txt" ]; then
         pip install -r requirements.txt --quiet
@@ -268,8 +276,9 @@ if [ -f "backend/main.py" ]; then
     # 백엔드 시작
     echo "백엔드 시작 중... (포트: \$BACKEND_PORT)"
     BACKEND_LOG="/tmp/test_backend_\${BACKEND_PORT}.log"
-    PORT=\$BACKEND_PORT nohup python main.py > \$BACKEND_LOG 2>&1 &
-    echo "백엔드 시작됨 (PID: \$!, 포트: \$BACKEND_PORT)"
+    nohup python main.py > \$BACKEND_LOG 2>&1 &
+    BACKEND_PID=\$!
+    echo "백엔드 시작됨 (PID: \$BACKEND_PID, 포트: \$BACKEND_PORT)"
     
     cd ..
 fi
@@ -278,10 +287,20 @@ fi
 if [ -f "frontend/package.json" ]; then
     cd frontend
     
-    # .env 파일 생성
-    echo "REACT_APP_API_URL=http://${env.TEST_SERVER}:\$BACKEND_PORT" > .env
-    echo "REACT_APP_ENV=TEST" >> .env
-    echo "PORT=\$FRONTEND_PORT" >> .env
+    # 기존 .env 파일 확인하고 NEXT_PUBLIC_API_URL 업데이트
+    if [ -f ".env" ]; then
+        # 기존 .env에서 NEXT_PUBLIC_API_URL 라인만 업데이트
+        sed -i "s|NEXT_PUBLIC_API_URL=.*|NEXT_PUBLIC_API_URL=http://${env.TEST_SERVER}:\$BACKEND_PORT|g" .env
+        echo "기존 .env 파일 업데이트됨"
+    else
+        # 새로운 .env 파일 생성
+        echo "NEXT_PUBLIC_API_URL=http://${env.TEST_SERVER}:\$BACKEND_PORT" > .env
+        echo "PORT=\$FRONTEND_PORT" >> .env
+        echo "새로운 .env 파일 생성됨"
+    fi
+    
+    echo "Frontend .env 파일:"
+    cat .env
     
     # 의존성 설치
     [ ! -d node_modules ] && npm install --silent
@@ -495,21 +514,26 @@ echo "=== 테스트 서버 중지 ==="
 # 모든 테스트 포트 범위의 프로세스 종료
 echo "테스트 서버 프로세스 종료 중..."
 
-if command -v lsof >/dev/null 2>&1; then
-    echo "포트 기반 프로세스 종료..."
-    # Backend 포트 범위
-    for port in \$(seq ${env.TEST_BACKEND_PORT_MIN} ${env.TEST_BACKEND_PORT_MAX}); do
+# 포트별 프로세스 종료
+for port in \$(seq ${env.TEST_BACKEND_PORT_MIN} ${env.TEST_BACKEND_PORT_MAX}); do
+    if netstat -tln 2>/dev/null | grep -q ":\$port "; then
+        echo "포트 \$port 프로세스 종료 중..."
+        pkill -f "python.*main.py.*\$port" 2>/dev/null || true
         lsof -ti:\$port | xargs -r kill -9 2>/dev/null || true
-    done
-    # Frontend 포트 범위
-    for port in \$(seq ${env.TEST_FRONTEND_PORT_MIN} ${env.TEST_FRONTEND_PORT_MAX}); do
+    fi
+done
+
+for port in \$(seq ${env.TEST_FRONTEND_PORT_MIN} ${env.TEST_FRONTEND_PORT_MAX}); do
+    if netstat -tln 2>/dev/null | grep -q ":\$port "; then
+        echo "포트 \$port 프로세스 종료 중..."
+        pkill -f "npm.*dev.*\$port" 2>/dev/null || true
         lsof -ti:\$port | xargs -r kill -9 2>/dev/null || true
-    done
-else
-    echo "프로세스명 기반 종료..."
-    pkill -f "python.*main.py" 2>/dev/null || true
-    pkill -f "npm start" 2>/dev/null || true
-fi
+    fi
+done
+
+# 일반적인 프로세스 정리
+pkill -f "python.*main.py" 2>/dev/null || true
+pkill -f "npm.*dev" 2>/dev/null || true
 
 sleep 3
 
@@ -526,7 +550,7 @@ echo "✅ 테스트 서버 중지 완료"
 # 최종 확인
 echo ""
 echo "남은 프로세스 확인:"
-ps aux | grep -E "(python.*main|npm start)" | grep -v grep || echo "테스트 서버 관련 프로세스 없음"
+ps aux | grep -E "(python.*main|npm.*dev)" | grep -v grep || echo "테스트 서버 관련 프로세스 없음"
 
 EOF
                             """

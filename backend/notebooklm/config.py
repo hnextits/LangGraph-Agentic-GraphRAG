@@ -80,7 +80,7 @@ class RAGConfig:
         self.GENERATOR_MAX_TOKENS = 8192
         self.GENERATOR_TEMPERATURE = 0.7
         self.GENERATOR_TOP_P = 0.9
-        self.GENERATOR_TOP_K = 5
+        self.GENERATOR_TOP_K = 3
         self.GENERATOR_DO_SAMPLE = True  # 샘플링 활성화
         self.GENERATOR_NUM_BEAMS = 1     # 빔 서치 비활성화 (그리디 서치)
         self.GENERATOR_PAD_TOKEN_ID = None  # 토크나이저에서 설정
@@ -131,7 +131,7 @@ class RAGConfig:
         self.TEXT_TOP_K = 7  # 텍스트 검색 결과 수
         self.IMAGE_TOP_K = 5  # 이미지 검색 초기 결과 수
         self.IMAGE_FINAL_K = 3  # 이미지 리랭킹 후 최종 결과 수
-        self.TOP_K = 5  # 기존 호환성을 위한 기본값
+        self.TOP_K = 3  # 기존 호환성을 위한 기본값
         self.RELEVANCE_THRESHOLD = 0.5  # 텍스트 검색 임계값
         self.TEXT_RERANKER_TOKEN_FALSE_ID = 2152  # no
         
