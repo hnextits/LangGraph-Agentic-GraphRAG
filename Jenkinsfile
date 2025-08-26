@@ -258,7 +258,13 @@ echo "Python: \$(which python)"
 if [ -f "backend/main.py" ]; then
     cd backend
     
-    echo "Backend .env 파일은 생성하지 않고, 실행 시점에 환경변수로 포트를 전달합니다."
+    # Backend .env 파일 생성
+    echo "PORT=\$BACKEND_PORT" > .env
+    echo "HOST=0.0.0.0" >> .env
+    echo "ENV=development" >> .env
+    
+    echo "Backend .env 파일 생성됨:"
+    cat .env
     
     # 의존성 설치
     if [ -f "requirements.txt" ]; then
@@ -270,7 +276,7 @@ if [ -f "backend/main.py" ]; then
     # 백엔드 시작
     echo "백엔드 시작 중... (포트: \$BACKEND_PORT)"
     BACKEND_LOG="/tmp/test_backend_\${BACKEND_PORT}.log"
-    PORT=\$BACKEND_PORT nohup python main.py > \$BACKEND_LOG 2>&1 &
+    nohup python main.py > \$BACKEND_LOG 2>&1 &
     BACKEND_PID=\$!
     echo "백엔드 시작됨 (PID: \$BACKEND_PID, 포트: \$BACKEND_PORT)"
     
@@ -281,10 +287,17 @@ fi
 if [ -f "frontend/package.json" ]; then
     cd frontend
     
-    # .env 파일 생성 또는 업데이트
-    echo "NEXT_PUBLIC_API_URL=http://${env.TEST_SERVER}:\$BACKEND_PORT" > .env
-    echo "PORT=\$FRONTEND_PORT" >> .env
-    echo "Frontend .env 파일 생성/업데이트 완료"
+    # 기존 .env 파일 확인하고 NEXT_PUBLIC_API_URL 업데이트
+    if [ -f ".env" ]; then
+        # 기존 .env에서 NEXT_PUBLIC_API_URL 라인만 업데이트
+        sed -i "s|NEXT_PUBLIC_API_URL=.*|NEXT_PUBLIC_API_URL=http://${env.TEST_SERVER}:\$BACKEND_PORT|g" .env
+        echo "기존 .env 파일 업데이트됨"
+    else
+        # 새로운 .env 파일 생성
+        echo "NEXT_PUBLIC_API_URL=http://${env.TEST_SERVER}:\$BACKEND_PORT" > .env
+        echo "PORT=\$FRONTEND_PORT" >> .env
+        echo "새로운 .env 파일 생성됨"
+    fi
     
     echo "Frontend .env 파일:"
     cat .env
@@ -545,27 +558,28 @@ EOF
                     }
                 }
             }
+        }
 
-            stage('Production Server Operations') {
-                when {
-                    anyOf {
-                        expression { env.CURRENT_ACTION == 'PROD_DEPLOY' }
-                        expression { env.CURRENT_ACTION == 'PROD_RESTART' }
-                        expression { env.CURRENT_ACTION == 'PROD_START' }
-                        expression { env.CURRENT_ACTION == 'PROD_STOP' }
-                    }
+        stage('Production Server Operations') {
+            when {
+                anyOf {
+                    expression { env.CURRENT_ACTION == 'PROD_DEPLOY' }
+                    expression { env.CURRENT_ACTION == 'PROD_RESTART' }
+                    expression { env.CURRENT_ACTION == 'PROD_START' }
+                    expression { env.CURRENT_ACTION == 'PROD_STOP' }
                 }
-                steps {
-                    sshagent(credentials: ["${env.PROD_SSH_CREDENTIAL}"]) {
-                        script {
-                            echo "🏭 운영서버 작업: ${env.CURRENT_ACTION}"
-                            
-                            switch(env.CURRENT_ACTION) {
-                                case 'PROD_DEPLOY':
-                                case 'PROD_START':
-                                    // 운영서버 시작/배포
-                                    sh """
-                                        ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=3 -p ${env.PROD_PORT} ${env.PROD_USER}@${env.PROD_SERVER} << 'EOF'
+            }
+            steps {
+                sshagent(credentials: ["${env.PROD_SSH_CREDENTIAL}"]) {
+                    script {
+                        echo "🏭 운영서버 작업: ${env.CURRENT_ACTION}"
+                        
+                        switch(env.CURRENT_ACTION) {
+                            case 'PROD_DEPLOY':
+                            case 'PROD_START':
+                                // 운영서버 시작/배포
+                                sh """
+                                    ssh -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -o ServerAliveCountMax=3 -p ${env.PROD_PORT} ${env.PROD_USER}@${env.PROD_SERVER} << 'EOF'
 
 cd ${env.PROD_WORKSPACE}
 
@@ -724,8 +738,8 @@ uvicorn.run(
         cd frontend
         
         # 운영 .env 파일 생성
-        echo "NEXT_PUBLIC_API_URL=http://${env.PROD_SERVER}:${env.PROD_BACKEND_PORT}" > .env
-        echo "NEXT_PUBLIC_ENV=PRODUCTION" >> .env
+        echo "REACT_APP_API_URL=http://${env.PROD_SERVER}:${env.PROD_BACKEND_PORT}" > .env
+        echo "REACT_APP_ENV=PRODUCTION" >> .env
         echo "PORT=${env.PROD_FRONTEND_PORT}" >> .env
         
         echo "운영 .env 파일 생성됨:"

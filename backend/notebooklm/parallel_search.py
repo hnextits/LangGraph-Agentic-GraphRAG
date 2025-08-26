@@ -21,7 +21,7 @@ class ParallelSearcher:
         self.use_query_rewrite = getattr(self.config, 'ENABLE_QUERY_REWRITE', True)
         self.query_rewriter = query_rewriter
 
-    def search(self, query: str, selected_searchers: List[str], top_k: int = 15) -> Dict[str, Any]:
+    def search(self, query: str, selected_searchers: List[str], top_k: int = 5) -> Dict[str, Any]:
         """
         쿼리 재작성부터 병렬 검색, 재정렬까지 전체 검색 파이프라인을 실행합니다.
         """
