@@ -1,6 +1,6 @@
 # Qwen/Qwen3-Embedding-4B Late Chunking with FAISS
 # MD파일 처리 → Late Chunking → Vector DB 저장 전용 모듈
-# python /home/jeonghs/workspace/nextitslm/backend/notebooklm/qwen3_late_chunking.py --input-file /home/nextits2/.conda/envs/workbox/gui/chatbot/backend/nextits_data/Results/3.OCR_results/원가관리회계.md --index-path /home/nextits2/.conda/envs/workbox/gui/chatbot/backend/notebooklm/faiss_test/text_index.faiss
+# python /home/jeonghs/workspace/nextitslm/backend/notebooklm/qwen3_late_chunking.py --input-file /home/jeonghs/workspace/nextitslm/backend/nextits_data/Results/3.OCR_results/원가관리회계.md --index-path /home/jeonghs/workspace/nextitslm/backend/notebooklm/faiss_test/text_index.faiss
 
 
 import os
@@ -748,7 +748,7 @@ class Qwen3LateChunker:
     def __init__(self, 
                  model_name: str = "Qwen/Qwen3-Embedding-4B",
                 #  max_length: int = 32768,
-                 max_length: int = 1000,
+                 max_length: int = 2000,
                  device: str = "auto",
                  embedding_dim: int = 2560,
                  chunk_size: int = 1000,

@@ -13,13 +13,14 @@ logger = logging.getLogger(__name__)
 BACKEND_DIR = Path(__file__).parent.absolute()
 PROJECT_ROOT = BACKEND_DIR.parent
 
-# 프론트엔드 .env 파일 로드
-ENV_PATH = PROJECT_ROOT / 'frontend' / '.env'
+# 백엔드 .env 파일 로드 (로컬 개발용)
+# Jenkins에서 설정한 환경변수가 .env 파일보다 우선합니다.
+ENV_PATH = BACKEND_DIR / '.env'
 if ENV_PATH.exists():
     load_dotenv(dotenv_path=ENV_PATH)
-    logger.info(f"프론트엔드 .env 파일 로드됨: {ENV_PATH}")
+    logger.info(f"백엔드 .env 파일 로드됨: {ENV_PATH}")
 else:
-    logger.warning(f"프론트엔드 .env 파일을 찾을 수 없음: {ENV_PATH}")
+    logger.info(f"백엔드 .env 파일을 찾을 수 없음. 환경 변수를 사용합니다: {ENV_PATH}")
 
 class PathConfig:
     '''경로 설정을 중앙화하는 클래스'''
@@ -79,7 +80,7 @@ from notebooklm.config import RAGConfig
 
 # 환경 변수 설정
 HOST = '0.0.0.0'  # 모든 네트워크 인터페이스에서 수신
-PORT = os.getenv('PORT', '5000')
+PORT = int(os.getenv('PORT', '5000'))
 
 # RAG 시스템 경로 설정
 RAG_SYSTEM_PATH = os.getenv('RAG_SYSTEM_PATH', '../notebooklm')
