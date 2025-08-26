@@ -68,12 +68,12 @@ class Generator:
         """모델을 GPU에 로드"""
         logger.info(f"모델을 GPU에 로딩 중... ({self.model_name})")
         try:
-            model_kwargs = {"torch_dtype": self.torch_dtype}
-            
-            # FP8 모델을 위한 device_map 매개변수 추가
-            if "FP8" in self.model_name:
-                model_kwargs["device_map"] = "cuda"
-                logger.info("FP8 모델 감지: device_map='cuda' 설정 적용")
+            # FP8 여부와 무관하게 device_map을 설정하여 멀티 GPU 샤딩을 일관되게 사용
+            model_kwargs = {
+                "torch_dtype": torch.bfloat16 if torch.cuda.is_available() else torch.float32,
+                "device_map": self.config.TEXT_GENERATOR_DEVICE  # 예: "auto"
+            }
+            logger.info(f"device_map 설정: {model_kwargs['device_map']}")
             
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
@@ -265,7 +265,8 @@ class Generator:
         logger.info(f"텍스트 생성 시작: {self.model_name}")
         
         try:
-            inputs = self.tokenizer(full_prompt, return_tensors="pt").to(self.device)
+            input_device = self.model.get_input_embeddings().weight.device
+            inputs = self.tokenizer(full_prompt, return_tensors="pt").to(input_device)
             
             with torch.no_grad():
                 generation_params = {

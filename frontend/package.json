@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 8503",
+    "dev": "next dev",
     "build": "next build",
-    "start": "next start -p 8503",
+    "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
@@ -13,7 +13,8 @@
     "@emotion/react": "^11.14.0",
     "@emotion/server": "^11.11.0",
     "@emotion/styled": "^11.14.1",
-    "@mui/material": "^7.3.1",
+    "@mui/icons-material": "^5.15.20",
+    "@mui/material": "^5.15.20",
     "axios": "^1.9.0",
     "lucide-react": "^0.511.0",
     "next": "^14.2.32",

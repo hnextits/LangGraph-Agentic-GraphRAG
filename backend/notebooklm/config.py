@@ -221,7 +221,7 @@ class RAGConfig:
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
         
         # GPU 분산 배치 설정 (2개 H100 GPU 활용)
-        self.TEXT_GENERATOR_DEVICE = "cuda:0"    # 텍스트 생성 모델 (대용량, GPU 0 단독 할당)
+        self.TEXT_GENERATOR_DEVICE = "auto"    # 텍스트 생성 모델 (대용량, GPU 0 단독 할당)
         self.RERANKER_DEVICE = "cuda:1"          # 리랭커 모델 (GPU 1)
         self.REFINER_DEVICE = "cuda:1"           # 정제 모델 (GPU 1)
         self.QUERY_REWRITER_DEVICE = "cuda:1"  # 쿼리 재작성 모델 (GPU 1)

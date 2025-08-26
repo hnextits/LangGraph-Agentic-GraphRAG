@@ -36,22 +36,22 @@ pipeline {
         
         // 운영 서버 정보
         PROD_SERVER = '127.0.0.1' // 실제 운영 서버로 변경 필요
-        PROD_PORT = '2227' // 실제 운영 서버 포트로 변경 필요
-        PROD_USER = 'nextits4' // 실제 운영 서버 사용자로 변경 필요
-        PROD_WORKSPACE = '/home/nextits4/workspace/quantas'
-        PROD_BACKEND_PORT = '7010'
-        PROD_FRONTEND_PORT = '7009'
+        PROD_PORT = '2223' // 실제 운영 서버 포트로 변경 필요
+        PROD_USER = 'nextits' // 실제 운영 서버 사용자로 변경 필요
+        PROD_WORKSPACE = '/home/nextits/workspace/quantas'
+        PROD_BACKEND_PORT = '8501'
+        PROD_FRONTEND_PORT = '8502'
         
         // Conda 환경명 (직접 지정)
-        TEST_CONDA_ENV = 'quantas'
-        PROD_CONDA_ENV = 'quantas'
+        TEST_CONDA_ENV = 'test_server'
+        PROD_CONDA_ENV = 'quantas_prod'
         
         // 프로젝트 실행 명령어
         FRONTEND_START_CMD = 'npm run dev'     // Next.js 개발 서버 명령어
         BACKEND_START_CMD = 'python main.py'  // FastAPI 서버 명령어
         
         // SSH Credentials
-        TEST_SSH_CREDENTIAL = 'nextits4'  // 실제 credential ID로 수정
+        TEST_SSH_CREDENTIAL = 'nextits_ai_4_ssh'  // 실제 credential ID로 수정
         PROD_SSH_CREDENTIAL = 'nextits_ai_4_ssh' // 운영용 별도 credential 권장
     }
 
@@ -187,62 +187,153 @@ pipeline {
 
 cd ${env.TEST_WORKSPACE}
 
-# 브랜치명 추출 함수
-get_branch_name() {
-    if [ -n "\${GIT_BRANCH}" ]; then
-        echo "\${GIT_BRANCH}" | sed 's|origin/||g'
-    elif [ -d ".git" ]; then
-        git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'dev'
-    else
-        echo "dev"
-    fi
-}
-
-# 사용 가능한 포트 찾기 함수 (완전히 새로 작성)
-get_free_port() {
-    local start_port=\$1
-    local end_port=\$2
-    
-    for port in \$(seq \$start_port \$end_port); do
-        if ! netstat -tln 2>/dev/null | grep -q ":\$port "; then
-            if ! lsof -Pi :\$port -sTCP:LISTEN >/dev/null 2>&1; then
-                echo \$port
-                return 0
-            fi
-        fi
-    done
-    
-    # 모든 포트가 사용 중이면 첫 번째 포트 반환 (fallback)
-    echo \$start_port
-}
-
-# Conda 환경명 생성 함수 (단순화)
-get_env_name() {
-    local branch=\$1
-    local clean_name=\$(echo "\$branch" | sed 's/[^a-zA-Z0-9]/_/g' | tr '[:upper:]' '[:lower:]')
-    echo "quantas_test_\${clean_name}"
-}
-
 echo "=== 테스트 서버 시작 ==="
 echo "Current user: \$(whoami)"
 echo "Current directory: \$(pwd)"
 
 # 브랜치명 추출
-CURRENT_BRANCH=\$(get_branch_name)
+if [ -n "\${GIT_BRANCH}" ]; then
+    CURRENT_BRANCH=\$(echo "\${GIT_BRANCH}" | sed 's|origin/||g')
+elif [ -d ".git" ]; then
+    CURRENT_BRANCH=\$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo 'dev')
+else
+    CURRENT_BRANCH="dev"
+fi
 echo "브랜치: \$CURRENT_BRANCH"
 
-# Conda 환경명 생성
-CONDA_ENV=\$(get_env_name "\$CURRENT_BRANCH")
-echo "Conda 환경명: \$CONDA_ENV"
+# 포트 할당 (단순하게)
+echo "포트 할당 시작..."
 
-# 포트 할당
-echo "포트 할당 중..."
-BACKEND_PORT=\$(get_free_port ${env.TEST_BACKEND_PORT_MIN} ${env.TEST_BACKEND_PORT_MAX})
-FRONTEND_PORT=\$(get_free_port ${env.TEST_FRONTEND_PORT_MIN} ${env.TEST_FRONTEND_PORT_MAX})
+# Backend 포트 찾기
+BACKEND_PORT=""
+for port in \$(seq ${env.TEST_BACKEND_PORT_MIN} ${env.TEST_BACKEND_PORT_MAX}); do
+    if ! netstat -tln 2>/dev/null | grep -q ":\$port "; then
+        BACKEND_PORT=\$port
+        break
+    fi
+done
+
+# Backend 포트를 찾지 못한 경우 기본값 사용
+if [ -z "\$BACKEND_PORT" ]; then
+    BACKEND_PORT=${env.TEST_BACKEND_PORT_MIN}
+fi
+
+# Frontend 포트 찾기
+FRONTEND_PORT=""
+for port in \$(seq ${env.TEST_FRONTEND_PORT_MIN} ${env.TEST_FRONTEND_PORT_MAX}); do
+    if ! netstat -tln 2>/dev/null | grep -q ":\$port "; then
+        FRONTEND_PORT=\$port
+        break
+    fi
+done
+
+# Frontend 포트를 찾지 못한 경우 기본값 사용
+if [ -z "\$FRONTEND_PORT" ]; then
+    FRONTEND_PORT=${env.TEST_FRONTEND_PORT_MIN}
+fi
 
 echo "할당된 포트:"
 echo "  Backend: \$BACKEND_PORT"
 echo "  Frontend: \$FRONTEND_PORT"
+
+# 기존 프로세스 정리
+echo "기존 프로세스 정리 중..."
+pkill -f "python.*main.py" 2>/dev/null || true
+pkill -f "npm.*dev" 2>/dev/null || true
+sleep 2
+
+# Conda 환경 활성화 (고정 환경명 사용)
+echo "Conda 환경 활성화: ${env.TEST_CONDA_ENV}"
+if conda env list | grep -q "^${env.TEST_CONDA_ENV} "; then
+    echo "기존 환경 사용: ${env.TEST_CONDA_ENV}"
+else
+    echo "새 환경 생성: ${env.TEST_CONDA_ENV}"
+    conda create -n "${env.TEST_CONDA_ENV}" python=3.9 -y --quiet
+fi
+
+conda activate "${env.TEST_CONDA_ENV}"
+echo "Python: \$(which python)"
+
+# Backend 시작
+if [ -f "backend/main.py" ]; then
+    cd backend
+    
+    # 의존성 설치
+    if [ -f "requirements.txt" ]; then
+        pip install -r requirements.txt --quiet
+    else
+        pip install fastapi uvicorn python-multipart --quiet
+    fi
+    
+    # 백엔드 시작
+    echo "백엔드 시작 중... (포트: \$BACKEND_PORT)"
+    BACKEND_LOG="/tmp/test_backend_\${BACKEND_PORT}.log"
+    PORT=\$BACKEND_PORT nohup python main.py > \$BACKEND_LOG 2>&1 &
+    echo "백엔드 시작됨 (PID: \$!, 포트: \$BACKEND_PORT)"
+    
+    cd ..
+fi
+
+# Frontend 시작
+if [ -f "frontend/package.json" ]; then
+    cd frontend
+    
+    # .env 파일 생성
+    echo "REACT_APP_API_URL=http://${env.TEST_SERVER}:\$BACKEND_PORT" > .env
+    echo "REACT_APP_ENV=TEST" >> .env
+    echo "PORT=\$FRONTEND_PORT" >> .env
+    
+    # 의존성 설치
+    [ ! -d node_modules ] && npm install --silent
+    
+    # 프론트엔드 시작
+    echo "프론트엔드 시작 중... (포트: \$FRONTEND_PORT)"
+    FRONTEND_LOG="/tmp/test_frontend_\${FRONTEND_PORT}.log"
+    if grep -q "next" package.json; then
+        npm run dev -- -p \$FRONTEND_PORT > \$FRONTEND_LOG 2>&1 &
+    else
+        PORT=\$FRONTEND_PORT npm start > \$FRONTEND_LOG 2>&1 &
+    fi
+    echo "프론트엔드 시작됨 (포트: \$FRONTEND_PORT)"
+    
+    cd ..
+fi
+
+# 서비스 확인
+echo "서비스 확인 중... (5초 대기)"
+sleep 5
+
+echo ""
+echo "=== 서버 상태 ==="
+if netstat -tln 2>/dev/null | grep -q ":\$BACKEND_PORT "; then
+    echo "✅ 백엔드 활성 (포트: \$BACKEND_PORT)"
+else
+    echo "❌ 백엔드 비활성 (포트: \$BACKEND_PORT)"
+fi
+
+if netstat -tln 2>/dev/null | grep -q ":\$FRONTEND_PORT "; then
+    echo "✅ 프론트엔드 활성 (포트: \$FRONTEND_PORT)"
+else
+    echo "❌ 프론트엔드 비활성 (포트: \$FRONTEND_PORT)"
+fi
+
+echo ""
+echo "=== 접속 정보 ==="
+echo "브랜치: \$CURRENT_BRANCH"
+echo "Conda 환경: ${env.TEST_CONDA_ENV}"
+echo "Frontend: http://${env.TEST_SERVER}:\$FRONTEND_PORT"
+echo "Backend: http://${env.TEST_SERVER}:\$BACKEND_PORT"
+echo "API Docs: http://${env.TEST_SERVER}:\$BACKEND_PORT/docs"
+
+# 포트 정보 저장
+echo "BACKEND_PORT=\$BACKEND_PORT" > /tmp/test_server_ports.env
+echo "FRONTEND_PORT=\$FRONTEND_PORT" >> /tmp/test_server_ports.env
+echo "CONDA_ENV=${env.TEST_CONDA_ENV}" >> /tmp/test_server_ports.env
+echo "BRANCH=\$CURRENT_BRANCH" >> /tmp/test_server_ports.env
+
+echo ""
+echo "포트 정보 저장 완료:"
+cat /tmp/test_server_ports.env
 
 # 기존 프로세스 정리 (해당 포트만)
 echo "기존 프로세스 정리 중..."
