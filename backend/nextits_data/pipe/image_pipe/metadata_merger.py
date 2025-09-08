@@ -134,13 +134,20 @@ def merge_metadata_files(metadata_files, output_dir):
     return stats
 
 
+# 스크립트 위치를 기준으로 backend/ 디렉토리
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+
+# 상대 경로로 디렉토리 설정
+CROP_IMAGE_DIR = BASE_DIR / "nextits_data" / "Results" / "3.Crop_image"
+COMPLETION_RESULTS_DIR = BASE_DIR / "nextits_data" / "Results" / "5.Completion_results" / "image"
+
 def main():
     parser = argparse.ArgumentParser(description='이미지 메타데이터 JSON 파일을 병합하는 도구')
-    parser.add_argument('--input', '-i', type=str, default='/home/nextits2/.conda/envs/workbox/gui/chatbot/backend/nextits_data/Results/3.Crop_image',
+    parser.add_argument('--input', '-i', type=str, default=str(CROP_IMAGE_DIR),
                         help='검색을 시작할 루트 디렉토리 경로')
-    parser.add_argument('--output', '-o', type=str, default='/home/nextits2/.conda/envs/workbox/gui/chatbot/backend/nextits_data/Results/5.Completion_results/image',
+    parser.add_argument('--output', '-o', type=str, default=str(COMPLETION_RESULTS_DIR),
                         help='병합된 메타데이터 파일을 저장할 디렉토리 경로')
-    
+                        
     args = parser.parse_args()
     
     print(f"루트 디렉토리: {args.input}")

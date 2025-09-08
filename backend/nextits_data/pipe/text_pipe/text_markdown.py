@@ -338,6 +338,9 @@ def save_status(status_file, status):
         print(f"상태 파일 저장 오류: {e}")
 
 
+# 스크립트 위치를 기준으로 backend/ 디렉토리
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+
 def main():
     """
     메인 함수
@@ -346,8 +349,10 @@ def main():
     parser = argparse.ArgumentParser(description='JSON 파일을 마크다운으로 변환하는 프로그램')
     parser.add_argument('--input-dir', '-i', required=True, help='JSON 파일이 있는 디렉토리')
     parser.add_argument('--output-dir', '-o', required=True, help='마크다운 파일을 저장할 디렉토리')
-    parser.add_argument('--status-file', '-s', default='/home/nextits2/.conda/envs/workbox/image_test/nextits_data/Results/4.Pipeline_results/text/markdown_status.json', help='상태 파일 경로')
-    parser.add_argument('--skip', action='store_true', help='이미 처리된 파일 건너뛀')
+    parser.add_argument('--status-file', '-s', 
+                      default=str(BASE_DIR / "nextits_data" / "Results" / "4.Pipeline_results" / "text" / "markdown_status.json"), 
+                      help='상태 파일 경로')
+    parser.add_argument('--skip', action='store_true', help='이미 처리된 파일 건너뛰기')
     parser.add_argument('--no-skip', dest='skip', action='store_false', help='이미 처리된 파일도 다시 처리')
     parser.add_argument('--resume', action='store_true', help='이전 작업 이어서 처리')
     parser.add_argument('--no-resume', dest='resume', action='store_false', help='처음부터 다시 처리')

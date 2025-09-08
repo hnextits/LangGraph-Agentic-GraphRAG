@@ -10,9 +10,12 @@ from pathlib import Path
 from datetime import datetime
 from pprint import pprint
 
+# 스크립트 위치를 기준으로 backend/ 디렉토리
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+
 def main():
     # PDF 파일 경로 설정
-    pdf_path = "/home/nextits2/.conda/envs/workbox/image_test/nextits_data/doc/원가회계데이터샘플-250401.pdf"
+    pdf_path = BASE_DIR / "nextits_data" / "doc" / "원가회계데이터샘플-250401.pdf"
     
     if not Path(pdf_path).exists():
         print(f"PDF 파일을 찾을 수 없습니다: {pdf_path}")

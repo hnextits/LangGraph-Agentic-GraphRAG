@@ -7,9 +7,11 @@ import time
 import argparse
 from text_pipe.text_processor import process_layout_json, print_sorted_texts
 
+# 스크립트 위치를 기준으로 backend/ 디렉토리
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 # 작업 상태를 저장할 파일 경로
-STATUS_FILE = '/home/nextits2/.conda/envs/workbox/serch_gui/chatbot/backend/nextits_data/Results/4.Pipeline_results/text/text_processing_status.json'
+STATUS_FILE = BASE_DIR / "nextits_data" / "Results" / "4.Pipeline_results" / "text" / "text_processing_status.json"
 
 
 def find_all_layout_json_files(base_dir):

@@ -9,14 +9,17 @@ from pathlib import Path
 from PIL import Image
 from pypdf import PdfReader
 from vllm import LLM, SamplingParams
-from ocrflux.image_utils import get_page_image, is_image
-from ocrflux.table_format import table_matrix2html
-from ocrflux.prompts import PageResponse, build_page_to_markdown_prompt, build_element_merge_detect_prompt, build_html_table_merge_prompt
+from .image_utils import get_page_image, is_image
+from .table_format import table_matrix2html
+from .prompts import PageResponse, build_page_to_markdown_prompt, build_element_merge_detect_prompt, build_html_table_merge_prompt
+
+# 스크립트 위치를 기준으로 backend/ 디렉토리
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
 
 # ============= 설정 구간 =============
 CONFIG = {
-    "input_image_folder": "/home/nextits3/telepathy_UDP/Results/1.Converted_images/PDF/원가회계데이터샘플-250401",  # 입력 이미지 폴더 경로
-    "output_folder": "./output",  # 출력 폴더 경로
+    "input_image_folder": str(BASE_DIR / "nextits_data" / "Results" / "1.Converted_images" / "PDF" / "원가회계데이터샘플-250401"),  # 입력 이미지 폴더 경로
+    "output_folder": str(BASE_DIR / "nextits_data" / "Results" / "2.OCR_results"),  # 출력 폴더 경로
     "model": "ChatDOC/OCRFlux-3B",  # 모델 경로
     "batch_size": 256,  # 배치 크기
     "gpu_memory_utilization": 0.2,  # GPU 메모리 사용률

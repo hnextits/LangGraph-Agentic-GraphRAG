@@ -10,6 +10,7 @@ from typing import Dict, Any, List, Optional, Tuple
 import mimetypes
 from pathlib import Path
 from dotenv import load_dotenv
+from typing import Union, Optional
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -17,56 +18,44 @@ class EnvManager:
     """
     환경 변수 관리를 위한 클래스
     """
-    def __init__(self, env_file_path=None):
+    def __init__(self, env_path: Optional[Union[str, Path]] = None):
         """
         EnvManager 초기화
         
         매개변수:
-            env_file_path (str, optional): .env 파일 경로. 기본값은 None으로, 이 경우 스크립트 위치의 .env 파일을 사용
+            env_path (Optional[Union[str, Path]]): .env 파일 경로 (기본값: None)
         """
-        if env_file_path is None:
-            self.env_path = Path(__file__).parent / '../.env'
-        else:
-            self.env_path = Path(env_file_path)
+        # .env 파일 경로 설정
+        self.env_path = Path(env_path) if env_path else None
         
-        # .env 파일이 없으면 오류 발생
-        if not self.env_path.exists():
-            raise FileNotFoundError(".env 파일을 찾을 수 없습니다. TARGET_DIR과 OUTPUT_JSON을 설정한 .env 파일이 필요합니다.")
-        
-        # .env 파일 로드
-        load_dotenv(self.env_path)
+        # .env 파일이 있으면 로드 (없어도 오류 발생 X)
+        if self.env_path and self.env_path.exists():
+            load_dotenv(self.env_path)
         
     def get_target_directory(self) -> str:
         """
-        대상 디렉토리 경로 반환
+        대상 디렉토리 경로를 반환
         
         반환값:
             str: 대상 디렉토리 경로
         """
-        target_dir = os.getenv('TARGET_DIR', '').strip()
-        if not target_dir:
-            raise ValueError("TARGET_DIR이 .env 파일에 설정되지 않았습니다.")
-        return target_dir
-        
+        # 현재 스크립트 위치를 기준으로 상대 경로 계산
+        base_dir = Path(__file__).resolve().parent.parent.parent
+        target_dir = base_dir / "doc"  # 기본값으로 doc 폴더 사용
+        return str(target_dir)
+
     def get_output_json_path(self) -> str:
         """
-        출력 JSON 파일 경로 반환
+        출력 JSON 파일 경로를 반환
         
         반환값:
             str: 출력 JSON 파일 경로
         """
         target_dir = self.get_target_directory()
-        output_json = os.getenv('OUTPUT_JSON', '').strip()
+        output_json = str(Path(target_dir) / "metadata" / "file_metadata.json")
         
-        # output_json이 없으면 기본값 설정 (target_dir 내의 metadata 폴더에 저장)
-        if not output_json:
-            output_json = os.path.join(target_dir, 'metadata', 'file_metadata.json')
-        # 상대 경로인 경우 target_dir과 결합
-        elif not os.path.isabs(output_json):
-            output_json = os.path.join(target_dir, output_json)
-        # output_json 경로에 metadata 폴더가 포함되어 있지 않으면 추가
-        if 'metadata' not in output_json.split(os.sep):
-            output_json = os.path.join(os.path.dirname(output_json), 'metadata', os.path.basename(output_json))
+        # 디렉토리 생성
+        os.makedirs(os.path.dirname(output_json), exist_ok=True)
         
         return output_json
         

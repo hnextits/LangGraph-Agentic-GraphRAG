@@ -51,10 +51,17 @@ MAX_BOX_SIZE = {
     'chart': (800, 850),  # 차트는 최대 800x850 픽셀 이하
 }
 
-# 입출력 디렉토리 설정
-INPUT_DIR = Path('/home/nextits2/.conda/envs/workbox/serch_gui/chatbot/backend/nextits_data/Results/2.LayoutDetection')
-OUTPUT_DIR = Path('/home/nextits2/.conda/envs/workbox/serch_gui/chatbot/backend/nextits_data/Results/3.Crop_image')
-OCR_RESULTS_DIR = Path('/home/nextits2/.conda/envs/workbox/serch_gui/chatbot/backend/nextits_data/Results/3.OCR_results')
+# 스크립트 위치를 기준으로 backend/ 디렉토리
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+
+# 상대 경로로 디렉토리 설정
+LAYOUT_DETECTION_DIR = BASE_DIR / "nextits_data" / "Results" / "2.LayoutDetection"
+CROP_IMAGE_DIR = BASE_DIR / "nextits_data" / "Results" / "3.Crop_image"
+OCR_RESULTS_DIR = BASE_DIR / "nextits_data" / "Results" / "3.OCR_results"
+
+# 기본값 설정 (명령행 인자로 재정의 가능)
+INPUT_DIR = LAYOUT_DETECTION_DIR
+OUTPUT_DIR = CROP_IMAGE_DIR
 
 # 이미 처리된 파일 기록을 위한 세트
 processed_files = set()

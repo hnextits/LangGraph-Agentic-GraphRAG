@@ -16,11 +16,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# 스크립트 위치를 기준으로 backend/ 디렉토리
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
 class Config:
     # 입출력 디렉토리 설정
-    LAYOUT_INPUT_DIR = Path('/home/nextits2/.conda/envs/workbox/serch_gui/chatbot/backend/nextits_data/Results/2.LayoutDetection')
-    CROP_OUTPUT_DIR = Path('/home/nextits2/.conda/envs/workbox/serch_gui/chatbot/backend/nextits_data/Results/3.Crop_image')
-    METADATA_OUTPUT_DIR = Path('/home/nextits2/.conda/envs/workbox/serch_gui/chatbot/backend/nextits_data/Results/5.Completion_results/image')
+    LAYOUT_INPUT_DIR = BASE_DIR / "nextits_data" / "Results" / "2.LayoutDetection"
+    CROP_OUTPUT_DIR = BASE_DIR / "nextits_data" / "Results" / "3.Crop_image"
+    METADATA_OUTPUT_DIR = BASE_DIR / "nextits_data" / "Results" / "5.Completion_results" / "image"
     
     # 처리 옵션
     SKIP_EXISTING = True  # 이미 처리된 파일 건너뛰기

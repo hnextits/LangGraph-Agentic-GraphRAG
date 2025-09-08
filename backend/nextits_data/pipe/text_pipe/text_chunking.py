@@ -11,13 +11,16 @@ from collections import defaultdict
 import ollama
 import subprocess
 
+# 스크립트 위치를 기준으로 backend/ 디렉토리
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+
 # 기본 디렉토리 설정
-BASE_MARKDOWN_DIR = '/home/nextits2/.conda/envs/workbox/image_test/nextits_data/Results/4.Pipeline_results/text/markdown'
-BASE_METADATA_DIR = '/home/nextits2/.conda/envs/workbox/image_test/nextits_data/Results/4.Pipeline_results/text'
-OUTPUT_DIR = '/home/nextits2/.conda/envs/workbox/image_test/nextits_data/Results/5.Completion_results/text'
+BASE_MARKDOWN_DIR = BASE_DIR / "nextits_data" / "Results" / "4.Pipeline_results" / "text" / "markdown"
+BASE_METADATA_DIR = BASE_DIR / "nextits_data" / "Results" / "4.Pipeline_results" / "text"
+OUTPUT_DIR = BASE_DIR / "nextits_data" / "Results" / "5.Completion_results" / "text"
 
 # 청킹 상태를 저장할 파일 경로
-STATUS_FILE = '/home/nextits2/.conda/envs/workbox/image_test/nextits_data/Results/4.Pipeline_results/text/metadata_chunking_status.json'
+STATUS_FILE = BASE_DIR / "nextits_data" / "Results" / "4.Pipeline_results" / "text" / "metadata_chunking_status.json"
 
 def load_chunking_status():
     """
