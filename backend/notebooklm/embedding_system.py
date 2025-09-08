@@ -1042,6 +1042,6 @@ if __name__ == "__main__":
         print("사용법:")
         print("  이미지 메타데이터 임베딩 생성: python embedding_system.py --json <json_file_path_or_directory> [--index <index_path>] [--model <model_name>] [--overwrite]")
         print("  예시 (단일 파일): python embedding_system.py --json /path/to/image_metadata.json --index test_index")
-        print("  예시 (디렉토리): python embedding_system.py --json /home/nextits2/.conda/envs/workbox/gui/chatbot/backend/nextits_data/Results/5.Completion_results/image")
+        print("  예시 (디렉토리): python embedding_system.py --json /home/jeonghs/workspace/nextitslm/backend/nextits_data/Results/5.Completion_results/image")
         print("\n지원하는 데이터 유형: 이미지 메타데이터만")
         print("\n참고: 검색 기능은 rag_system.py에서 제공합니다.")

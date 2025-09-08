@@ -104,6 +104,7 @@ class Refiner:
                 self.refiner_model_name,
                 cache_dir=self.config.CACHE_DIR,
                 local_files_only=False,
+                attn_implementation="flash_attention_2",
                 **model_kwargs
             ).to(self.device)
             

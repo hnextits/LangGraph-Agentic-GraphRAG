@@ -58,13 +58,12 @@ class RAGConfig:
         
         # 리랭커 모델
         self.RERANKER_MODEL_NAME = "Qwen/Qwen3-Reranker-4B"
-        self.RERANKER_DEVICE = "cuda:1"  # 리랭커 모델을 두 번째 GPU에 로드
         
         # 쿼리 리라이터 모델
         self.QUERY_REWRITE_MODEL_NAME = "naver-hyperclovax/HyperCLOVAX-SEED-Text-Instruct-1.5B"
         
         # 생성 모델
-        self.LLM_MODEL = "Qwen/Qwen3-30B-A3B-Instruct-2507-FP8"
+        self.LLM_MODEL = "unsloth/Qwen3-8B-unsloth-bnb-4bit"
         
         # 정제 모델
         self.REFINER_MODEL = "Qwen/Qwen3-1.7B-FP8"
@@ -129,6 +128,7 @@ class RAGConfig:
         #############################################
         # 벡터 검색 설정
         self.TEXT_TOP_K = 7  # 텍스트 검색 결과 수
+        self.TEXT_FINAL_K = 3  # 텍스트 리랭킹 후 최종 결과 수
         self.IMAGE_TOP_K = 5  # 이미지 검색 초기 결과 수
         self.IMAGE_FINAL_K = 3  # 이미지 리랭킹 후 최종 결과 수
         self.TOP_K = 3  # 기존 호환성을 위한 기본값
