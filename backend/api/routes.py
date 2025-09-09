@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, File, UploadFile, BackgroundTasks, Request, Body
 import asyncio
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import os
 import shutil
 from pydantic import BaseModel, validator
@@ -54,6 +54,43 @@ tasks = {}
 # no_llm_summary_routes.py에서 가져온 작업 상태 저장소
 task_status = {}
 
+# API 응답 모델 정의
+class RootResponse(BaseModel):
+    message: str
+
+class SearchResponse(BaseModel):
+    results: List[Dict[str, Any]]
+
+class AddDocumentResponse(BaseModel):
+    task_id: str
+    file_name: str
+    title: str
+    status: str
+
+class TaskStatusResponse(BaseModel):
+    status: str
+    file_name: Optional[str] = None
+    title: Optional[str] = None
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    message: Optional[str] = None
+    progress: Optional[int] = None
+
+class UploadResponse(BaseModel):
+    message: str
+    files: List[Dict[str, Any]]
+
+class FileListResponse(BaseModel):
+    files: List[str]
+
+class FileContentResponse(BaseModel):
+    filename: str
+    content: str
+
+class SearchSummarizeResponse(BaseModel):
+    task_id: str
+    status: str
+
 # nextits_data 경로 설정
 NEXTITS_DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'nextits_data'))
 DOC_DIR = os.path.join(NEXTITS_DATA_DIR, "doc")
@@ -69,8 +106,11 @@ CLEAN_MD_DIR = os.path.join(CRAWLING_DIR, '6.clean_md')
 os.makedirs(SNIPPET_DIR, exist_ok=True)
 os.makedirs(CLEAN_MD_DIR, exist_ok=True)
 
-@router.get("/")
-def read_root() -> Dict[str, str]:
+class RootResponse(BaseModel):
+    message: str
+
+@router.get("/", response_model=RootResponse)
+def read_root() -> RootResponse:
     """서버가 실행 중인지 확인하는 기본 엔드포인트"""
     return {"message": "Welcome to the Chatbot API"}
 
@@ -88,8 +128,11 @@ class SearchQuery(BaseModel):
             raise ValueError('검색어는 최소 1자 이상이어야 합니다.')
         return v.strip()
 
-@router.post("/search")
-async def search(request: Request, query: SearchQuery) -> Dict[str, Any]:
+class SearchResponse(BaseModel):
+    results: List[Dict[str, Any]]
+
+@router.post("/search", response_model=SearchResponse)
+async def search(request: Request, query: SearchQuery) -> SearchResponse:
     # 요청 정보 상세 로깅
     logger.info(f"=== 검색 요청 시작 ===")
     logger.info(f"요청 URL: {request.url}")
@@ -126,6 +169,12 @@ async def search(request: Request, query: SearchQuery) -> Dict[str, Any]:
 class AddDocumentRequest(BaseModel):
     title: str
     link: str
+
+class AddDocumentResponse(BaseModel):
+    task_id: str
+    file_name: str
+    title: str
+    status: str
 
 def run_document_pipeline(title: str, link: str, task_id: str):
     """
@@ -229,8 +278,8 @@ def run_document_pipeline(title: str, link: str, task_id: str):
         tasks[task_id]['error'] = str(e)
         logger.info(f"[Task {task_id}] Final task state (failed): {tasks[task_id]}")
 
-@router.post("/add_document_from_search")
-def add_document_from_search(request: AddDocumentRequest, background_tasks: BackgroundTasks):
+@router.post("/add_document_from_search", response_model=AddDocumentResponse)
+def add_document_from_search(request: AddDocumentRequest, background_tasks: BackgroundTasks) -> AddDocumentResponse:
     task_id = str(uuid.uuid4())
     safe_filename = re.sub(r'[\/*?":<>|]', "", request.title) # 유효하지 않은 문자 제거
     md_filename = f"{safe_filename}.md"
@@ -245,8 +294,8 @@ def add_document_from_search(request: AddDocumentRequest, background_tasks: Back
     
     return {"task_id": task_id, "file_name": md_filename, "title": request.title, "status": "processing"}
 
-@router.get("/task_status/{task_id}")
-async def get_task_status(task_id: str):
+@router.get("/task_status/{task_id}", response_model=TaskStatusResponse)
+async def get_task_status(task_id: str) -> TaskStatusResponse:
     task = tasks.get(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -444,8 +493,8 @@ def run_processing_pipeline(task_id: str, file_path: str):
         logger.error(f"Error processing task {task_id}: {e}", exc_info=True)
         tasks[task_id] = {"status": "failed", "error": str(e), "file_path": file_path}
 
-@router.post("/upload", summary="Upload files and process them")
-async def upload_files(background_tasks: BackgroundTasks, files: List[UploadFile] = File(...)):
+@router.post("/upload", summary="Upload files and process them", response_model=UploadResponse)
+async def upload_files(background_tasks: BackgroundTasks, files: List[UploadFile] = File(...)) -> UploadResponse:
     """
     파일을 비동기적으로 업로드하고 처리 파이프라인을 실행합니다.
     """
@@ -487,15 +536,15 @@ async def upload_files(background_tasks: BackgroundTasks, files: List[UploadFile
     logger.info(f"파일 처리 작업 시작 및 응답 반환. Task IDs: {[info['task_id'] for info in saved_files_info]}")
     return {"message": f"{len(saved_files_info)}개의 파일이 성공적으로 업로드 및 처리 시작됨", "files": saved_files_info}
 
-@router.get("/task_status/{task_id}")
-async def get_task_status(task_id: str):
+@router.get("/task_status/{task_id}", response_model=TaskStatusResponse)
+async def get_task_status(task_id: str) -> TaskStatusResponse:
     task = tasks.get(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
 
-@router.get("/files", summary="List files in the document directory")
-async def list_files():
+@router.get("/files", summary="List files in the document directory", response_model=FileListResponse)
+async def list_files() -> FileListResponse:
     """
     `nextits_data/doc` 디렉터리에 있는 파일 목록을 반환합니다.
     """
@@ -511,8 +560,8 @@ async def list_files():
         logger.error(f"Error listing files from {DOC_DIR}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="파일 목록을 가져오는 중 오류가 발생했습니다.")
 
-@router.get("/file/{filename}", summary="Get file content from OCR results")
-async def get_file_content(filename: str):
+@router.get("/file/{filename}", summary="Get file content from OCR results", response_model=FileContentResponse)
+async def get_file_content(filename: str) -> FileContentResponse:
     """
     `nextits_data/Results/3.OCR_results` 디렉터리에서
     주어진 파일명과 동일한 이름의 마크다운(.md) 파일 내용을 반환합니다.
@@ -558,7 +607,7 @@ class ChatResponse(BaseModel):
     images: List[str]
 
 @router.post("/v1/chat", response_model=ChatResponse)
-def chat(query: ChatQuery, request: Request):
+def chat(query: ChatQuery, request: Request) -> ChatResponse:
     logger.info(f"Received query: {query.query} with sources: {query.sources}")
     try:
         # RAG 파이프라인 인스턴스를 app.state에서 가져옵니다.
@@ -580,11 +629,11 @@ def chat(query: ChatQuery, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/search_and_summarize")
+@router.post("/search_and_summarize", response_model=SearchSummarizeResponse)
 async def search_and_summarize(
     background_tasks: BackgroundTasks,
     request_data: dict = Body(...)
-):
+) -> SearchSummarizeResponse:
     """
     검색어를 받아 구글 검색 결과를 크롤링하고 LLM 없이 요약하는 API 엔드포인트
     """
@@ -612,8 +661,8 @@ async def search_and_summarize(
     return {"task_id": task_id, "status": "pending"}
 
 
-@router.get("/task_status/{task_id}")
-async def get_task_status_no_llm(task_id: str):
+@router.get("/task_status/{task_id}", response_model=TaskStatusResponse)
+async def get_task_status_no_llm(task_id: str) -> TaskStatusResponse:
     """
     작업 상태를 확인하는 API 엔드포인트
     """

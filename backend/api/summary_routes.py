@@ -2,7 +2,8 @@ from fastapi import APIRouter, Body, HTTPException
 import os
 import sys
 import logging
-from typing import List
+from typing import List, Dict, Any, Optional
+from pydantic import BaseModel
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -28,6 +29,15 @@ OCR_RESULTS_DIR = os.path.join(parent_dir, 'nextits_data', 'Results', '3.OCR_res
 # 라우터 생성
 router = APIRouter()
 
+# API 응답 모델 정의
+class SummarizeRequest(BaseModel):
+    file_names: List[str]
+
+class SummarizeResponse(BaseModel):
+    summary: str
+    files: List[str]
+    timestamp: str
+
 # 요약 생성기 인스턴스 (싱글톤으로 관리)
 answer_generator = None
 
@@ -38,10 +48,10 @@ def get_answer_generator():
         logger.info("AnswerGenerator 인스턴스 생성 완료")
     return answer_generator
 
-@router.post("/summarize")
-async def summarize_files(request_data: dict = Body(...)):
+@router.post("/summarize", response_model=SummarizeResponse)
+async def summarize_files(request_data: SummarizeRequest) -> SummarizeResponse:
     # 요청 본문에서 file_names 추출
-    file_names = request_data.get("file_names", [])
+    file_names = request_data.file_names
     """
     선택된 파일들을 요약하는 API 엔드포인트
     """

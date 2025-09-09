@@ -4,8 +4,9 @@ import sys
 import logging
 import json
 import uuid
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime
+from pydantic import BaseModel
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -32,6 +33,18 @@ router = APIRouter()
 # 작업 상태 저장소
 task_status = {}
 
+# API 응답 모델 정의
+class TaskInitResponse(BaseModel):
+    task_id: str
+    status: str
+
+class TaskStatusResponse(BaseModel):
+    status: str
+    message: str
+    progress: int
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+
 # 크롤링 결과 저장 디렉토리
 CRAWLING_DIR = os.path.join(parent_dir, 'search_test', 'Crawling_data')
 SNIPPET_DIR = os.path.join(CRAWLING_DIR, '4.snippet')
@@ -41,11 +54,11 @@ CLEAN_MD_DIR = os.path.join(CRAWLING_DIR, '6.clean_md')
 os.makedirs(SNIPPET_DIR, exist_ok=True)
 os.makedirs(CLEAN_MD_DIR, exist_ok=True)
 
-@router.post("/search_and_summarize")
+@router.post("/search_and_summarize", response_model=TaskInitResponse)
 async def search_and_summarize(
     background_tasks: BackgroundTasks,
     request_data: dict = Body(...)
-):
+) -> TaskInitResponse:
     """
     검색어를 받아 구글 검색 결과를 크롤링하고 LLM 없이 요약하는 API 엔드포인트
     """
@@ -72,8 +85,8 @@ async def search_and_summarize(
     
     return {"task_id": task_id, "status": "pending"}
 
-@router.get("/task_status/{task_id}")
-async def get_task_status(task_id: str):
+@router.get("/task_status/{task_id}", response_model=TaskStatusResponse)
+async def get_task_status(task_id: str) -> TaskStatusResponse:
     """
     작업 상태를 확인하는 API 엔드포인트
     """
