@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, File, UploadFile, BackgroundTasks, Request, Body
+import asyncio
 from typing import List, Dict, Any
 import os
 import shutil
@@ -9,11 +10,13 @@ import uuid
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 from datetime import datetime
 from services.rag_service import get_rag_response
 from search_test.crawler_pipeline import crawling_web, sanitize_filename
 from utils.helpers import process_response_with_images, encode_image_to_base64, find_image_file
+from api.pause_api import is_paused, is_cancelled
 
 # 로거 설정
 logger = logging.getLogger(__name__)
@@ -135,6 +138,10 @@ def run_document_pipeline(title: str, link: str, task_id: str):
     output_dir = DOC_DIR
     
     logger.info(f"[Task {task_id}] Status set to 'processing', output_dir: {output_dir}")
+    
+    # 일시 중지 상태 확인 및 처리
+    if check_and_handle_pause(task_id):
+        return
     
     try:
         logger.info(f"[Task {task_id}] Crawling web for: {title}")
@@ -275,10 +282,57 @@ async def get_task_status(task_id: str):
 #         logger.error(f"전체 오류 스택: {traceback.format_exc()}")
 #         raise HTTPException(status_code=500, detail=error_msg)
 
+def check_and_handle_pause(task_id: str) -> bool:
+    """
+    일시 중지 상태를 확인하고 처리합니다.
+    
+    Args:
+        task_id: 작업 ID
+        
+    Returns:
+        bool: 작업이 중지되었으면 True, 계속 진행해야 하면 False
+    """
+    # 취소 상태 확인
+    if is_cancelled(task_id):
+        if tasks.get(task_id, {}).get('status') != 'cancelled':
+            tasks[task_id]['status'] = 'cancelled'
+            tasks[task_id]['message'] = '작업이 취소되었습니다.'
+            logger.info(f"[Task {task_id}] 작업이 취소되었습니다.")
+        return True
+    
+    # 일시 중지 상태 확인
+    while is_paused() or is_paused(task_id):
+        if tasks.get(task_id, {}).get('status') != 'paused':
+            tasks[task_id]['status'] = 'paused'
+            tasks[task_id]['message'] = '작업이 일시 중지되었습니다.'
+            logger.info(f"[Task {task_id}] 작업이 일시 중지되었습니다.")
+        
+        # 1초마다 일시 중지 상태 확인
+        time.sleep(1)
+        
+        # 작업이 취소되었는지 확인
+        if is_cancelled(task_id):
+            tasks[task_id]['status'] = 'cancelled'
+            tasks[task_id]['message'] = '작업이 취소되었습니다.'
+            logger.info(f"[Task {task_id}] 작업이 취소되었습니다.")
+            return True
+    
+    # 일시 중지 상태에서 재개된 경우
+    if tasks.get(task_id, {}).get('status') == 'paused':
+        tasks[task_id]['status'] = 'processing'
+        tasks[task_id]['message'] = '작업이 재개되었습니다.'
+        logger.info(f"[Task {task_id}] 작업이 재개되었습니다.")
+    
+    return False
+
 def run_text_indexing(task_id: str, file_path: str):
     """텍스트 인덱싱을 실행하는 함수 - 직접 함수 호출 방식으로 변경"""
     global tasks
     try:
+        # 일시 중지 상태 확인 및 처리
+        if check_and_handle_pause(task_id):
+            return
+            
         # 원본 파일 경로에서 파일명 추출
         file_name = os.path.basename(file_path)
         base_name, _ = os.path.splitext(file_name)
@@ -364,6 +418,10 @@ def run_text_indexing(task_id: str, file_path: str):
 def run_processing_pipeline(task_id: str, file_path: str):
     global tasks
     try:
+        # 일시 중지 상태 확인 및 처리
+        if check_and_handle_pause(task_id):
+            return
+            
         logger.info(f"Starting processing for task {task_id}: {file_path}")
 
         # pipe/run_file_processor.py 스크립트의 절대 경로
@@ -593,12 +651,59 @@ async def process_search_and_summarize(task_id: str, query: str):
     백그라운드에서 검색, 크롤링, 요약을 처리하는 함수
     """
     try:
+        # 일시 중지 상태 확인 함수 정의
+        async def check_pause():
+            # 취소 상태 확인
+            if is_cancelled(task_id):
+                if task_status.get(task_id, {}).get('status') != 'cancelled':
+                    task_status[task_id].update({
+                        "status": "cancelled",
+                        "message": "작업이 취소되었습니다."
+                    })
+                    logger.info(f"[Task {task_id}] 작업이 취소되었습니다.")
+                return True
+            
+            # 일시 중지 상태 확인
+            while is_paused() or is_paused(task_id):
+                if task_status.get(task_id, {}).get('status') != 'paused':
+                    task_status[task_id].update({
+                        "status": "paused",
+                        "message": "작업이 일시 중지되었습니다."
+                    })
+                    logger.info(f"[Task {task_id}] 작업이 일시 중지되었습니다.")
+                
+                # 1초마다 일시 중지 상태 확인
+                await asyncio.sleep(1)
+                
+                # 작업이 취소되었는지 확인
+                if is_cancelled(task_id):
+                    task_status[task_id].update({
+                        "status": "cancelled",
+                        "message": "작업이 취소되었습니다."
+                    })
+                    logger.info(f"[Task {task_id}] 작업이 취소되었습니다.")
+                    return True
+            
+            # 일시 중지 상태에서 재개된 경우
+            if task_status.get(task_id, {}).get('status') == 'paused':
+                task_status[task_id].update({
+                    "status": "running",
+                    "message": "작업이 재개되었습니다."
+                })
+                logger.info(f"[Task {task_id}] 작업이 재개되었습니다.")
+            
+            return False
+        
         # 상태 업데이트: 검색 시작
         task_status[task_id].update({
             "status": "running",
             "message": "구글 검색 중...",
             "progress": 10
         })
+        
+        # 일시 중지 확인
+        if await check_pause():
+            return
         
         # 1. 구글 검색 수행
         total_result_link = []
@@ -613,6 +718,10 @@ async def process_search_and_summarize(task_id: str, query: str):
             })
             return
         
+        # 일시 중지 확인
+        if await check_pause():
+            return
+            
         # 상태 업데이트: 크롤링 시작
         task_status[task_id].update({
             "status": "running",
@@ -652,6 +761,10 @@ async def process_search_and_summarize(task_id: str, query: str):
             })
             return
         
+        # 일시 중지 확인
+        if await check_pause():
+            return
+            
         # 상태 업데이트: 요약 시작
         task_status[task_id].update({
             "status": "running",
