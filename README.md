@@ -1,4 +1,4 @@
-<img width="515" height="78" alt="Image" src="https://github.com/user-attachments/assets/d345c561-3d37-4740-8dce-916ad943b591" />
+<div align="center"><img width="515" height="78" alt="Image" src="https://github.com/user-attachments/assets/d345c561-3d37-4740-8dce-916ad943b591" /></div>
 
 # NextITS LLM 프로젝트
 
