@@ -16,7 +16,7 @@ from datetime import datetime
 from services.rag_service import get_rag_response
 from search_test.crawler_pipeline import crawling_web, sanitize_filename
 from utils.helpers import process_response_with_images, encode_image_to_base64, find_image_file
-from api.pause_api import is_paused, is_cancelled
+from api.pause_api import is_cancelled
 
 # 로거 설정
 logger = logging.getLogger(__name__)
@@ -284,13 +284,13 @@ async def get_task_status(task_id: str):
 
 def check_and_handle_pause(task_id: str) -> bool:
     """
-    일시 중지 상태를 확인하고 처리합니다.
+    취소 상태를 확인하고 처리합니다.
     
     Args:
         task_id: 작업 ID
         
     Returns:
-        bool: 작업이 중지되었으면 True, 계속 진행해야 하면 False
+        bool: 작업이 취소되었으면 True, 계속 진행해야 하면 False
     """
     # 취소 상태 확인
     if is_cancelled(task_id):
@@ -299,29 +299,6 @@ def check_and_handle_pause(task_id: str) -> bool:
             tasks[task_id]['message'] = '작업이 취소되었습니다.'
             logger.info(f"[Task {task_id}] 작업이 취소되었습니다.")
         return True
-    
-    # 일시 중지 상태 확인
-    while is_paused() or is_paused(task_id):
-        if tasks.get(task_id, {}).get('status') != 'paused':
-            tasks[task_id]['status'] = 'paused'
-            tasks[task_id]['message'] = '작업이 일시 중지되었습니다.'
-            logger.info(f"[Task {task_id}] 작업이 일시 중지되었습니다.")
-        
-        # 1초마다 일시 중지 상태 확인
-        time.sleep(1)
-        
-        # 작업이 취소되었는지 확인
-        if is_cancelled(task_id):
-            tasks[task_id]['status'] = 'cancelled'
-            tasks[task_id]['message'] = '작업이 취소되었습니다.'
-            logger.info(f"[Task {task_id}] 작업이 취소되었습니다.")
-            return True
-    
-    # 일시 중지 상태에서 재개된 경우
-    if tasks.get(task_id, {}).get('status') == 'paused':
-        tasks[task_id]['status'] = 'processing'
-        tasks[task_id]['message'] = '작업이 재개되었습니다.'
-        logger.info(f"[Task {task_id}] 작업이 재개되었습니다.")
     
     return False
 
@@ -651,7 +628,7 @@ async def process_search_and_summarize(task_id: str, query: str):
     백그라운드에서 검색, 크롤링, 요약을 처리하는 함수
     """
     try:
-        # 일시 중지 상태 확인 함수 정의
+        # 취소 상태 확인 함수 정의
         async def check_pause():
             # 취소 상태 확인
             if is_cancelled(task_id):
@@ -662,35 +639,6 @@ async def process_search_and_summarize(task_id: str, query: str):
                     })
                     logger.info(f"[Task {task_id}] 작업이 취소되었습니다.")
                 return True
-            
-            # 일시 중지 상태 확인
-            while is_paused() or is_paused(task_id):
-                if task_status.get(task_id, {}).get('status') != 'paused':
-                    task_status[task_id].update({
-                        "status": "paused",
-                        "message": "작업이 일시 중지되었습니다."
-                    })
-                    logger.info(f"[Task {task_id}] 작업이 일시 중지되었습니다.")
-                
-                # 1초마다 일시 중지 상태 확인
-                await asyncio.sleep(1)
-                
-                # 작업이 취소되었는지 확인
-                if is_cancelled(task_id):
-                    task_status[task_id].update({
-                        "status": "cancelled",
-                        "message": "작업이 취소되었습니다."
-                    })
-                    logger.info(f"[Task {task_id}] 작업이 취소되었습니다.")
-                    return True
-            
-            # 일시 중지 상태에서 재개된 경우
-            if task_status.get(task_id, {}).get('status') == 'paused':
-                task_status[task_id].update({
-                    "status": "running",
-                    "message": "작업이 재개되었습니다."
-                })
-                logger.info(f"[Task {task_id}] 작업이 재개되었습니다.")
             
             return False
         
@@ -848,3 +796,4 @@ async def process_search_and_summarize(task_id: str, query: str):
             "progress": 100,
             "error": str(e)
         })
+        
