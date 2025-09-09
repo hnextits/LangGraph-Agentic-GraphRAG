@@ -7,7 +7,7 @@ export interface SearchRequest {
 }
 
 export interface SummarizeRequest {
-  files: string[];
+  file_names: string[];
 }
 
 // API 기본 URL 설정 (환경 변수에서 가져오거나 기본값 사용)

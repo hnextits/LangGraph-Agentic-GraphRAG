@@ -38,10 +38,13 @@ const Rightbox: React.FC<RightboxProps> = ({
 
     setIsLoading(true);
     setError(null);
+    
+    // 디버깅 로그 추가
+    console.log('요약 요청할 파일 목록:', checkedFiles);
 
     try {
       const response = await api.summarize({
-        files: checkedFiles
+        file_names: checkedFiles // 'files'에서 'file_names'로 변경 (백엔드 API 파라미터와 일치시킴)
       });
 
       if (response.data && response.data.summary) {

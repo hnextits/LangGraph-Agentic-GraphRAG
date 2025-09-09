@@ -69,7 +69,7 @@ class SearchEngineConfig:
         self.CONNECTION_TIMEOUT = 10  # 연결 타임아웃 (초)
         self.READ_TIMEOUT = 30  # 읽기 타임아웃 (초)
         self.CLOSE_CONNECTION = True  # 요청 후 연결 즉시 종료
-        self.model = "Qwen/Qwen3-4B"
+        self.model = "Qwen/Qwen3-4B-Instruct-2507"
         self.device = "cuda" if torch.cuda.is_available() else "cpu"        
         self.chunk_len = 3600 # 크롤링 데이터 나눠서 요약할 크기
 
@@ -80,7 +80,7 @@ from notebooklm.config import RAGConfig
 
 # 환경 변수 설정
 HOST = '0.0.0.0'  # 모든 네트워크 인터페이스에서 수신
-PORT = int(os.getenv('PORT', '5000'))
+PORT = int(os.getenv('PORT', '5001'))
 
 # RAG 시스템 경로 설정
 RAG_SYSTEM_PATH = os.getenv('RAG_SYSTEM_PATH', '../notebooklm')

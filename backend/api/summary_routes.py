@@ -38,7 +38,7 @@ def get_answer_generator():
         logger.info("AnswerGenerator 인스턴스 생성 완료")
     return answer_generator
 
-@router.post("/summary/summarize")
+@router.post("/summarize")
 async def summarize_files(request_data: dict = Body(...)):
     # 요청 본문에서 file_names 추출
     file_names = request_data.get("file_names", [])
@@ -51,12 +51,24 @@ async def summarize_files(request_data: dict = Body(...)):
         # AnswerGenerator 인스턴스 가져오기
         generator = get_answer_generator()
         
+        # OCR 결과 디렉토리 존재 여부 확인
+        if not os.path.exists(OCR_RESULTS_DIR):
+            logger.error(f"OCR 결과 디렉토리가 존재하지 않습니다: {OCR_RESULTS_DIR}")
+            raise HTTPException(status_code=404, detail=f"OCR 결과 디렉토리가 존재하지 않습니다: {OCR_RESULTS_DIR}")
+            
+        # OCR 결과 디렉토리가 비어있는지 확인
+        if not os.listdir(OCR_RESULTS_DIR):
+            logger.error(f"OCR 결과 디렉토리가 비어 있습니다: {OCR_RESULTS_DIR}")
+            raise HTTPException(status_code=404, detail=f"OCR 결과 디렉토리가 비어 있습니다. OCR 처리가 완료되었는지 확인하세요.")
+            
         # 파일 내용 수집
         file_contents = []
+        missing_files = []
         for file_name in file_names:
             file_path = os.path.join(OCR_RESULTS_DIR, file_name)
             if not os.path.exists(file_path):
                 logger.warning(f"파일을 찾을 수 없음: {file_path}")
+                missing_files.append(file_name)
                 continue
                 
             try:
@@ -71,7 +83,10 @@ async def summarize_files(request_data: dict = Body(...)):
                 logger.error(f"파일 읽기 오류 ({file_name}): {str(e)}")
         
         if not file_contents:
-            raise HTTPException(status_code=404, detail="유효한 파일을 찾을 수 없습니다")
+            if missing_files:
+                raise HTTPException(status_code=404, detail=f"요청한 파일을 찾을 수 없습니다: {', '.join(missing_files)}")
+            else:
+                raise HTTPException(status_code=404, detail="유효한 파일을 찾을 수 없습니다")
         
         # 임시 저장 디렉토리 설정
         temp_dir = os.path.join(parent_dir, 'nextits_data', 'temp')
