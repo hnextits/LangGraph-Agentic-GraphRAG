@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # API 라우터 가져오기
 from api.routes import router as api_router
 from api.summary_routes import router as summary_router
+from api.pause_api import router as pause_router
 # from api.chat import router as chat_router
 from services.rag_service import initialize_rag_pipeline
 
@@ -66,6 +67,7 @@ app.add_middleware(
 # API 라우터 포함
 app.include_router(api_router)
 app.include_router(summary_router)
+app.include_router(pause_router, prefix="/api")
 # app.include_router(chat_router)
 
 # 서버 실행 설정
