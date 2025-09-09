@@ -1,3 +1,5 @@
+<img width="515" height="78" alt="Image" src="https://github.com/user-attachments/assets/540e1434-2543-4986-ab97-eaf38a0f0f66" />
+
 # NextITS LLM 프로젝트
 
 ## 프로젝트 개요
