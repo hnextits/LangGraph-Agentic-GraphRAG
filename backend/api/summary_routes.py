@@ -117,11 +117,31 @@ async def summarize_files(request_data: SummarizeRequest) -> SummarizeResponse:
         # generate_answer 호출하여 요약 생성
         summary = generator.generate_answer(processed_data)
         
-        # 요약 결과 및 원본 파일명 반환
+        # 요약 결과 저장 디렉토리 설정
+        summary_dir = os.path.join(parent_dir, 'nextits_data', 'summarize')
+        os.makedirs(summary_dir, exist_ok=True)
+
+        # 타임스탬프 기반 파일명 생성
+        timestamp = generator.get_timestamp().replace(" ", "_").replace(":", "-")
+        summary_filename = f"summary_{timestamp}.md"
+        summary_path = os.path.join(summary_dir, summary_filename)
+
+        # 요약 결과를 마크다운 파일로 저장
+        with open(summary_path, "w", encoding="utf-8") as f:
+            # 헤더 정보 추가
+            f.write(f"# 요약 결과 ({generator.get_timestamp()})\n\n")
+            f.write(f"## 요약 대상 파일\n")
+            for file_name in file_names:
+                f.write(f"- {file_name}\n")
+            f.write("\n## 요약 내용\n\n")
+            f.write(summary)
+
+        # API 응답에 파일 경로 추가
         return {
             "summary": summary,
             "files": file_names,
-            "timestamp": generator.get_timestamp()
+            "timestamp": generator.get_timestamp(),
+            "summary_file": summary_path  # 저장된 파일 경로 추가
         }
         
     except Exception as e:
