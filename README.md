@@ -236,8 +236,19 @@ npm start
 
 ## 라이선스
 
-이 프로젝트는 MIT 라이선스 하에 배포됩니다.
+이 프로젝트는 MIT, Apache-2.0 라이선스 하에 배포됩니다.
 
 ## 연락처
 
-프로젝트에 대한 문의사항이나 기여를 원하시면 이슈를 생성하거나 PR을 제출해 주세요.
+#### backend
+프로젝트에 대한 문의사항이나 기여를 원하시면 이슈를 생성하거나 PR, E-mail을 제출해 주세요.
+
+- **RAG**
+  - koto144@gmail.com 
+- **OCR**
+  - wfer1245@gmail.com
+
+#### frontend
+
+- **UX/UI**
+  - fbgjungits@gmail.com
