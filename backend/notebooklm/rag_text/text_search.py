@@ -267,6 +267,23 @@ class TextSearcher:
                     logger.info(f"   ID: {result.get('id', 'N/A')}, 인덱스: {result.get('index', 'N/A')}")
                     text_preview = result.get('text', '')[:100] + '...' if len(result.get('text', '')) > 100 else result.get('text', '')
                     logger.info(f"   텍스트: {text_preview}")
+
+                # try:
+                #     # 'reranked_results.txt' 파일에 결과를 덮어쓰기 모드('w')로 저장합니다.
+                #     with open('reranked_results.txt', 'w', encoding='utf-8') as f:
+                #         f.write(f"쿼리: {query}\n\n")
+                #         for i, result in enumerate(results):
+                #             title = result.get('title', '제목 없음')
+                #             score = result.get('score', 0)
+                #             text_content = result.get('text', '내용 없음')
+                            
+                #             f.write(f"순위 {i+1} (점수: {score:.4f})\n")
+                #             f.write(f"제목: {title}\n")
+                #             f.write(f"내용: {text_content}\n")
+                #             f.write("-" * 30 + "\n")
+                #     logger.info("리랭킹된 결과를 'reranked_results.txt' 파일에 성공적으로 저장했습니다.")
+                # except Exception as e:
+                #     logger.error(f"결과를 파일에 저장하는 중 오류 발생: {e}")
                 
             except Exception as e:
                 logger.error(f"개선된 리랭킹 중 오류 발생: {e}")

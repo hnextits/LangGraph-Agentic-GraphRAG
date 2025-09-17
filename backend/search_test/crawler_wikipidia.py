@@ -126,7 +126,7 @@ def main():
     if not url:
         url = "https://ko.wikipedia.org/wiki/%ED%95%9C%ED%99%94_%EC%9D%B4%EA%B8%80%EC%8A%A4"
         if not output_dir:
-            output_dir = "/home/nextits2/.conda/envs/workbox/serch_gui/chatbot/backend/search_test/wikipedia_markdown_output"
+            output_dir = "./Crawling_data"
     
     if 'wikipedia' not in url:
         print("[ERROR] 유효한 위키피디아 문서 URL이 아닙니다.")

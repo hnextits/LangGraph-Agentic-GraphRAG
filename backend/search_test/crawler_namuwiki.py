@@ -41,9 +41,9 @@ def crawl_namuwiki_page(url: str, output_dir: str = "./"):
         soup = BeautifulSoup(response.text, 'lxml')
 
         # 2. 본문 콘텐츠 추출
-        article = soup.select_one("div.T4Q1I9Wt")
+        article = soup.select_one("div.a2-QXwj\\+.uAm4KzJH") # JoGBTQdA.M09iyvKq, kG-54h5\\+._0KZTdzFT
         if not article:
-            print("[WARNING] 본문 콘텐츠('div.T4Q1I9Wt')를 찾을 수 없습니다.")
+            print("[WARNING] 본문 콘텐츠('div.a2-QXwj\\+.uAm4KzJH')를 찾을 수 없습니다.")
             return None
 
         # 3. HTML 단계에서 모든 불필요한 요소 제거 (가장 안정적인 방식)
@@ -150,9 +150,9 @@ def main():
     output_dir = args.output_dir
 
     if not url: 
-        url = "https://namu.wiki/w/%ED%95%9C%ED%99%94%20%EC%9D%B4%EA%B8%80%EC%8A%A4"
+        url = "https://namu.wiki/w/%EA%B9%80%EC%A7%80%EC%9B%90"
     if not output_dir:
-        output_dir = "/home/nextits2/.conda/envs/workbox/serch_gui/chatbot/backend/search_test"
+        output_dir = "/home/ryugj/workspace/nextitslm/backend/search_test/Crawling_data"
     
     if "namu.wiki/w/" not in url:
         print("[ERROR] 유효한 나무위키 문서 URL이 아닙니다.")

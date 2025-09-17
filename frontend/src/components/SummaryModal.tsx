@@ -3,26 +3,19 @@ import { Box, Typography, IconButton, Paper, CircularProgress } from '@mui/mater
 import CloseIcon from '@mui/icons-material/Close';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useGetSummaryContent } from '@/queries';
 
 // 타입 정의
 interface SummaryModalProps {
   open: boolean;
   onClose: () => void;
-  summary: string;
-  isLoading: boolean;
-  files?: string[];
-  timestamp?: string;
+  file: string;
 }
 
-const SummaryModal: React.FC<SummaryModalProps> = ({ 
-  open, 
-  onClose, 
-  summary, 
-  isLoading, 
-  files, 
-  timestamp 
-}) => {
+const SummaryModal: React.FC<SummaryModalProps> = ({ open, onClose, file }) => {
   if (!open) return null;
+
+  const { data, isLoading } = useGetSummaryContent(file);
 
   return (
     <Box
@@ -77,14 +70,7 @@ const SummaryModal: React.FC<SummaryModalProps> = ({
             borderBottom: '1px solid #e0e0e0',
             backgroundColor: '#f9f9f9',
           }}
-        >
-          <Typography variant="body2" color="text.secondary">
-            {timestamp && `생성 시간: ${timestamp}`}
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {files && files.length > 0 && `요약 대상: ${files.join(', ')}`}
-          </Typography>
-        </Box>
+        ></Box>
 
         {/* 내용 */}
         <Box
@@ -96,7 +82,14 @@ const SummaryModal: React.FC<SummaryModalProps> = ({
           }}
         >
           {isLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '100%',
+              }}
+            >
               <CircularProgress />
             </Box>
           ) : (
@@ -104,13 +97,32 @@ const SummaryModal: React.FC<SummaryModalProps> = ({
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
-                  h1: ({ node, ...props }) => <Typography variant="h4" gutterBottom sx={{ textAlign: 'left' }} {...props} />,
-                  h2: ({ node, ...props }) => <Typography variant="h5" gutterBottom sx={{ textAlign: 'left' }} {...props} />,
-                  h3: ({ node, ...props }) => <Typography variant="h6" gutterBottom sx={{ textAlign: 'left' }} {...props} />,
-                  p: ({ node, ...props }) => <Typography variant="body1" paragraph sx={{ textAlign: 'left' }} {...props} />,
-                  ul: ({ node, ...props }) => <Box component="ul" sx={{ pl: 2, textAlign: 'left' }} {...props} />,
-                  ol: ({ node, ...props }) => <Box component="ol" sx={{ pl: 2, textAlign: 'left' }} {...props} />,
-                  li: ({ node, ...props }) => <Typography component="li" variant="body1" sx={{ textAlign: 'left' }} {...props} />,
+                  h1: ({ node, ...props }) => (
+                    <Typography variant="h4" gutterBottom sx={{ textAlign: 'left' }} {...props} />
+                  ),
+                  h2: ({ node, ...props }) => (
+                    <Typography variant="h5" gutterBottom sx={{ textAlign: 'left' }} {...props} />
+                  ),
+                  h3: ({ node, ...props }) => (
+                    <Typography variant="h6" gutterBottom sx={{ textAlign: 'left' }} {...props} />
+                  ),
+                  p: ({ node, ...props }) => (
+                    <Typography variant="body1" paragraph sx={{ textAlign: 'left' }} {...props} />
+                  ),
+                  ul: ({ node, ...props }) => (
+                    <Box component="ul" sx={{ pl: 2, textAlign: 'left' }} {...props} />
+                  ),
+                  ol: ({ node, ...props }) => (
+                    <Box component="ol" sx={{ pl: 2, textAlign: 'left' }} {...props} />
+                  ),
+                  li: ({ node, ...props }) => (
+                    <Typography
+                      component="li"
+                      variant="body1"
+                      sx={{ textAlign: 'left' }}
+                      {...props}
+                    />
+                  ),
                   blockquote: ({ node, ...props }) => (
                     <Box
                       component="blockquote"
@@ -120,42 +132,63 @@ const SummaryModal: React.FC<SummaryModalProps> = ({
                         py: 1,
                         my: 2,
                         bgcolor: 'rgba(0,0,0,0.03)',
-                        textAlign: 'left'
+                        textAlign: 'left',
                       }}
                       {...props}
                     />
                   ),
-                  code: ({ node, inline, ...props }) => 
+                  code: ({ node, inline, ...props }) =>
                     inline ? (
-                      <Typography component="code" sx={{ backgroundColor: '#f5f5f5', p: 0.5, borderRadius: 1, fontFamily: 'monospace' }} {...props} />
+                      <Typography
+                        component="code"
+                        sx={{
+                          backgroundColor: '#f5f5f5',
+                          p: 0.5,
+                          borderRadius: 1,
+                          fontFamily: 'monospace',
+                        }}
+                        {...props}
+                      />
                     ) : (
-                      <Box 
-                        component="pre" 
-                        sx={{ 
-                          backgroundColor: '#f5f5f5', 
-                          p: 2, 
+                      <Box
+                        component="pre"
+                        sx={{
+                          backgroundColor: '#f5f5f5',
+                          p: 2,
                           borderRadius: 1,
                           overflowX: 'auto',
                           textAlign: 'left',
-                          '& code': { fontFamily: 'monospace' }
+                          '& code': { fontFamily: 'monospace' },
                         }}
-                        {...props} 
+                        {...props}
                       />
                     ),
                   table: ({ node, ...props }) => (
                     <Box sx={{ overflowX: 'auto', my: 2 }}>
-                      <Box component="table" sx={{ borderCollapse: 'collapse', width: '100%', textAlign: 'left' }} {...props} />
+                      <Box
+                        component="table"
+                        sx={{ borderCollapse: 'collapse', width: '100%', textAlign: 'left' }}
+                        {...props}
+                      />
                     </Box>
                   ),
                   th: ({ node, ...props }) => (
-                    <Box component="th" sx={{ borderBottom: '1px solid #ddd', p: 1, textAlign: 'left' }} {...props} />
+                    <Box
+                      component="th"
+                      sx={{ borderBottom: '1px solid #ddd', p: 1, textAlign: 'left' }}
+                      {...props}
+                    />
                   ),
                   td: ({ node, ...props }) => (
-                    <Box component="td" sx={{ borderBottom: '1px solid #ddd', p: 1, textAlign: 'left' }} {...props} />
+                    <Box
+                      component="td"
+                      sx={{ borderBottom: '1px solid #ddd', p: 1, textAlign: 'left' }}
+                      {...props}
+                    />
                   ),
                 }}
               >
-                {summary || '요약 내용이 없습니다.'}
+                {data || '요약 내용이 없습니다.'}
               </ReactMarkdown>
             </Box>
           )}

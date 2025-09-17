@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException, File, UploadFile, BackgroundTasks, Request, Body
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import os
 import shutil
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 import logging
 import traceback
 import uuid
@@ -11,727 +11,656 @@ import subprocess
 import sys
 from pathlib import Path
 from datetime import datetime
+import asyncio
+
+# --- 필요한 모듈 임포트 (프로젝트 구조에 맞게 설정) ---
+from api.pause_api import is_cancelled, cancel_task
 from services.rag_service import get_rag_response
 from search_test.crawler_pipeline import crawling_web, sanitize_filename
-from utils.helpers import process_response_with_images, encode_image_to_base64, find_image_file
 
-# 로거 설정
+# --- 로거 및 라우터 설정 ---
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/api/v1")
 
-# search_test 디렉토리의 crawler_pipeline.py 모듈 가져오기
+# --- 모듈 동적 로드 ---
 try:
-    # 상대 경로를 사용하여 search_test 디렉토리의 모듈을 명시적으로 가져오기
-    import sys
-    from pathlib import Path
-    
-    # backend 디렉토리 경로 가져오기
-    backend_dir = Path(__file__).parent.parent.absolute()
-    search_test_dir = os.path.join(backend_dir, 'search_test')
-    
-    # search_test 디렉토리가 sys.path에 없으면 추가
-    if search_test_dir not in sys.path:
-        sys.path.append(str(search_test_dir))
-        logger.info(f"search_test 디렉토리를 sys.path에 추가했습니다: {search_test_dir}")
-    
-    # 이제 crawler_pipeline.py에서 함수 가져오기
-    from crawler_pipeline import search as perform_search, crawling_web
-    logger.info("search_test/crawler_pipeline.py에서 search 및 crawling_web 함수를 성공적으로 가져왔습니다.")
-    
-except ImportError as e:
-    logger.error(f"crawler_pipeline 모듈 가져오기 실패: {e}")
-    logger.error(f"전체 오류 스택: {traceback.format_exc()}")
+    backend_dir = Path(__file__).resolve().parent.parent
+    search_test_dir = backend_dir / 'search_test'
+    sys.path.append(str(search_test_dir))
+    from crawler_pipeline import search as perform_search
+    logger.info("crawler_pipeline 모듈을 성공적으로 가져왔습니다.")
+except ImportError:
+    logger.error("crawler_pipeline 모듈 가져오기 실패", exc_info=True)
     perform_search = None
-    crawling_web = None
 
-# API 라우터 설정
-router = APIRouter()
+# 경로 설정
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
 
-# 작업 상태를 저장할 딕셔너리 (프로세스 재시작 시 초기화됨)
-tasks = {}
-# no_llm_summary_routes.py에서 가져온 작업 상태 저장소
-task_status = {}
+# crawler_summary_llm 모듈 임포트
+try:
+    from crawler_summary_llm import AnswerGenerator
+    logger.info("AnswerGenerator 모듈 임포트 성공")
+except ImportError as e:
+    logger.error(f"AnswerGenerator 모듈 임포트 실패: {e}")
+    raise
 
-# nextits_data 경로 설정
-NEXTITS_DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'nextits_data'))
-DOC_DIR = os.path.join(NEXTITS_DATA_DIR, "doc")
-# 서버 시작 시 디렉터리가 없으면 생성
-os.makedirs(DOC_DIR, exist_ok=True)
+# --- 작업 상태 관리 ---
+tasks: Dict[str, Dict[str, Any]] = {}
 
-# 크롤링 결과 저장 디렉토리 (no_llm_summary_routes.py에서 가져옴)
-CRAWLING_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'search_test', 'Crawling_data')
-SNIPPET_DIR = os.path.join(CRAWLING_DIR, '4.snippet')
-CLEAN_MD_DIR = os.path.join(CRAWLING_DIR, '6.clean_md')
+# --- Pydantic 모델 정의 ---
+class RootResponse(BaseModel): message: str
+class SearchQuery(BaseModel): query: str
+class SearchResponse(BaseModel): results: List[Dict[str, Any]]
+class AddDocumentRequest(BaseModel): title: str; link: str
+class TaskCreationResponse(BaseModel): task_id: str; status: str
+class UploadResponse(BaseModel): message: str; files: List[Dict[str, Any]]
+class FileListResponse(BaseModel): files: List[str]
+class FileContentResponse(BaseModel): filename: str; content: str
+class DeleteFilesRequest(BaseModel): filenames: List[str]
+class DeleteFilesResponse(BaseModel): message: str; deleted_files: List[str]; failed_files: List[Dict[str, str]]
+class ChatQuery(BaseModel): query: str; sources: List[str] = []
+class ChatResponse(BaseModel): answer: str; images: List[str]
+class SummarizeRequest(BaseModel): filenames: List[str]
+class TaskStatusResponse(BaseModel): task_id: str; status: str; message: Optional[str] = None; progress: Optional[int] = None; result: Optional[Any] = None; error: Optional[str] = None
+class SummarizeResponse(BaseModel):
+    summary: str
+    files: List[str]
+    timestamp: str
 
-# 디렉토리 생성
-os.makedirs(SNIPPET_DIR, exist_ok=True)
-os.makedirs(CLEAN_MD_DIR, exist_ok=True)
 
-@router.get("/")
-def read_root() -> Dict[str, str]:
-    """서버가 실행 중인지 확인하는 기본 엔드포인트"""
-    return {"message": "Welcome to the Chatbot API"}
+# --- 경로 설정 ---
+BASE_DIR = Path(__file__).resolve().parent.parent
+NEXTITS_DATA_DIR = BASE_DIR / "nextits_data"
+DOC_DIR = NEXTITS_DATA_DIR / "doc"
+OCR_RESULTS_DIR = NEXTITS_DATA_DIR / "Results" / "3.OCR_results"
+SUMMARIZE_DIR = NEXTITS_DATA_DIR / "Results" / "6.summarize"
+CRAWLING_DIR = BASE_DIR / "search_test" / "Crawling_data"
+SNIPPET_DIR = CRAWLING_DIR / "4.snippet"
+CLEAN_MD_DIR = CRAWLING_DIR / "6.clean_md"
 
-class SearchQuery(BaseModel):
-    query: str
+# --- 디렉터리 생성 ---
+for dir_path in [DOC_DIR, OCR_RESULTS_DIR, SUMMARIZE_DIR, SNIPPET_DIR, CLEAN_MD_DIR]:
+    dir_path.mkdir(parents=True, exist_ok=True)
     
-    class Config:
-        str_strip_whitespace = True  # 자동으로 공백 제거
-    
-    @validator('query')
-    def validate_query(cls, v):
-        if not v or not v.strip():
-            raise ValueError('검색어는 비어있을 수 없습니다.')
-        if len(v.strip()) < 1:
-            raise ValueError('검색어는 최소 1자 이상이어야 합니다.')
-        return v.strip()
+# --- 유틸리티 함수 ---
+def check_and_handle_pause(task_id: str) -> bool:
+    """작업 취소 상태를 확인하고 처리합니다."""
+    if is_cancelled(task_id):
+        if tasks.get(task_id, {}).get('status') != 'cancelled':
+            tasks[task_id].update({
+                'status': 'cancelled',
+                'message': '작업이 사용자에 의해 취소되었습니다.'
+            })
+            logger.info(f"[Task {task_id}] 작업이 취소 상태로 변경되었습니다.")
+        return True
+    return False
 
-@router.post("/search")
-async def search(request: Request, query: SearchQuery) -> Dict[str, Any]:
-    # 요청 정보 상세 로깅
-    logger.info(f"=== 검색 요청 시작 ===")
-    logger.info(f"요청 URL: {request.url}")
-    logger.info(f"요청 메서드: {request.method}")
-    logger.info(f"요청 헤더: {dict(request.headers)}")
-    logger.info(f"검색어: '{query.query}' (타입: {type(query.query)}, 길이: {len(query.query)})")
-    
-    if perform_search is None or crawling_web is None:
-        error_msg = "검색 또는 크롤링 모듈을 가져올 수 없습니다. 서버 로그를 확인해주세요."
-        logger.error(error_msg)
-        raise HTTPException(status_code=500, detail=error_msg)
-    
-    try:
-        logger.info("검색 함수 실행 시작")
-        results = perform_search(query.query, 10, [])
-        
-        if results is None:
-            logger.warning("검색 결과가 None입니다.")
-            results = []
-        
-        logger.info(f"검색 완료: {len(results)}개 결과 반환")
-        logger.info(f"=== 검색 요청 완료 ===")
-        return {"results": results}
-    except ValueError as ve:
-        error_msg = f"입력 값 오류: {str(ve)}"
-        logger.error(error_msg)
-        raise HTTPException(status_code=422, detail=error_msg)
-    except Exception as e:
-        error_msg = f"검색 중 오류 발생: {str(e)}"
-        logger.error(error_msg)
-        logger.error(f"전체 오류 스택: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=error_msg)
-
-class AddDocumentRequest(BaseModel):
-    title: str
-    link: str
-
-def run_document_pipeline(title: str, link: str, task_id: str):
-    """
-    백그라운드에서 실행될 문서 처리 파이프라인.
-    """
-    logger.info(f"[Task {task_id}] 🚀 Starting document pipeline for: {title}")
-    logger.info(f"[Task {task_id}] Initial task state: {tasks.get(task_id, 'NOT FOUND')}")
-    
+# --- 백그라운드 작업 함수 ---
+def run_document_pipeline(task_id: str, title: str, link: str):
+    """(검색 기반) 문서 추가 및 인덱싱 파이프라인"""
+    logger.info(f"[{task_id}] 문서 파이프라인 시작: {title}")
     tasks[task_id]['status'] = 'processing'
-    output_dir = DOC_DIR
-    
-    logger.info(f"[Task {task_id}] Status set to 'processing', output_dir: {output_dir}")
-    
+    tasks[task_id]['message'] = '웹 페이지 크롤링 중...'
     try:
-        logger.info(f"[Task {task_id}] Crawling web for: {title}")
-        file_path = crawling_web(result={'title': title, 'link': link}, output_dir=output_dir)
+        if check_and_handle_pause(task_id): return
+        file_path = crawling_web(result={'title': title, 'link': link}, output_dir=str(DOC_DIR))
         
-        # 크롤링 결과가 파일 경로인지 확인
-        if isinstance(file_path, str) and os.path.exists(file_path):
-            logger.info(f"[Task {task_id}] Using file: {file_path}")
-        else:
-            # 크롤링 결과가 유효한 파일 경로가 아닌 경우
-            logger.error(f"[Task {task_id}] Invalid crawling result: {file_path}")
-            tasks[task_id]['status'] = 'error'
-            tasks[task_id]['message'] = f"Invalid crawling result: {file_path}"
-            return
-        
-        if not file_path or not os.path.exists(file_path):
-            raise ValueError(f"Failed to create markdown file for {title}")
+        if not (isinstance(file_path, str) and os.path.exists(file_path)):
+            raise ValueError(f"크롤링 실패 또는 유효하지 않은 파일 경로: {file_path}")
 
-
-        logger.info(f"[Task {task_id}] Running chunking script for: {file_path}")
+        tasks[task_id]['message'] = '문서 청킹 및 인덱싱 중...'
+        if check_and_handle_pause(task_id): return
         
-        # rag_pipeline.py와 동일한 방식으로 직접 import하여 실행
-        original_cwd = os.getcwd()
-        original_sys_path = list(sys.path)
-        
+        original_cwd, original_sys_path, original_argv = os.getcwd(), list(sys.path), sys.argv
         try:
-            # notebooklm 디렉토리 경로 설정
-            notebooklm_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+            notebooklm_path = str(BASE_DIR)
             sys.path.insert(0, notebooklm_path)
             os.chdir(notebooklm_path)
             
-            # qwen3_late_chunking 모듈 동적 import
             from notebooklm.qwen3_late_chunking import main as chunking_main
-            
-            # 원래 sys.argv를 백업하고 새 인자 설정
-            original_argv = sys.argv
-            index_path = os.path.abspath(os.path.join(notebooklm_path, 'notebooklm', 'faiss_test', 'text_index.faiss'))
+            index_path = str(BASE_DIR / 'notebooklm' / 'faiss_test' / 'text_index.faiss')
             sys.argv = ['qwen3_late_chunking.py', '--input-file', file_path, '--index-path', index_path]
-            
-            # 직접 main 함수 호출
-            logger.info(f"[Task {task_id}] Directly calling chunking_main function")
             chunking_main()
-            logger.info(f"[Task {task_id}] Chunking completed successfully")
             
-            # 인덱스 다시 로드
-            logger.info(f"[Task {task_id}] Reloading text index after chunking")
-            try:
-                # 새로운 TextSearcher 인스턴스를 생성하여 인덱스 다시 로드
-                from notebooklm.rag_text.text_search import TextSearcher
-                
-                # 인덱스 디렉토리 경로
-                index_dir = os.path.dirname(index_path)
-                
-                # 새 TextSearcher 인스턴스 생성 및 인덱스 로드
-                temp_searcher = TextSearcher(index_path=index_dir)
-                logger.info(f"[Task {task_id}] Created new TextSearcher and loaded index from {index_dir}")
-                
-                # 기존 인스턴스는 직접 접근할 수 없으므로 새로 생성한 TextSearcher만 사용
-                # 이미 새로운 인덱스가 로드되었으므로 추가 작업 필요 없음
-                logger.info(f"[Task {task_id}] New text searcher instance is ready with fresh index")
-                
-                # 이후 새로운 요청에서는 자동으로 새 인덱스가 사용됨
-            except Exception as e:
-                logger.error(f"[Task {task_id}] Error reloading text index: {str(e)}", exc_info=True)
-            
-        except Exception as e:
-            logger.error(f"[Task {task_id}] Error during chunking: {str(e)}", exc_info=True)
-            raise ValueError(f"Chunking failed: {str(e)}")
+            from notebooklm.rag_text.text_search import TextSearcher
+            TextSearcher(index_path=str(Path(index_path).parent))
         finally:
-            # 환경 복원
-            os.chdir(original_cwd)
-            sys.path = original_sys_path
-            if 'original_argv' in locals():
-                sys.argv = original_argv
-
-        tasks[task_id]['status'] = 'completed'
-        tasks[task_id]['result'] = f"Document '{title}' added and indexed successfully."
-        logger.info(f"[Task {task_id}] ✅ TASK COMPLETED SUCCESSFULLY - Status set to 'completed'")
-        logger.info(f"[Task {task_id}] Final task state: {tasks[task_id]}")
-
-    except Exception as e:
-        logger.error(f"[Task {task_id}] ❌ PIPELINE FAILED: {e}")
-        logger.error(f"[Task {task_id}] Full error traceback: {traceback.format_exc()}")
-        tasks[task_id]['status'] = 'failed'
-        tasks[task_id]['error'] = str(e)
-        logger.info(f"[Task {task_id}] Final task state (failed): {tasks[task_id]}")
-
-@router.post("/add_document_from_search")
-def add_document_from_search(request: AddDocumentRequest, background_tasks: BackgroundTasks):
-    task_id = str(uuid.uuid4())
-    safe_filename = re.sub(r'[\/*?":<>|]', "", request.title) # 유효하지 않은 문자 제거
-    md_filename = f"{safe_filename}.md"
-    
-    tasks[task_id] = {
-        'status': 'pending',
-        'file_name': md_filename,
-        'title': request.title
-    }
-    
-    background_tasks.add_task(run_document_pipeline, request.title, request.link, task_id)
-    
-    return {"task_id": task_id, "file_name": md_filename, "title": request.title, "status": "processing"}
-
-@router.get("/task_status/{task_id}")
-async def get_task_status(task_id: str):
-    task = tasks.get(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return task
-
-# class SummarizeRequest(BaseModel):
-#     query: str
-#     documents: list
-
-# @router.post("/api/summarize")
-# async def summarize(request: SummarizeRequest) -> Dict[str, str]:
-#     """
-#     클라이언트로부터 문서 목록을 받아 요약 결과를 반환합니다.
-#     """
-#     documents = request.documents
-#     logger.info(f"{len(documents)}개의 문서에 대한 요약 요청을 받았습니다.")
-
-#     if perform_summarize is None:
-#         raise HTTPException(status_code=500, detail="요약 모듈을 사용할 수 없습니다.")
-
-#     if not documents:
-#         raise HTTPException(status_code=400, detail="요약할 문서가 없습니다.")
-
-#     try:
-#         # crawler_pipeline의 summarize 함수 호출
-#         summary_text = perform_summarize(request.query, request.documents)
-#         logger.info("요약 생성을 완료했습니다.")
-#         return {"summary": summary_text}
-
-#     except Exception as e:
-#         error_msg = f"요약 중 오류 발생: {str(e)}"
-#         logger.error(error_msg)
-#         logger.error(f"전체 오류 스택: {traceback.format_exc()}")
-#         raise HTTPException(status_code=500, detail=error_msg)
-
-def run_text_indexing(task_id: str, file_path: str):
-    """텍스트 인덱싱을 실행하는 함수 - 직접 함수 호출 방식으로 변경"""
-    global tasks
-    try:
-        # 원본 파일 경로에서 파일명 추출
-        file_name = os.path.basename(file_path)
-        base_name, _ = os.path.splitext(file_name)
-        
-        # OCR 결과 파일 경로 생성
-        ocr_results_dir = os.path.join(NEXTITS_DATA_DIR, "Results", "3.OCR_results")
-        md_file_path = os.path.join(ocr_results_dir, f"{base_name}.md")
-        
-        # 파일이 존재하는지 확인
-        if not os.path.exists(md_file_path):
-            alternative_md_file = os.path.join(ocr_results_dir, f"{file_name}.md")
-            if os.path.exists(alternative_md_file):
-                md_file_path = alternative_md_file
-            else:
-                error_message = f"OCR 결과 파일을 찾을 수 없습니다: {md_file_path}"
-                logger.error(error_message)
-                tasks[task_id]['status'] = 'index_failed'
-                tasks[task_id]['error'] = error_message
-                return
-        
-        # 기본 인덱스 경로
-        index_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'notebooklm', 'faiss_test', 'text_index.faiss'))
-        
-        logger.info(f"텍스트 인덱싱 시작 (task {task_id}): {md_file_path}")
-        tasks[task_id]['status'] = 'indexing'
-        tasks[task_id]['progress'] = "텍스트 인덱싱 중..."
-        
-        # 원래 작업 디렉토리와 sys.path 백업
-        original_cwd = os.getcwd()
-        original_sys_path = list(sys.path)
-        original_argv = sys.argv
-        
-        try:
-            # notebooklm 디렉토리 경로 설정
-            notebooklm_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-            sys.path.insert(0, notebooklm_path)
-            os.chdir(notebooklm_path)
-            
-            # qwen3_late_chunking 모듈 동적 import
-            from notebooklm.qwen3_late_chunking import main as chunking_main
-            
-            # 새 인자 설정
-            sys.argv = ['qwen3_late_chunking.py', '--input-file', md_file_path, '--index-path', index_path]
-            
-            # 직접 main 함수 호출
-            logger.info(f"[Task {task_id}] 직접 chunking_main 함수 호출")
-            chunking_main()
-            logger.info(f"[Task {task_id}] 청킹 완료")
-            
-            # 인덱스 다시 로드
-            logger.info(f"[Task {task_id}] 텍스트 인덱스 다시 로드")
-            try:
-                # 새로운 TextSearcher 인스턴스를 생성하여 인덱스 다시 로드
-                from notebooklm.rag_text.text_search import TextSearcher
-                
-                # 인덱스 디렉토리 경로
-                index_dir = os.path.dirname(index_path)
-                
-                # 새 TextSearcher 인스턴스 생성 및 인덱스 로드
-                temp_searcher = TextSearcher(index_path=index_dir)
-                logger.info(f"[Task {task_id}] 새 TextSearcher 생성 및 인덱스 로드 완료: {index_dir}")
-                
-                # 이후 새로운 요청에서는 자동으로 새 인덱스가 사용됨
-            except Exception as e:
-                logger.warning(f"[Task {task_id}] 인덱스 다시 로드 중 경고 (치명적이지 않음): {e}")
-            
-            # 성공 상태 업데이트
-            tasks[task_id]['status'] = 'index_completed'
-            tasks[task_id]['result'] = {"message": "파일 처리 및 인덱싱 완료"}
-            logger.info(f"텍스트 인덱싱 성공 (task {task_id})")
-            
-        finally:
-            # 원래 환경 복원
             os.chdir(original_cwd)
             sys.path = original_sys_path
             sys.argv = original_argv
-    
+
+        tasks[task_id].update({
+            'status': 'completed',
+            'message': '문서 추가 및 인덱싱이 성공적으로 완료되었습니다.',
+            'result': {'file_path': file_path}
+        })
+        logger.info(f"[{task_id}] 문서 처리 성공: {title}")
     except Exception as e:
-        logger.error(f"텍스트 인덱싱 중 오류 발생 (task {task_id}): {e}", exc_info=True)
-        tasks[task_id]['status'] = 'index_failed'
-        tasks[task_id]['error'] = str(e)
+        logger.error(f"[{task_id}] 문서 파이프라인 실패: {e}", exc_info=True)
+        tasks[task_id].update({'status': 'failed', 'error': str(e)})
+
+def run_text_indexing(task_id: str, file_path: str):
+    """텍스트 인덱싱 실행 함수"""
+    logger.info(f"[{task_id}] 텍스트 인덱싱 시작: {file_path}")
+    tasks[task_id]['status'] = 'indexing'
+    tasks[task_id]['message'] = '텍스트 인덱싱 중...'
+    try:
+        if check_and_handle_pause(task_id): return
+        base_name = Path(file_path).stem
+        md_file_path = OCR_RESULTS_DIR / f"{base_name}.md"
+        
+        if not md_file_path.exists():
+            raise FileNotFoundError(f"OCR 결과 파일(.md)을 찾을 수 없습니다: {md_file_path}")
+
+        original_cwd, original_sys_path, original_argv = os.getcwd(), list(sys.path), sys.argv
+        try:
+            notebooklm_path = str(BASE_DIR)
+            sys.path.insert(0, notebooklm_path)
+            os.chdir(notebooklm_path)
+
+            from notebooklm.qwen3_late_chunking import main as chunking_main
+            index_path = str(BASE_DIR / 'notebooklm' / 'faiss_test' / 'text_index.faiss')
+            sys.argv = ['qwen3_late_chunking.py', '--input-file', str(md_file_path), '--index-path', index_path]
+            chunking_main()
+            
+            from notebooklm.rag_text.text_search import TextSearcher
+            TextSearcher(index_path=str(Path(index_path).parent))
+        finally:
+            os.chdir(original_cwd)
+            sys.path = original_sys_path
+            sys.argv = original_argv
+
+        tasks[task_id].update({
+            'status': 'index_completed',
+            'message': '파일 처리 및 인덱싱 완료'
+        })
+        logger.info(f"[{task_id}] 텍스트 인덱싱 성공")
+    except Exception as e:
+        logger.error(f"[{task_id}] 텍스트 인덱싱 실패: {e}", exc_info=True)
+        tasks[task_id].update({'status': 'index_failed', 'error': str(e)})
 
 def run_processing_pipeline(task_id: str, file_path: str):
-    global tasks
+    """(업로드된 파일) 처리 및 인덱싱 파이프라인"""
+    logger.info(f"[{task_id}] 파일 처리 파이프라인 시작: {file_path}")
+    tasks[task_id]['status'] = 'processing'
+    tasks[task_id]['message'] = '파일 처리 스크립트 실행 중...'
     try:
-        logger.info(f"Starting processing for task {task_id}: {file_path}")
+        if check_and_handle_pause(task_id): return
+        script_path = NEXTITS_DATA_DIR / "pipe" / "run_file_processor.py"
+        if not script_path.exists():
+            raise FileNotFoundError(f"처리 스크립트를 찾을 수 없습니다: {script_path}")
 
-        # pipe/run_file_processor.py 스크립트의 절대 경로
-        script_path = os.path.join(NEXTITS_DATA_DIR, "pipe", "run_file_processor.py")
-
-        if not os.path.exists(script_path):
-            error_message = f"Processing script not found at {script_path}"
-            logger.error(error_message)
-            tasks[task_id] = {"status": "failed", "error": error_message, "file_path": file_path}
-            return
-
-        # subprocess를 사용하여 스크립트 실행
-        command = [
-            sys.executable,  # 현재 파이썬 인터프리터 사용
-            script_path,
-            "--file",
-            file_path
-        ]
-        
-        logger.info(f"Executing command: {' '.join(command)}")
-        tasks[task_id]['status'] = 'processing'
-        tasks[task_id]['progress'] = "파일 처리 중..."
-
-        # 스크립트 실행
+        command = [sys.executable, str(script_path), "--file", file_path]
         result = subprocess.run(command, capture_output=True, text=True, check=False, encoding='utf-8')
 
-        # 실행 결과 로깅
         if result.returncode == 0:
-            logger.info(f"Script execution successful for task {task_id}.")
-            logger.info(f"STDOUT:\n{result.stdout}")
+            logger.info(f"[{task_id}] 스크립트 실행 성공, 텍스트 인덱싱 시작.")
             tasks[task_id]['status'] = 'processed'
-            tasks[task_id]['result'] = {"message": "File processed successfully", "output": result.stdout}
-            
-            # 파일 처리 완료 후 텍스트 인덱싱 실행
-            logger.info(f"Starting text indexing for task {task_id}")
             run_text_indexing(task_id, file_path)
         else:
-            error_message = f"Script execution failed for task {task_id} with return code {result.returncode}.\nSTDERR:\n{result.stderr}"
-            logger.error(error_message)
-            tasks[task_id] = {"status": "failed", "error": result.stderr, "file_path": file_path}
-
+            raise RuntimeError(f"스크립트 실행 실패:\n{result.stderr}")
     except Exception as e:
-        logger.error(f"Error processing task {task_id}: {e}", exc_info=True)
-        tasks[task_id] = {"status": "failed", "error": str(e), "file_path": file_path}
+        logger.error(f"[{task_id}] 파일 처리 파이프라인 실패: {e}", exc_info=True)
+        tasks[task_id].update({'status': 'failed', 'error': str(e)})
 
-@router.post("/upload", summary="Upload files and process them")
-async def upload_files(background_tasks: BackgroundTasks, files: List[UploadFile] = File(...)):
-    """
-    파일을 비동기적으로 업로드하고 처리 파이프라인을 실행합니다.
-    """
-    logger.info(f"'/api/upload' 엔드포인트 수신. {len(files)}개의 파일.")
-    saved_files_info = []
-    for file in files:
-        safe_filename = "".join(c for c in file.filename if c.isalnum() or c in ('_', '.', '-')).strip()
-        if not safe_filename:
-            safe_filename = f"{uuid.uuid4().hex}.dat"
-            
-        saved_file_path = os.path.join(DOC_DIR, safe_filename)
+
+# 요약 생성기 인스턴스 (싱글톤으로 관리)
+answer_generator = None
+
+def get_answer_generator():
+    global answer_generator
+    if answer_generator is None:
+        answer_generator = AnswerGenerator()
+        logger.info("AnswerGenerator 인스턴스 생성 완료")
+    return answer_generator
+
+
+async def process_summarize_files(task_id: str, filenames: List[str]):
+    """지정된 파일들을 찾아 내용을 요약하는 백그라운드 함수"""
+    logger.info(f"[{task_id}] 파일 요약 작업 시작: {filenames}")
+    tasks[task_id].update({"status": "running", "message": "요약할 파일을 찾는 중...", "progress": 10})
+
+    try:
+        summaries, sources = [], []
         
         try:
-            with open(saved_file_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
-        
-            logger.info(f"파일 저장 완료: {saved_file_path}")
-            task_id = str(uuid.uuid4())
-            tasks[task_id] = {"status": "queued", "filename": safe_filename}
+            from search_test.crawler_summary_llm import AnswerGenerator
+        except ImportError:
+            tasks[task_id].update({"status": "failed", "error": "요약 모듈(first_summary_no_llm)을 찾을 수 없습니다."})
+            return
+
+        for i, filename in enumerate(filenames):
+            if await asyncio.to_thread(check_and_handle_pause, task_id): return
             
-            background_tasks.add_task(run_processing_pipeline, task_id, str(saved_file_path))
+            progress = 10 + int((i / len(filenames)) * 80)
+            tasks[task_id].update({"message": f"파일 처리 중... ({i+1}/{len(filenames)}): {filename}", "progress": progress})
+
+            # OCR 처리된 .md 파일을 우선적으로 찾음
+            base_name = Path(filename).stem
+            file_to_summarize = OCR_RESULTS_DIR / f"{base_name}.md"
+
+            # .md 파일이 없으면 원본 파일 디렉토리(DOC_DIR)에서 찾아봄
+            if not file_to_summarize.exists():
+                file_to_summarize = DOC_DIR / filename
             
-            saved_files_info.append({
-                "filename": safe_filename,
-                "task_id": task_id,
-                "size": os.path.getsize(saved_file_path),
-                "content_type": file.content_type
-            })
-            logger.info(f"파일 처리 작업 시작: {saved_file_path}, Task ID: {task_id}")
+            if not file_to_summarize.exists():
+                logger.warning(f"[{task_id}] 요약할 파일을 찾을 수 없습니다: {filename}")
+                continue
 
-        except Exception as e:
-            error_msg = f"'{safe_filename}' 파일 처리 시작 중 오류 발생: {e}"
-            logger.error(error_msg)
-            logger.error(f"전체 오류 스택: {traceback.format_exc()}")
-            raise HTTPException(status_code=500, detail=error_msg)
-        finally:
-            file.file.close()
+            try:
+                # 파일 내용 읽기
+                with open(file_to_summarize, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                if not content or content.isspace():
+                    logger.warning(f"[{task_id}] 파일에 요약할 텍스트가 없습니다: {filename}")
+                    continue
+                    
+                # AnswerGenerator 인스턴스 생성 및 요약 생성
+                generator = AnswerGenerator()
+                summary = generator.generate_answer(content)
+                
+                # 메모리 정리
+                generator.cleanup_model()
+                
+                if summary and summary != "(관련된 구글 검색 결과를 찾을 수 없습니다)":
+                    summaries.append(summary)
+                    sources.append({"filename": filename, "path": str(file_to_summarize)})
+            except Exception as e:
+                logger.warning(f"[{task_id}] 파일 요약 중 오류 ({filename}): {e}")
 
-    logger.info(f"파일 처리 작업 시작 및 응답 반환. Task IDs: {[info['task_id'] for info in saved_files_info]}")
-    return {"message": f"{len(saved_files_info)}개의 파일이 성공적으로 업로드 및 처리 시작됨", "files": saved_files_info}
+        if not summaries:
+            tasks[task_id].update({"status": "completed", "message": "요약할 내용이 있는 파일을 찾지 못했습니다.", "progress": 100, "result": {"summary": "요약할 내용이 없습니다.", "sources": []}})
+            return
 
-@router.get("/task_status/{task_id}")
-async def get_task_status(task_id: str):
-    task = tasks.get(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return task
-
-@router.get("/files", summary="List files in the document directory")
-async def list_files():
-    """
-    `nextits_data/doc` 디렉터리에 있는 파일 목록을 반환합니다.
-    """
-    try:
-        if not os.path.isdir(DOC_DIR):
-            logger.warning(f"Doc directory not found at: {DOC_DIR}")
-            return {"files": []}
-
-        files = [f for f in os.listdir(DOC_DIR) if os.path.isfile(os.path.join(DOC_DIR, f))]
-        logger.info(f"Found {len(files)} files in {DOC_DIR}")
-        return {"files": files}
-    except Exception as e:
-        logger.error(f"Error listing files from {DOC_DIR}: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="파일 목록을 가져오는 중 오류가 발생했습니다.")
-
-@router.get("/file/{filename}", summary="Get file content from OCR results")
-async def get_file_content(filename: str):
-    """
-    `nextits_data/Results/3.OCR_results` 디렉터리에서
-    주어진 파일명과 동일한 이름의 마크다운(.md) 파일 내용을 반환합니다.
-    """
-    try:
-        # 원본 파일 이름에서 확장자를 제거하고 .md를 붙이거나, 그대로 .md를 붙입니다.
-        base_filename, _ = os.path.splitext(filename)
-        md_filename = f"{filename}.md"
+        final_summary = "\n\n---\n\n".join(summaries)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # 여러 파일 요약 시 파일명을 명확히 함
+        safe_filenames_str = sanitize_filename("_".join(filenames))
+        result_file = SUMMARIZE_DIR / f"summary_{timestamp}_{safe_filenames_str}.md"
+        result_file.write_text(final_summary, encoding="utf-8")
         
-        ocr_results_dir = os.path.join(NEXTITS_DATA_DIR, "Results", "3.OCR_results")
-        file_path = os.path.join(ocr_results_dir, md_filename)
-
-        logger.info(f"Attempting to read file: {file_path}")
-
-        if not os.path.isfile(file_path):
-            # 혹시 모를 다른 경우 (e.g., report.pdf -> report.md)
-            alternative_md_filename = f"{base_filename}.md"
-            alternative_file_path = os.path.join(ocr_results_dir, alternative_md_filename)
-            logger.info(f"Primary file not found, trying alternative: {alternative_file_path}")
-            if not os.path.isfile(alternative_file_path):
-                 raise HTTPException(status_code=404, detail=f"'{md_filename}' 또는 '{alternative_md_filename}' 파일을 찾을 수 없습니다.")
-            file_path = alternative_file_path
-
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        return {"filename": os.path.basename(file_path), "content": content}
-
-    except HTTPException as http_exc:
-        logger.warning(f"File not found for '{filename}': {http_exc.detail}")
-        raise http_exc
-    except Exception as e:
-        logger.error(f"Error reading file content for '{filename}': {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="파일 내용을 읽는 중 오류가 발생했습니다.")
-
-# Pydantic 모델 정의
-class ChatQuery(BaseModel):
-    query: str
-    sources: List[str] = []
-
-class ChatResponse(BaseModel):
-    answer: str
-    images: List[str]
-
-@router.post("/v1/chat", response_model=ChatResponse)
-def chat(query: ChatQuery, request: Request):
-    logger.info(f"Received query: {query.query} with sources: {query.sources}")
-    try:
-        # RAG 파이프라인 인스턴스를 app.state에서 가져옵니다.
-        rag_pipeline = request.app.state.rag_pipeline
-        if not rag_pipeline:
-            logger.error("RAG pipeline is not initialized or not found in app.state.")
-            raise HTTPException(status_code=503, detail="RAG pipeline is not available.")
-
-        # RAG 서비스를 직접 호출합니다.
-        rag_response = get_rag_response(query.query, query.sources, rag_pipeline)
-        
-        # rag_response가 이미 {'answer': str, 'images': List[str]} 형식이니
-        # ChatResponse 모델에 맞게 언패킹하여 전달합니다.
-        return ChatResponse(**rag_response)
+        tasks[task_id].update({
+            "status": "completed", "message": "요약이 완료되었습니다.", "progress": 100,
+            "result": {"summary": final_summary, "sources": sources, "result_file": str(result_file)}
+        })
+        logger.info(f"[{task_id}] 파일 요약 작업 완료. 파일: {result_file}")
 
     except Exception as e:
-        logger.error(f"Error in chat endpoint: {e}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/search_and_summarize")
-async def search_and_summarize(
-    background_tasks: BackgroundTasks,
-    request_data: dict = Body(...)
-):
-    """
-    검색어를 받아 구글 검색 결과를 크롤링하고 LLM 없이 요약하는 API 엔드포인트
-    """
-    query = request_data.get("query")
-    if not query:
-        raise HTTPException(status_code=400, detail="검색어가 필요합니다")
-    
-    # 작업 ID 생성
-    task_id = str(uuid.uuid4())
-    task_status[task_id] = {
-        "status": "pending",
-        "message": "작업이 대기 중입니다",
-        "progress": 0,
-        "result": None,
-        "error": None
-    }
-    
-    # 백그라운드 작업으로 검색 및 요약 실행
-    background_tasks.add_task(
-        process_search_and_summarize,
-        task_id=task_id,
-        query=query
-    )
-    
-    return {"task_id": task_id, "status": "pending"}
-
-
-@router.get("/task_status/{task_id}")
-async def get_task_status_no_llm(task_id: str):
-    """
-    작업 상태를 확인하는 API 엔드포인트
-    """
-    if task_id not in task_status:
-        raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
-    
-    return task_status[task_id]
-
+        logger.error(f"[{task_id}] 파일 요약 파이프라인 실패: {e}", exc_info=True)
+        tasks[task_id].update({"status": "failed", "message": f"오류 발생: {e}", "progress": 100, "error": str(e)})
 
 async def process_search_and_summarize(task_id: str, query: str):
-    """
-    백그라운드에서 검색, 크롤링, 요약을 처리하는 함수
-    """
+    """검색, 크롤링, 요약 백그라운드 처리 함수"""
+    logger.info(f"[{task_id}] 요약 작업 시작: '{query}'")
     try:
-        # 상태 업데이트: 검색 시작
-        task_status[task_id].update({
-            "status": "running",
-            "message": "구글 검색 중...",
-            "progress": 10
-        })
+        task_status[task_id].update({"status": "running", "message": "구글 검색 중...", "progress": 10})
+        if await asyncio.to_thread(check_and_handle_pause, task_id): return
         
-        # 1. 구글 검색 수행
-        total_result_link = []
-        results = perform_search(query, 5, total_result_link)
-        
+        results = perform_search(query, 5, [])
+                
         if not results:
-            task_status[task_id].update({
-                "status": "completed",
-                "message": "검색 결과가 없습니다",
-                "progress": 100,
-                "result": {"summary": "검색 결과가 없습니다", "sources": []}
-            })
+            task_status[task_id].update({"status": "completed", "message": "검색 결과가 없습니다.", "progress": 100, "result": {"summary": "검색 결과가 없습니다.", "sources": []}})
             return
         
-        # 상태 업데이트: 크롤링 시작
-        task_status[task_id].update({
-            "status": "running",
-            "message": "웹 페이지 크롤링 중...",
-            "progress": 30
-        })
-        
-        # 2. 크롤링 수행
+        # 중복 결과 제거
+        unique_results = []
+        seen_links = set()
+        for result in results:
+            link = result.get("link")
+            if link and link not in seen_links:
+                seen_links.add(link)
+                unique_results.append(result)
+                
+        results = unique_results
+
+        task_status[task_id].update({"status": "running", "message": "웹 페이지 크롤링 중...", "progress": 30})
         crawled_files = []
         for i, result in enumerate(results):
+            if await asyncio.to_thread(check_and_handle_pause, task_id): return
             try:
-                # 크롤링 수행
-                file_path = crawling_web(result=result, output_dir=SNIPPET_DIR)
+                file_path = crawling_web(result=result, output_dir=str(SNIPPET_DIR))
                 if file_path and os.path.exists(file_path):
-                    crawled_files.append({
-                        "title": result.get("title", "제목 없음"),
-                        "link": result.get("link", ""),
-                        "file_path": file_path
-                    })
-                    
-                # 진행률 업데이트 (30% ~ 70%)
+                    crawled_files.append({"title": result.get("title"), "link": result.get("link"), "file_path": file_path})
                 progress = 30 + int((i + 1) / len(results) * 40)
-                task_status[task_id].update({
-                    "message": f"웹 페이지 크롤링 중... ({i+1}/{len(results)})",
-                    "progress": progress
-                })
+                task_status[task_id].update({"message": f"웹 페이지 크롤링 중... ({i+1}/{len(results)})", "progress": progress})
             except Exception as e:
-                logger.error(f"크롤링 중 오류 발생 ({result.get('link', '')}): {str(e)}")
-                # 오류가 발생해도 계속 진행
+                logger.warning(f"[{task_id}] 크롤링 중 일부 오류 ({result.get('link')}): {e}")
         
         if not crawled_files:
-            task_status[task_id].update({
-                "status": "completed",
-                "message": "크롤링된 파일이 없습니다",
-                "progress": 100,
-                "result": {"summary": "크롤링된 파일이 없습니다", "sources": []}
-            })
+            task_status[task_id].update({"status": "failed", "message": "모든 페이지 크롤링 실패", "progress": 100, "error": "크롤링된 파일이 없습니다."})
             return
-        
-        # 상태 업데이트: 요약 시작
-        task_status[task_id].update({
-            "status": "running",
-            "message": "크롤링된 내용 요약 중...",
-            "progress": 70
-        })
-        
-        # 3. 요약 수행
+
+        task_status[task_id].update({"status": "running", "message": "내용 요약 중...", "progress": 70})
         summaries = []
         sources = []
         
         # 필요한 모듈 임포트
         try:
-            from first_summary_no_llm import summarize_markdown_file
-            logger.info("요약 모듈 임포트 성공")
+            from search_test.crawler_summary_llm import AnswerGenerator
+            logger.info("LLM 요약 모듈 임포트 성공")
+            generator = AnswerGenerator()
         except ImportError as e:
-            logger.error(f"모듈 임포트 실패: {e}")
-            task_status[task_id].update({
+            logger.error(f"LLM 요약 모듈 임포트 실패: {e}")
+            tasks[task_id].update({
                 "status": "failed",
-                "message": f"요약 모듈 로드 실패: {str(e)}",
+                "message": f"LLM 요약 모듈 로드 실패: {str(e)}",
                 "progress": 100,
                 "error": str(e)
             })
             return
-        
-        for i, file_info in enumerate(crawled_files):
-            try:
-                # 파일 요약
-                summary = summarize_markdown_file(file_info["file_path"], ratio=0.3)
-                
-                if summary and summary != "요약할 텍스트가 없습니다.":
-                    summaries.append(summary)
-                    sources.append({
-                        "title": file_info["title"],
-                        "link": file_info["link"],
-                        "summary": summary[:200] + "..." if len(summary) > 200 else summary
-                    })
-                
-                # 진행률 업데이트 (70% ~ 90%)
-                progress = 70 + int((i + 1) / len(crawled_files) * 20)
-                task_status[task_id].update({
-                    "message": f"요약 중... ({i+1}/{len(crawled_files)})",
-                    "progress": progress
-                })
-            except Exception as e:
-                logger.error(f"요약 중 오류 발생 ({file_info['file_path']}): {str(e)}")
-                # 오류가 발생해도 계속 진행
-        
-        # 4. 최종 결과 생성
-        if not summaries:
-            final_summary = "요약할 내용이 없습니다."
-        else:
-            # 모든 요약을 하나로 합침
-            final_summary = f"# '{query}'에 대한 검색 결과 요약\n\n"
-            for i, summary in enumerate(summaries):
-                final_summary += f"## 출처 {i+1}: {sources[i]['title']}\n\n{summary}\n\n"
-        
-        # 결과 저장
+            
+        # 요약 작업 수행
+        try:
+            for i, file_info in enumerate(crawled_files):
+                if await asyncio.to_thread(check_and_handle_pause, task_id): 
+                    return
+                    
+                try:
+                    # 파일 내용 읽기
+                    with open(file_info["file_path"], 'r', encoding='utf-8') as f:
+                        content = f.read()
+                    
+                    if not content or content.isspace():
+                        logger.warning(f"[{task_id}] 파일에 요약할 텍스트가 없습니다: {file_info['file_path']}")
+                        continue
+                        
+                    # 요약 생성
+                    summary = generator.generate_answer(content)
+                    
+                    if summary and summary != "(관련된 구글 검색 결과를 찾을 수 없습니다)":
+                        summaries.append(summary)
+                        sources.append({"title": file_info["title"], "link": file_info["link"]})
+                    
+                    progress = 70 + int((i + 1) / len(crawled_files) * 20)
+                    task_status[task_id].update({"message": f"요약 중... ({i+1}/{len(crawled_files)})", "progress": progress})
+                    
+                except Exception as e:
+                    logger.warning(f"[{task_id}] 요약 중 일부 오류 ({file_info['file_path']}): {e}")
+            
+            final_summary = "\n\n".join(summaries) if summaries else "요약할 내용이 없습니다."
+        finally:
+            # 메모리 정리
+            if 'generator' in locals():
+                generator.cleanup_model()
+                logger.info(f"[{task_id}] LLM 요약 모델 메모리 정리 완료")
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        result_file = os.path.join(CLEAN_MD_DIR, f"summary_{timestamp}.md")
-        with open(result_file, "w", encoding="utf-8") as f:
-            f.write(final_summary)
+        result_file = CLEAN_MD_DIR / f"summary_{timestamp}_{sanitize_filename(query)}.md"
+        result_file.write_text(final_summary, encoding="utf-8")
         
-        # 상태 업데이트: 완료
         task_status[task_id].update({
-            "status": "completed",
-            "message": "요약이 완료되었습니다",
-            "progress": 100,
-            "result": {
-                "summary": final_summary,
-                "sources": sources,
-                "result_file": result_file
-            }
+            "status": "completed", "message": "요약이 완료되었습니다.", "progress": 100,
+            "result": {"summary": final_summary, "sources": sources, "result_file": str(result_file)}
         })
+        logger.info(f"[{task_id}] 요약 작업 완료. 파일: {result_file}")
+    except Exception as e:
+        logger.error(f"[{task_id}] 요약 작업 파이프라인 실패: {e}", exc_info=True)
+        task_status[task_id].update({"status": "failed", "message": f"오류 발생: {e}", "progress": 100, "error": str(e)})
+
+# --- API 엔드포인트 구현 ---
+
+# 작업 상태를 확인하는 API
+@router.get("/tasks/{task_id}", response_model=TaskStatusResponse, tags=["Task Management"])
+async def get_task_status(task_id: str) -> TaskStatusResponse:
+    # tasks와 task_status 두 딕셔너리 모두 확인
+    if task_id in tasks:
+        return TaskStatusResponse(**tasks[task_id])
+    elif task_id in task_status:
+        return TaskStatusResponse(**task_status[task_id])
+    else:
+        raise HTTPException(status_code=404, detail=f"작업 ID {task_id}를 찾을 수 없습니다.")
+
+# -- 검색 및 요약 관련 API --
+# 웹 검색 결과를 반환하는 API
+@router.post("/search", response_model=SearchResponse, tags=["Search & Summarize"])
+async def search(query: SearchQuery) -> SearchResponse:
+    if perform_search is None:
+        raise HTTPException(status_code=500, detail="검색 모듈을 사용할 수 없습니다.")
+    try:
+        results = perform_search(query.query, 10, [])
+        return {"results": results or []}
+    except Exception as e:
+        logger.error(f"검색 중 오류: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 요약 작업을 시작시키는 API
+@router.post("/summarize", response_model=SummarizeResponse)
+async def summarize_files(request_data: SummarizeRequest) -> SummarizeResponse:
+    # 요청 본문에서 file_names 추출
+    file_names = request_data.filenames
+    """
+    선택된 파일들을 요약하는 API 엔드포인트
+    """
+    logger.info(f"요약 요청 받음: {file_names}")
+    
+    try:
+        # AnswerGenerator 인스턴스 가져오기
+        generator = get_answer_generator()
+        
+        # OCR 결과 디렉토리 존재 여부 확인
+        if not os.path.exists(OCR_RESULTS_DIR):
+            logger.error(f"OCR 결과 디렉토리가 존재하지 않습니다: {OCR_RESULTS_DIR}")
+            raise HTTPException(status_code=404, detail=f"OCR 결과 디렉토리가 존재하지 않습니다: {OCR_RESULTS_DIR}")
+            
+        # OCR 결과 디렉토리가 비어있는지 확인
+        if not os.listdir(OCR_RESULTS_DIR):
+            logger.error(f"OCR 결과 디렉토리가 비어 있습니다: {OCR_RESULTS_DIR}")
+            raise HTTPException(status_code=404, detail=f"OCR 결과 디렉토리가 비어 있습니다. OCR 처리가 완료되었는지 확인하세요.")
+            
+        # 파일 내용 수집
+        file_contents = []
+        missing_files = []
+        for file_name in file_names:
+            file_path = os.path.join(OCR_RESULTS_DIR, file_name)
+            if not os.path.exists(file_path):
+                logger.warning(f"파일을 찾을 수 없음: {file_path}")
+                missing_files.append(file_name)
+                continue
+                
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    file_contents.append({
+                        "title": file_name,
+                        "content": content
+                    })
+                logger.info(f"파일 로드 성공: {file_name}")
+            except Exception as e:
+                logger.error(f"파일 읽기 오류 ({file_name}): {str(e)}")
+        
+        if not file_contents:
+            if missing_files:
+                raise HTTPException(status_code=404, detail=f"요청한 파일을 찾을 수 없습니다: {', '.join(missing_files)}")
+            else:
+                raise HTTPException(status_code=404, detail="유효한 파일을 찾을 수 없습니다")
+        
+        # 임시 저장 디렉토리 설정
+        temp_dir = os.path.join(parent_dir, 'nextits_data', 'temp')
+        os.makedirs(temp_dir, exist_ok=True)
+        
+        # 파일 내용을 make_llm_input_data에 맞는 형식으로 변환
+        formatted_data = []
+        for item in file_contents:
+            formatted_data.append({
+                "link": item["title"],  # 파일명을 링크로 사용
+                "data": item["content"],  # 파일 내용을 데이터로 사용
+                "google_snipping": ""  # 빈 스니핑
+            })
+        
+        # make_llm_input_data 호출하여 입력 데이터 생성
+        processed_data = generator.make_llm_input_data(temp_dir, formatted_data)
+        
+        # generate_answer 호출하여 요약 생성
+        summary = generator.generate_answer(processed_data)
+        
+        # 요약 결과 저장 디렉토리 설정
+        summary_dir = os.path.join(parent_dir, 'nextits_data', 'Results', '6.summarize')
+        os.makedirs(summary_dir, exist_ok=True)
+
+        # 타임스탬프 기반 파일명 생성
+        timestamp = generator.get_timestamp().replace(" ", "_").replace(":", "-")
+        summary_filename = f"summary_{file_name}.md"
+        summary_path = os.path.join(summary_dir, summary_filename)
+
+        # 요약 결과를 마크다운 파일로 저장
+        with open(summary_path, "w", encoding="utf-8") as f:
+            # 헤더 정보 추가
+            f.write(f"# 요약 결과 ({generator.get_timestamp()})\n\n")
+            f.write(f"## 요약 대상 파일\n")
+            for file_name in file_names:
+                f.write(f"- {file_name}\n")
+            f.write("\n## 요약 내용\n\n")
+            f.write(summary)
+
+        # API 응답에 파일 경로 추가
+        return {
+            "summary": summary,
+            "files": file_names,
+            "timestamp": generator.get_timestamp(),
+            "summary_file": summary_path  # 저장된 파일 경로 추가
+        }
         
     except Exception as e:
-        logger.error(f"작업 처리 중 오류 발생: {str(e)}", exc_info=True)
-        task_status[task_id].update({
-            "status": "failed",
-            "message": f"오류 발생: {str(e)}",
-            "progress": 100,
-            "error": str(e)
-        })
+        logger.error(f"요약 생성 중 오류 발생: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"요약 생성 중 오류 발생: {str(e)}")
+
+
+# 생성된 요약 파일의 목록을 조회하는 API
+@router.get("/summarizes", response_model=FileListResponse, tags=["Summarize"])
+async def list_summary_files() -> FileListResponse:
+    files = [f.name for f in SUMMARIZE_DIR.iterdir() if f.is_file()]
+    return {"files": files}
+
+# 특정 요약 파일의 내용을 상세 조회하는 API
+@router.get("/summarizes/{filename}", response_model=FileContentResponse, tags=["Search & Summarize"])
+async def get_summary_detail(filename: str) -> FileContentResponse:
+    file_path = SUMMARIZE_DIR / filename
+    if not file_path.is_file():
+        raise HTTPException(status_code=404, detail="요약 파일을 찾을 수 없습니다.")
+    content = file_path.read_text(encoding="utf-8")
+    return {"filename": filename, "content": content}
+
+# 요약 파일을 삭제하는 API
+@router.delete("/summarizes", response_model=DeleteFilesResponse, tags=["Search & Summarize"])
+async def delete_summary_files(req: DeleteFilesRequest) -> DeleteFilesResponse:
+    deleted, failed = [], []
+    for filename in req.filenames:
+        file_path = SUMMARIZE_DIR / filename
+        try:
+            if file_path.is_file():
+                file_path.unlink()
+                deleted.append(filename)
+            else:
+                failed.append({"filename": filename, "reason": "파일을 찾을 수 없음"})
+        except Exception as e:
+            logger.error(f"요약 파일 삭제 오류 ('{filename}'): {e}", exc_info=True)
+            failed.append({"filename": filename, "reason": str(e)})
+    return {
+        "message": f"요약 파일 {len(deleted)}개 삭제 성공, {len(failed)}개 실패.",
+        "deleted_files": deleted,
+        "failed_files": failed
+    }
+
+# -- 문서 관리 관련 API --
+# 검색 결과(URL) 기반으로 문서를 저장하고 처리하는 작업을 시작시키는 API
+@router.post("/upload/docs", response_model=TaskCreationResponse, tags=["Document Management"])
+def add_document_from_search(req: AddDocumentRequest, background_tasks: BackgroundTasks) -> TaskCreationResponse:
+    task_id = str(uuid.uuid4())
+    tasks[task_id] = {"task_id": task_id, "status": "pending", "message": "문서 추가 작업이 대기 중입니다."}
+    background_tasks.add_task(run_document_pipeline, task_id, req.title, req.link)
+    return {"task_id": task_id, "status": "pending"}
+
+# 로컬 파일을 서버에 업로드하고 처리하는 작업을 시작시키는 API
+@router.post("/upload/files", response_model=UploadResponse, tags=["Document Management"])
+async def upload_files(background_tasks: BackgroundTasks, files: List[UploadFile] = File(...)) -> UploadResponse:
+    saved_files_info = []
+    for file in files:
+        try:
+            safe_filename = sanitize_filename(file.filename)
+            file_path = DOC_DIR / safe_filename
+            with open(file_path, "wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+            
+            task_id = str(uuid.uuid4())
+            tasks[task_id] = {"status": "queued", "filename": safe_filename, "task_id": task_id}
+            background_tasks.add_task(run_processing_pipeline, task_id, str(file_path))
+            
+            saved_files_info.append({
+                "filename": safe_filename, "task_id": task_id,
+                "size": file_path.stat().st_size, "content_type": file.content_type
+            })
+        except Exception as e:
+            logger.error(f"'{file.filename}' 파일 업로드 오류: {e}", exc_info=True)
+        finally:
+            file.file.close()
+    return {"message": f"{len(saved_files_info)}개 파일의 처리가 시작되었습니다.", "files": saved_files_info}
+
+# 업로드된 원본 파일 목록을 조회하는 API
+@router.get("/files", response_model=FileListResponse, tags=["Document Management"])
+async def list_doc_files() -> FileListResponse:
+    files = [f.name for f in DOC_DIR.iterdir() if f.is_file()]
+    return {"files": files}
+
+# 원본 파일이 처리된 후의 텍스트(OCR) 내용을 조회하는 API
+@router.get("/files/{filename}", response_model=FileContentResponse, tags=["Document Management"])
+async def get_ocr_file_content(filename: str) -> FileContentResponse:
+    base_name = Path(filename).stem
+    file_path = OCR_RESULTS_DIR / f"{base_name}.md"
+    if not file_path.is_file():
+        raise HTTPException(status_code=404, detail=f"처리된 파일을 찾을 수 없습니다: {file_path.name}")
+    content = file_path.read_text(encoding="utf-8")
+    return {"filename": file_path.name, "content": content}
+
+# 업로드된 파일을 삭제하는 API
+@router.delete("/files", response_model=DeleteFilesResponse, tags=["Document Management"])
+async def delete_doc_files(req: DeleteFilesRequest) -> DeleteFilesResponse:
+    deleted, failed = [], []
+    for filename in req.filenames:
+        file_path = DOC_DIR / filename
+        try:
+            if file_path.is_file():
+                file_path.unlink()
+                deleted.append(filename)
+            else:
+                failed.append({"filename": filename, "reason": "파일을 찾을 수 없음"})
+        except Exception as e:
+            logger.error(f"Doc 파일 삭제 오류 ('{filename}'): {e}", exc_info=True)
+            failed.append({"filename": filename, "reason": str(e)})
+    return {
+        "message": f"Doc 파일 {len(deleted)}개 삭제 성공, {len(failed)}개 실패.",
+        "deleted_files": deleted,
+        "failed_files": failed
+    }
+
+# -- 기타 API --
+# RAG 챗봇에 질문하고 답변을 받는 API
+@router.post("/chat", response_model=ChatResponse, tags=["Chat"])
+def chat(query: ChatQuery, request: Request) -> ChatResponse:
+    try:
+        rag_pipeline = getattr(request.app.state, 'rag_pipeline', None)
+        if not rag_pipeline:
+            raise HTTPException(status_code=503, detail="RAG 파이프라인을 사용할 수 없습니다.")
+        
+        response = get_rag_response(query.query, query.sources, rag_pipeline)
+        return ChatResponse(**response)
+    except Exception as e:
+        logger.error(f"채팅 처리 중 오류: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+# 진행 중인 백그라운드 작업을 ID로 지정하여 취소하는 API
+@router.post("/cancel", tags=["Task Management"])
+async def cancel_tasks_by_id(task_ids: List[str] = Body(..., embed=True)):
+    cancelled_count = 0
+    for task_id in task_ids:
+        if task_id in tasks:
+            try:
+                cancel_task(task_id)
+                tasks[task_id]['status'] = 'cancelling'
+                tasks[task_id]['message'] = '작업 취소가 요청되었습니다.'
+                logger.info(f"[{task_id}] 작업 취소 요청됨.")
+                cancelled_count += 1
+            except Exception as e:
+                logger.error(f"[{task_id}] 작업 취소 요청 중 오류: {e}", exc_info=True)
+    return {"message": f"총 {len(task_ids)}개 중 {cancelled_count}개 작업에 대한 취소 요청이 전달되었습니다."}

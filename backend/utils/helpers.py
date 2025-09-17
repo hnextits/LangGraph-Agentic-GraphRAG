@@ -11,12 +11,12 @@ logger = logging.getLogger(__name__)
 
 # 이미지 기본 경로 설정 (serch_gui 프로젝트에 맞게 조정)
 IMAGE_BASE_PATHS = [
-    '/home/nextits2/.conda/envs/workbox/serch_gui/chatbot/backend/nextits_data/Results/5.Completion_results/image',
-    '/home/nextits2/.conda/envs/workbox/serch_gui/chatbot/backend/nextits_data/Results',
-    '/home/nextits2/.conda/envs/workbox/serch_gui/chatbot/backend/nextits_data',
-    '/home/nextits2/.conda/envs/workbox/serch_gui/chatbot/backend',
-    '/home/nextits2/.conda/envs/workbox/serch_gui/chatbot/frontend/public/images',
-    '/home/nextits2/.conda/envs/workbox/serch_gui/images'
+    './nextits_data/Results/5.Completion_results/image',
+    './nextits_data/Results',
+    './nextits_data',
+    './backend',
+    './frontend/public/images',
+    './images'
 ]
 
 def find_image_file(image_path: str) -> Optional[str]:
@@ -46,8 +46,8 @@ def find_image_file(image_path: str) -> Optional[str]:
     
     # 메타데이터에서 이미지 경로 찾기 시도
     metadata_paths = [
-        '/home/nextits2/.conda/envs/workbox/serch_gui/chatbot/backend/nextits_data/Results/5.Completion_results/image_metadata.json',
-        '/home/nextits2/.conda/envs/workbox/serch_gui/chatbot/backend/nextits_data/image_metadata.json'
+        './nextits_data/Results/5.Completion_results/image_metadata.json',
+        './nextits_data/image_metadata.json'
     ]
     
     for metadata_path in metadata_paths:

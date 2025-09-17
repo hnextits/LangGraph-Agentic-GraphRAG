@@ -3,6 +3,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from '../styles/theme';
 import { FileContext } from '../contexts/FileContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 interface AppProviderProps {
   children: React.ReactNode;
@@ -15,6 +16,9 @@ interface AppProviderProps {
 export function AppProvider({ children }: AppProviderProps) {
   // FileContext state
   const [checkedFiles, setCheckedFiles] = useState<string[]>([]);
+  
+  // Create a client
+  const [queryClient] = React.useState(() => new QueryClient());
   
   // Remove server-side injected CSS
   React.useEffect(() => {
@@ -33,9 +37,11 @@ export function AppProvider({ children }: AppProviderProps) {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <FileContext.Provider value={fileContextValue}>
-        {children}
-      </FileContext.Provider>
+      <QueryClientProvider client={queryClient}>
+        <FileContext.Provider value={fileContextValue}>
+          {children}
+        </FileContext.Provider>
+      </QueryClientProvider>
     </ThemeProvider>
   );
 }

@@ -73,3 +73,13 @@ body {
     padding: 0.5rem 0.75rem;
   }
 }
+
+/* 스크롤바 숨기기 */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}

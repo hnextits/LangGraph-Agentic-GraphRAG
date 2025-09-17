@@ -69,7 +69,7 @@ class SharedEmbeddingModel:
             self._model = AutoModel.from_pretrained(
                 self._model_name,
                 trust_remote_code=True,
-                torch_dtype=torch.float32,  # float16 -> float32로 변경
+                torch_dtype=torch.float16,  # float16 -> float32로 변경
                 cache_dir=cache_dir,
                 local_files_only=True  # 로컬 캐시만 사용, 다운로드 방지
                 # attn_implementation 기본값 사용 (가능한 경우 flash attention 사용)
@@ -120,7 +120,7 @@ class SharedEmbeddingModel:
             normalized_embedding = F.normalize(embedding_tensor, p=2, dim=0)
             
             # float32로 반환하여 임베딩 품질 향상
-            return normalized_embedding.cpu().numpy().astype('float32')
+            return normalized_embedding.cpu().numpy().astype('float16')
             
         except Exception as e:
             logger.error(f"공유 임베딩 생성 중 오류 발생: {e}")
@@ -128,7 +128,7 @@ class SharedEmbeddingModel:
     
     def _get_random_embedding(self) -> np.ndarray:
         """랜덤 임베딩 생성 (오류 시 폴백)"""
-        random_embedding = np.random.randn(self.dimension).astype('float32')
+        random_embedding = np.random.randn(self.dimension).astype('float16')
         random_embedding /= np.linalg.norm(random_embedding)
         return random_embedding
     

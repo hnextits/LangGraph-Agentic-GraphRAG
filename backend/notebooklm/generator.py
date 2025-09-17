@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 
 """
-RAG 시스템 생성기 - 검색 결과를 기반으로 LLM을 통해 답변을 생성합니다. (수정된 버전)
+RAG 시스템 생성기 - 검색 결과를 기반으로 LLM을 통해 답변을 생성합니다. (GPU 최적화 버전)
 """
 
 import os
 import json
 import logging
-import copy  # FIX: deepcopy를 위해 import 추가
+import copy
 import torch
 from typing import List, Dict, Any, Optional
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -22,7 +22,7 @@ import threading
 
 class Generator:
     """
-    RAG 시스템 생성기 (즉시 로딩)
+    RAG 시스템 생성기 (GPU 강제 사용)
     """
     
     def __init__(self, config):
@@ -30,18 +30,25 @@ class Generator:
         생성기 초기화 (모델 즉시 로딩)
         """
         self.config = config
-        self.device = self.config.TEXT_GENERATOR_DEVICE
         self.model_name = self.config.LLM_MODEL
         self.prompt_template = self.config.PROMPT_TEMPLATES
         self.model = None
         self.tokenizer = None
         self.model_loaded_on_gpu = False
-
-        # 디바이스에 따라 torch_dtype 설정
-        if "cuda" in self.device:
-            self.torch_dtype = torch.float16
-        else:
-            self.torch_dtype = torch.float32
+        
+        # GPU 사용 가능성 체크
+        if not torch.cuda.is_available():
+            logger.error("CUDA를 사용할 수 없습니다. GPU 드라이버와 PyTorch CUDA 버전을 확인하세요.")
+            raise RuntimeError("CUDA가 사용 불가능합니다.")
+        
+        # GPU 디바이스 설정 (명시적)
+        self.device = self._get_gpu_device()
+        logger.info(f"사용할 GPU 디바이스: {self.device}")
+        logger.info(f"CUDA 디바이스 개수: {torch.cuda.device_count()}")
+        
+        # torch_dtype 설정
+        self.torch_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+        logger.info(f"사용할 데이터 타입: {self.torch_dtype}")
         
         # 토크나이저와 모델을 즉시 로드
         self._load_tokenizer()
@@ -49,13 +56,25 @@ class Generator:
         
         logger.info("Generator 초기화 및 모델 로딩 완료")
 
+    def _get_gpu_device(self):
+        """가장 적합한 GPU 디바이스 반환"""
+        if hasattr(self.config, 'TEXT_GENERATOR_DEVICE') and self.config.TEXT_GENERATOR_DEVICE:
+            config_device = self.config.TEXT_GENERATOR_DEVICE
+            # "auto"가 아닌 구체적인 디바이스 설정인 경우
+            if config_device != "auto" and "cuda" in str(config_device):
+                return config_device
+        
+        # 기본적으로 첫 번째 GPU 사용
+        return "cuda:0" if torch.cuda.device_count() > 0 else "cuda"
+
     def _load_tokenizer(self):
-        """토크나이저만 먼저 로드"""
+        """토크나이저 로드"""
         try:
+            logger.info(f"토크나이저 로딩 중: {self.model_name}")
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name,
-                cache_dir=self.config.CACHE_DIR,
-                # local_files_only=True
+                cache_dir=getattr(self.config, 'CACHE_DIR', None),
+                trust_remote_code=True  # 필요한 경우
             )
             if self.tokenizer.pad_token_id is None:
                 self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
@@ -65,40 +84,86 @@ class Generator:
             raise
 
     def _load_model(self):
-        """모델을 GPU에 로드"""
-        logger.info(f"모델을 GPU에 로딩 중... ({self.model_name})")
+        """모델을 GPU에 강제 로드"""
+        logger.info(f"모델을 GPU에 로딩 중: {self.model_name}")
+        
         try:
-            # FP8 여부와 무관하게 device_map을 설정하여 멀티 GPU 샤딩을 일관되게 사용
-            model_kwargs = {
-                "torch_dtype": torch.bfloat16 if torch.cuda.is_available() else torch.float32,
-                "device_map": self.config.TEXT_GENERATOR_DEVICE  # 예: "auto"
-            }
-            logger.info(f"device_map 설정: {model_kwargs['device_map']}")
+            # GPU 메모리 정리
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            
+            # 멀티 GPU 환경에서는 device_map 사용
+            if torch.cuda.device_count() > 1:
+                logger.info(f"멀티 GPU 환경 감지 ({torch.cuda.device_count()}개 GPU)")
+                model_kwargs = {
+                    "torch_dtype": self.torch_dtype,
+                    "device_map": "auto",  # 멀티 GPU 자동 분산
+                    "trust_remote_code": True,
+                    "low_cpu_mem_usage": True
+                }
+            else:
+                # 단일 GPU 환경에서는 명시적 device 지정
+                logger.info("단일 GPU 환경")
+                model_kwargs = {
+                    "torch_dtype": self.torch_dtype,
+                    "trust_remote_code": True,
+                    "low_cpu_mem_usage": True
+                }
+            
+            # 캐시 디렉토리 설정
+            if hasattr(self.config, 'CACHE_DIR') and self.config.CACHE_DIR:
+                model_kwargs["cache_dir"] = self.config.CACHE_DIR
             
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
-                cache_dir=self.config.CACHE_DIR,
-                # local_files_only=True,
                 **model_kwargs
             )
             
-            # device_map이 설정되지 않은 경우에만 .to(device) 호출
-            if "device_map" not in model_kwargs:
+            # 단일 GPU 환경에서 명시적으로 GPU로 이동
+            if torch.cuda.device_count() == 1 or "device_map" not in model_kwargs:
+                logger.info(f"모델을 {self.device}로 이동 중...")
                 self.model = self.model.to(self.device)
+            
+            # 모델이 실제로 GPU에 로드되었는지 확인
+            self._verify_gpu_loading()
             
             self.model_loaded_on_gpu = True
             logger.info("모델 GPU 로딩 완료")
+            
         except Exception as e:
             logger.error(f"모델 GPU 로딩 실패: {e}")
             self.model = None
             self.model_loaded_on_gpu = False
             raise
 
+    def _verify_gpu_loading(self):
+        """모델이 실제로 GPU에 로드되었는지 확인"""
+        if self.model is None:
+            raise RuntimeError("모델이 로드되지 않았습니다.")
+        
+        # 모델의 첫 번째 파라미터의 디바이스 확인
+        first_param_device = next(self.model.parameters()).device
+        logger.info(f"모델 파라미터가 위치한 디바이스: {first_param_device}")
+        
+        # GPU에 로드되었는지 확인
+        if first_param_device.type != 'cuda':
+            raise RuntimeError(f"모델이 CPU({first_param_device})에 로드되었습니다. GPU 로딩이 실패했습니다.")
+        
+        # 입력 임베딩 레이어의 디바이스 확인
+        if hasattr(self.model, 'get_input_embeddings'):
+            embedding_device = self.model.get_input_embeddings().weight.device
+            logger.info(f"입력 임베딩 레이어 디바이스: {embedding_device}")
+            if embedding_device.type != 'cuda':
+                logger.warning(f"입력 임베딩이 CPU에 있습니다: {embedding_device}")
+
     def generate_response(self, query: str, results) -> Dict[str, Any]:
         """
-        검색 결과를 기반으로 답변 생성 (지연 로딩 적용)
+        검색 결과를 기반으로 답변 생성
         """
         try:
+            # GPU 상태 재확인
+            if not self.model_loaded_on_gpu:
+                raise RuntimeError("모델이 GPU에 로드되지 않았습니다.")
             
             # 기존 로직과 동일
             filtered_results = copy.deepcopy(results)
@@ -131,12 +196,8 @@ class Generator:
                 "error": str(e)
             }
 
-        
-
     def _format_metadata(self, result):
-        """
-        공통 메타데이터 포맷팅
-        """
+        """공통 메타데이터 포맷팅"""
         meta_parts = []
         source = result.get('source') or result.get('file_path')
         if source:
@@ -155,7 +216,7 @@ class Generator:
         """텍스트 결과 포맷팅"""
         text = str(result.get('text', '')).strip()
         if not text:
-            return ""  # FIX: None 대신 빈 문자열 반환
+            return ""
             
         meta_info = self._format_metadata(result)
         return f"{index}. {text}{meta_info}"
@@ -164,9 +225,8 @@ class Generator:
         """테이블 결과 포맷팅"""
         table_data = result.get('table_data', '').strip()
         if not table_data:
-            return ""  # 빈 문자열 반환
+            return ""
         
-        # 테이블 데이터를 그대로 사용 (줄바꿈 처리는 rag_service.py에서 수행)
         meta_info = self._format_metadata(result)
         return f"{index}. 표 데이터{meta_info}\n{table_data}"
     
@@ -195,16 +255,12 @@ class Generator:
         return image_item
 
     def format_context(self, results) -> str:
-        """
-        검색 결과를 컨텍스트 형식으로 포맷팅 (로직 개선)
-        """
+        """검색 결과를 컨텍스트 형식으로 포맷팅"""
         if not results:
             return ""
 
         context_parts = []
 
-        # REFACTORED: results가 단순 리스트일 경우와 딕셔너리일 경우를 모두 처리하는 통합 로직
-        # 딕셔너리 형태가 아니라면, 리스트로 간주하고 'search_results'라는 가상 키로 감싸서 처리
         if isinstance(results, list):
             results_dict = {"search_results": results}
         elif isinstance(results, dict):
@@ -212,7 +268,6 @@ class Generator:
         else:
             return ""
 
-        # REFACTORED: 중복을 제거하고 하나의 통합된 루프로 모든 검색 결과를 처리
         for searcher_name, searcher_results in results_dict.items():
             if not isinstance(searcher_results, list) or not searcher_results:
                 continue
@@ -224,7 +279,6 @@ class Generator:
                     continue
 
                 formatted_result = ""
-                # con_type을 우선적으로 확인하여 이미지/테이블/텍스트 순으로 처리
                 content_type = result.get("con_type")
                 if content_type == "image" or "file_path" in result:
                     formatted_result = self._format_image_result(result, i)
@@ -235,63 +289,84 @@ class Generator:
                 elif "formula" in result:
                     formatted_result = f"{i}. 수식: {result.get('formula', '')}"
                 
-                # 포맷팅 결과가 비어있지 않은 경우에만 추가
                 if formatted_result:
                     context_parts.append(formatted_result)
         
         return "\n".join(context_parts)
     
     def _generate_text(self, system_prompt: str, user_prompt: str) -> str:
-        """
-        허깅페이스 모델을 사용하여 텍스트 생성
-        """
+        """허깅페이스 모델을 사용하여 텍스트 생성 (GPU 강제 사용)"""
         if self.model is None or self.tokenizer is None:
             raise Exception("모델 또는 토크나이저가 로드되지 않았습니다.")
         
-        # Qwen3 모델을 위한 채팅 템플릿 적용 방식으로 변경
+        # Qwen3 모델을 위한 채팅 템플릿
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
         ]
         
-        # enable_thinking=False 파라미터를 여기에 적용 (Qwen3 모델 문서에 따라)
         full_prompt = self.tokenizer.apply_chat_template(
             messages, 
             tokenize=False, 
             add_generation_prompt=True, 
-            enable_thinking=False  # 생각 모드 비활성화
+            enable_thinking=False
         )
         
         logger.info(f"텍스트 생성 시작: {self.model_name}")
         
         try:
-            input_device = self.model.get_input_embeddings().weight.device
-            inputs = self.tokenizer(full_prompt, return_tensors="pt").to(input_device)
+            # 모델의 실제 디바이스 확인
+            model_device = next(self.model.parameters()).device
+            logger.info(f"모델 디바이스: {model_device}")
+            
+            # 입력을 모델과 같은 디바이스로 이동
+            inputs = self.tokenizer(full_prompt, return_tensors="pt")
+            inputs = {k: v.to(model_device) for k, v in inputs.items()}
+            logger.info(f"입력 텐서 디바이스: {inputs['input_ids'].device}")
             
             with torch.no_grad():
                 generation_params = {
-                    "max_new_tokens": self.config.GENERATOR_MAX_TOKENS,
-                    "num_beams": self.config.GENERATOR_NUM_BEAMS,
-                    "do_sample": self.config.GENERATOR_DO_SAMPLE,
-                    "pad_token_id": self.tokenizer.eos_token_id if self.config.GENERATOR_PAD_TOKEN_ID is None else self.config.GENERATOR_PAD_TOKEN_ID
+                    "max_new_tokens": getattr(self.config, 'GENERATOR_MAX_TOKENS', 512),
+                    # "num_beams": getattr(self.config, 'GENERATOR_NUM_BEAMS', 1),
+                    # "do_sample": getattr(self.config, 'GENERATOR_DO_SAMPLE', True),
+                    "pad_token_id": self.tokenizer.eos_token_id
                 }
 
-                if self.config.GENERATOR_DO_SAMPLE:
+                if generation_params["max_new_tokens"]:
                     generation_params.update({
-                        "temperature": self.config.GENERATOR_TEMPERATURE,
-                        "top_p": self.config.GENERATOR_TOP_P,
-                        "top_k": self.config.GENERATOR_TOP_K
+                        "temperature": getattr(self.config, 'GENERATOR_TEMPERATURE', 0.7),
+                        # "top_p": getattr(self.config, 'GENERATOR_TOP_P', 0.9),
+                        # "top_k": getattr(self.config, 'GENERATOR_TOP_K', 50)
                     })
 
+                logger.info("GPU에서 텍스트 생성 중...")
                 outputs = self.model.generate(**inputs, **generation_params)
             
-            response = self.tokenizer.decode(outputs[0][inputs.input_ids.shape[1]:], skip_special_tokens=True)
+            # 생성된 토큰만 디코딩
+            response = self.tokenizer.decode(
+                outputs[0][inputs['input_ids'].shape[1]:], 
+                skip_special_tokens=True
+            )
             
-            logger.info("텍스트 생성 완료")
-            
-
-                
+            logger.info("GPU 텍스트 생성 완료")
             return response
+            
         except Exception as e:
             logger.error(f"텍스트 생성 실패: {str(e)}", exc_info=True)
             raise
+
+    def get_model_info(self):
+        """모델 상태 정보 반환 (디버깅용)"""
+        if self.model is None:
+            return {"status": "모델이 로드되지 않음"}
+        
+        model_device = next(self.model.parameters()).device
+        return {
+            "model_loaded": self.model_loaded_on_gpu,
+            "model_device": str(model_device),
+            "cuda_available": torch.cuda.is_available(),
+            "cuda_device_count": torch.cuda.device_count(),
+            "current_device": torch.cuda.current_device() if torch.cuda.is_available() else None,
+            "memory_allocated": torch.cuda.memory_allocated() if torch.cuda.is_available() else 0,
+            "memory_reserved": torch.cuda.memory_reserved() if torch.cuda.is_available() else 0
+        }

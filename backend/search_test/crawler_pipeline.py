@@ -521,7 +521,7 @@ def revove_table_stylesheet(md_file):
 def main():
     total_result_link = []
     while True:
-        output_dir = "/home/nextits2/.conda/envs/workbox/serch_gui/chatbot/backend/search_test/Crawling_data"
+        output_dir = "./search_test/Crawling_data/"
         query = input("검색어를 입력하세요(종료를 원할 경우 CTRL+C 혹은 q를 입력하세요) : ")
         if query=="q":
             break
