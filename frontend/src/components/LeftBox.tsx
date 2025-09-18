@@ -271,6 +271,25 @@ const LeftBox: React.FC<LeftBoxProps> = ({
     return <File size={20} />;
   };
 
+  const formatFileName = (fileName: string) => {
+    let name = fileName;
+    // 파일 이름 끝에 .md가 반복되는 경우 모두 제거
+    while (name.endsWith('.md')) {
+        name = name.slice(0, -3);
+    }
+    // 다른 확장자도 제거
+    const lastDotIndex = name.lastIndexOf('.');
+    if (lastDotIndex !== -1) {
+        // 하지만 알려진 확장자가 아니면, 파일 이름의 일부일 수 있으므로 제거하지 않음
+        const ext = name.substring(lastDotIndex);
+        const knownExts = ['.pdf', '.txt', '.hwp', '.csv', '.xlsx', '.docx', '.pptx', '.jpg', '.png', '.py', '.js', '.html', '.css'];
+        if (knownExts.includes(ext.toLowerCase())) {
+            name = name.substring(0, lastDotIndex);
+        }
+    }
+    return name;
+  };
+
   return (
     <div
       id="leftbox"
@@ -369,7 +388,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
                   <button
                     key={index}
                     onClick={() => handleSourceClick(source)}
-                    title={source.title}
+                    title={formatFileName(source.title)}
                     className={`relative bg-gray-100 rounded-lg p-1.5 m-1 w-8 h-8 transition-all hover:bg-gray-200 hover:scale-105 ${
                       selectedSource?.id === source.id ? 'bg-blue-50 ring-2 ring-blue-500' : ''
                     }`}
@@ -381,7 +400,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
             </div>
 
             {/* 위로 스크롤 버튼 */}
-            <div className="scroll-button absolute top-2.5 right-2.5 z-10 opacity-0 transition-opacity duration-300">
+            {/* <div className="scroll-button absolute top-2.5 right-2.5 z-10 opacity-0 transition-opacity duration-300">
               <button
                 className="bg-white/90 shadow-md w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100"
                 onClick={() => {
@@ -395,10 +414,10 @@ const LeftBox: React.FC<LeftBoxProps> = ({
               >
                 <ChevronUp size={16} />
               </button>
-            </div>
+            </div> */}
 
             {/* 아래로 스크롤 버튼 */}
-            <div className="scroll-button absolute bottom-2.5 right-2.5 z-10 opacity-0 transition-opacity duration-300">
+            {/* <div className="scroll-button absolute bottom-2.5 right-2.5 z-10 opacity-0 transition-opacity duration-300">
               <button
                 className="bg-white/90 shadow-md w-7 h-7 rounded-full flex items-center justify-center hover:bg-gray-100"
                 onClick={() => {
@@ -412,7 +431,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
               >
                 <ChevronDown size={16} />
               </button>
-            </div>
+            </div> */}
           </div>
         ) : (
           <div className="flex-grow overflow-y-auto p-4 no-scrollbar">
@@ -423,7 +442,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
                     <ArrowLeft size={18} />
                   </button>
                   <h3 className="ml-2 text-base font-bold flex-grow truncate">
-                    {selectedSource.title}
+                    {formatFileName(selectedSource.title)}
                   </h3>
                   <button
                     onClick={() => setIsFileUploadModalOpen(true)}
@@ -480,7 +499,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
                           {getFileIcon(source.title)}
                         </div>
                         <div className="ml-2 truncate">
-                          <span className="text-sm">{source.title}</span>
+                          <span className="text-sm">{formatFileName(source.title)}</span>
                         </div>
                       </div>
                       <input

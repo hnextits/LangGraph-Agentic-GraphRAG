@@ -6,7 +6,8 @@ import sys
 import json
 import logging
 import numpy as np
-from typing import List, Dict, Any
+import threading
+from typing import List, Dict, Any, Optional
 import faiss
 import pickle
 import torch
@@ -184,7 +185,7 @@ class TextSearcher:
     
 
 
-    def search(self, query: str, top_k: int = None, rerank: bool = True, rerank_top_k: int = None) -> List[Dict[str, Any]]:
+    def search(self, query: str, top_k: int = None, rerank: bool = True, rerank_top_k: int = None, cancellation_event: Optional[threading.Event] = None) -> List[Dict[str, Any]]:
         """텍스트 쿼리로 검색을 수행합니다."""
         # config에서 기본값 가져오기
         config = RAGConfig()
@@ -199,8 +200,16 @@ class TextSearcher:
                 return []
 
         search_top_k = top_k * 3 if rerank else top_k
+        # 취소 확인
+        if cancellation_event and cancellation_event.is_set():
+            raise InterruptedError("Operation cancelled before text embedding generation")
+
         # 공유 임베딩 모델 사용 (메모리 절약)
         query_embedding = self.shared_embedding.generate_embedding(query)
+        # 취소 확인
+        if cancellation_event and cancellation_event.is_set():
+            raise InterruptedError("Operation cancelled before FAISS search")
+
         scores, indices = self.text_index.search(np.array([query_embedding]), search_top_k)
 
         results = []
@@ -241,12 +250,17 @@ class TextSearcher:
                 # config에서 설정값 가져오기
                 config = RAGConfig()
                 
+                # 취소 확인
+                if cancellation_event and cancellation_event.is_set():
+                    raise InterruptedError("Operation cancelled before reranking")
+
                 # ImprovedTextReranker의 rerank 메서드 호출
                 reranked_results = self.reranker.rerank(
                     query=query, 
                     results=results, 
                     top_k=rerank_top_k,
-                    min_score=config.RELEVANCE_THRESHOLD  # config에서 가져온 관련성 임계값
+                    min_score=config.RELEVANCE_THRESHOLD,  # config에서 가져온 관련성 임계값
+                    cancellation_event=cancellation_event # 이벤트 전달
                 )
                 
                 # 리랭킹 통계 로깅

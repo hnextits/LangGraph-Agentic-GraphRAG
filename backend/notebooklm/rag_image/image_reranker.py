@@ -9,6 +9,7 @@ import torch
 import numpy as np
 import sys
 import time
+import threading
 from typing import List, Dict, Any, Optional, Union
 from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
@@ -244,7 +245,7 @@ class RAGReranker:
             return 0.05
 
     @torch.no_grad()
-    def compute_similarity_batch(self, query: str, passages: List[str]) -> List[float]:
+    def compute_similarity_batch(self, query: str, passages: List[str], cancellation_event: Optional[threading.Event] = None) -> List[float]:
         """배치로 여러 문서의 유사도를 계산합니다."""
         if self.tokenizer is None or self.model is None:
             logger.error("모델이 로드되지 않았습니다.")
@@ -253,6 +254,10 @@ class RAGReranker:
         all_scores = []
         
         for i in range(0, len(passages), self.batch_size):
+            # 배치 처리 전 취소 확인
+            if cancellation_event and cancellation_event.is_set():
+                raise InterruptedError("Image reranking operation cancelled during batch processing")
+
             batch_passages = passages[i:i + self.batch_size]
             
             # 토큰화는 한 번만 수행
@@ -334,7 +339,8 @@ class RAGReranker:
         query: str,
         results: List[Dict[str, Any]],
         top_k: Optional[int] = None,
-        min_score: float = None
+        min_score: float = None,
+        cancellation_event: Optional[threading.Event] = None
     ) -> List[Dict[str, Any]]:
 
         """
@@ -425,7 +431,7 @@ class RAGReranker:
         # 배치 처리로 점수 계산
         try:
             logger.info(f"리랭킹 점수 계산 시작: {len(passages)}개 문서")
-            scores = self.compute_similarity_batch(query, passages)
+            scores = self.compute_similarity_batch(query, passages, cancellation_event=cancellation_event)
             logger.info(f"리랭킹 점수 계산 완료: {len(scores)}개 점수")
         except Exception as e:
             logger.error(f"리랭킹 점수 계산 중 오류 발생: {e}")

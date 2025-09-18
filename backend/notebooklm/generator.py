@@ -156,7 +156,7 @@ class Generator:
             if embedding_device.type != 'cuda':
                 logger.warning(f"입력 임베딩이 CPU에 있습니다: {embedding_device}")
 
-    def generate_response(self, query: str, results) -> Dict[str, Any]:
+    def generate_response(self, query: str, results, cancellation_event: Optional[threading.Event] = None) -> Dict[str, Any]:
         """
         검색 결과를 기반으로 답변 생성
         """
@@ -182,7 +182,7 @@ class Generator:
             system_prompt = self.prompt_template["system"]
             user_prompt = self.prompt_template["user"].format(context=context, query=query)
 
-            response = self._generate_text(system_prompt, user_prompt)
+            response = self._generate_text(system_prompt, user_prompt, cancellation_event=cancellation_event)
             
             return {
                 "answer": response,
@@ -294,7 +294,7 @@ class Generator:
         
         return "\n".join(context_parts)
     
-    def _generate_text(self, system_prompt: str, user_prompt: str) -> str:
+    def _generate_text(self, system_prompt: str, user_prompt: str, cancellation_event: Optional[threading.Event] = None) -> str:
         """허깅페이스 모델을 사용하여 텍스트 생성 (GPU 강제 사용)"""
         if self.model is None or self.tokenizer is None:
             raise Exception("모델 또는 토크나이저가 로드되지 않았습니다.")
@@ -338,6 +338,10 @@ class Generator:
                         # "top_p": getattr(self.config, 'GENERATOR_TOP_P', 0.9),
                         # "top_k": getattr(self.config, 'GENERATOR_TOP_K', 50)
                     })
+
+                # 취소 확인
+                if cancellation_event and cancellation_event.is_set():
+                    raise InterruptedError("Operation cancelled before text generation")
 
                 logger.info("GPU에서 텍스트 생성 중...")
                 outputs = self.model.generate(**inputs, **generation_params)

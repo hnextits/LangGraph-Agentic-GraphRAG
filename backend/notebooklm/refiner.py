@@ -115,7 +115,7 @@ class Refiner:
             self.refiner_model = None
             raise
 
-    def refine_answer(self, query: str, answer: str) -> str:
+    def refine_answer(self, query: str, answer: str, cancellation_event: Optional[threading.Event] = None) -> str:
         """
         답변 정제
         
@@ -137,7 +137,7 @@ class Refiner:
         
         # LLM을 통한 정제 수행
         try:
-            refined_answer = self._generate_with_refiner_model(system_prompt, user_prompt)
+            refined_answer = self._generate_with_refiner_model(system_prompt, user_prompt, cancellation_event=cancellation_event)
             
             # <think> 태그가 있다면 제거하고 실제 답변만 추출
             refined_answer = self._extract_final_answer(refined_answer)
@@ -287,7 +287,7 @@ class Refiner:
         result = '\n'.join(unique_sentences)
         return self._restore_markdown_tables(result, tables, table_tokens)
     
-    def _generate_with_refiner_model(self, system_prompt: str, user_prompt: str) -> str:
+    def _generate_with_refiner_model(self, system_prompt: str, user_prompt: str, cancellation_event: Optional[threading.Event] = None) -> str:
         """
         Refiner 전용 Qwen3-1.7B 모델을 사용하여 텍스트를 생성합니다.
         
@@ -328,6 +328,10 @@ class Refiner:
                 "pad_token_id": self.refiner_tokenizer.eos_token_id,
                 "num_beams": 1,     # 샘플링과 빔서치 동시 사용 불가
             }
+
+            # 취소 확인
+            if cancellation_event and cancellation_event.is_set():
+                raise InterruptedError("Operation cancelled before refinement generation")
 
             with torch.no_grad():
                 generated_ids = model.generate(**model_inputs, **generation_params)

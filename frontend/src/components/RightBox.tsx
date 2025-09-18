@@ -9,6 +9,10 @@ import {
   FileText,
   AlertCircle,
   Trash2,
+  File,
+  Image as ImageIcon,
+  Code,
+  FileType,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import SummaryModal from './SummaryModal';
@@ -136,7 +140,43 @@ const RightBox: React.FC<RightBoxProps> = ({
     setError(null);
   }, [selectedFiles]);
 
-  const formatFileName = (file: string) => file.replace(/^summary_/, '').replace(/\.md$/, '');
+  const formatFileName = (fileName: string) => {
+    // 'summary_' 접두사 제거
+    let name = fileName.startsWith('summary_') ? fileName.substring(8) : fileName;
+    // 파일 이름 끝에 .md가 반복되는 경우 모두 제거
+    while (name.endsWith('.md')) {
+        name = name.slice(0, -3);
+    }
+    return name;
+  };
+
+  // 파일 확장자에 따른 아이콘 선택 함수
+  const getFileIcon = (fileName: string, size: number = 20) => {
+    const lowerFileName = fileName.toLowerCase();
+
+    if (lowerFileName.endsWith('.pdf') || lowerFileName.endsWith('_pdf')) {
+      return <FileType className="text-red-500" size={size} />;
+    } else if (lowerFileName.endsWith('.md')) {
+      return <FileText className="text-blue-500" size={size} />;
+    } else if (
+      lowerFileName.endsWith('.jpg') ||
+      lowerFileName.endsWith('.png') ||
+      lowerFileName.endsWith('.jpeg') ||
+      lowerFileName.endsWith('.gif')
+    ) {
+      return <ImageIcon className="text-green-500" size={size} />;
+    } else if (
+      lowerFileName.endsWith('.js') ||
+      lowerFileName.endsWith('.py') ||
+      lowerFileName.endsWith('.java') ||
+      lowerFileName.endsWith('.html') ||
+      lowerFileName.endsWith('.css')
+    ) {
+      return <Code className="text-purple-500" size={size} />;
+    }
+
+    return <File size={size} />;
+  };
 
   return (
     <div
@@ -147,8 +187,8 @@ const RightBox: React.FC<RightBoxProps> = ({
       <div className="w-full h-full flex flex-col bg-white overflow-hidden">
         {/* Header */}
         <div
-          className={`flex justify-between items-center ${
-            collapsed ? 'px-1 py-2' : 'px-4 py-2'
+          className={`flex items-center ${
+            collapsed ? 'px-1 py-2 justify-center' : 'px-4 py-2 justify-between'
           } border-b border-gray-200 flex-shrink-0 min-h-[52px]`}
         >
           {!collapsed && <h2 className="text-lg font-bold">요약</h2>}
@@ -159,31 +199,45 @@ const RightBox: React.FC<RightBoxProps> = ({
 
         {/* Content */}
         {collapsed ? (
-          <div className="flex flex-col items-center gap-2 py-2">
-            {summarizedFiles.length > 0 ? (
-              summarizedFiles.map((file, index) => (
-                <button
-                  key={index}
-                  onClick={() => {
-                    handleOpenModal(file);
-                  }}
-                  title={file.replace('summary_', '')}
-                  className="p-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 w-8 h-8 flex items-center justify-center mb-1"
-                >
-                  <FileText size={16} />
-                </button>
-              ))
-            ) : (
+          <div className="flex flex-col items-center w-full h-full">
+            {/* 요약 생성 버튼 (접힘) */}
+            <div className="w-full p-2 flex justify-center">
               <button
-                onClick={() => {
-                  onToggleCollapse();
-                }}
-                title="요약 보기"
-                className="p-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 w-8 h-8 flex items-center justify-center"
+                onClick={handleGenerateSummary}
+                disabled={isLoading || selectedFiles.length === 0}
+                title="요약 생성하기"
+                className={`relative bg-gray-100 rounded-lg p-1.5 w-8 h-8 flex items-center justify-center transition-all hover:bg-gray-200 hover:scale-105 ${
+                  selectedFiles.length > 0 && !isLoading
+                    ? 'bg-blue-50 ring-2 ring-blue-500'
+                    : 'disabled:opacity-50 disabled:cursor-not-allowed'
+                }`}
               >
-                <FileText size={16} />
+                {isLoading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
               </button>
-            )}
+            </div>
+
+            {/* 구분선 */}
+            <hr className="w-full border-t border-gray-200" />
+
+            {/* 파일 목록 (접힘) */}
+            <div className="flex-grow w-full flex flex-col items-center gap-2 py-2 overflow-y-auto no-scrollbar">
+              {summarizedFiles.length > 0 ? (
+                summarizedFiles.map((file, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleOpenModal(file)}
+                    title={formatFileName(file)}
+                    className="p-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 w-8 h-8 flex items-center justify-center mb-1 flex-shrink-0"
+                  >
+                    {getFileIcon(file, 16)}
+                  </button>
+                ))
+              ) : (
+                <div className="p-2 text-gray-400">
+                  <FileText size={20} />
+                </div>
+              )}
+            </div>
           </div>
         ) : (
           <div className="flex-grow overflow-y-auto p-4">
@@ -228,15 +282,7 @@ const RightBox: React.FC<RightBoxProps> = ({
               </div>
             )}
 
-            <div className="flex flex-col items-center justify-center h-[200px] text-gray-400">
-              <FileText size={48} className="mb-2" />
-              <p className="text-center">
-                {isLoading
-                  ? '요약을 생성하는 중입니다...'
-                  : '파일을 선택하고 요약 생성하기 버튼을 클릭하세요.'}
-              </p>
-            </div>
-
+            
             {/* 삭제 */}
             <div className="flex justify-between items-center px-2 mb-2 h-9">
               <div className="flex items-center">
@@ -266,33 +312,51 @@ const RightBox: React.FC<RightBoxProps> = ({
 
             <div className="">
               {isSummariesLoading ? (
-                <p className="text-sm text-gray-400">불러오는 중...</p>
+                <div className="flex flex-col items-center justify-center h-[200px] text-gray-400">
+                  <Loader2 size={32} className="mb-2 animate-spin" />
+                  <p>요약 목록을 불러오는 중...</p>
+                </div>
               ) : isSummariesError ? (
-                <p className="text-sm text-red-400">불러오기 실패</p>
+                <div className="flex flex-col items-center justify-center h-[200px] text-red-400">
+                  <AlertCircle size={32} className="mb-2" />
+                  <p>목록을 불러오는데 실패했습니다.</p>
+                </div>
               ) : summarizedFiles.length > 0 ? (
-                <div className="flex flex-col gap-3">
+                <ul className="space-y-2">
                   {summarizedFiles.map((file, index) => {
                     const isChecked = checkedSummarizes.includes(file);
                     return (
-                      <div
+                      <li
                         key={index}
-                        className="border rounded-md p-3 text-sm text-gray-700 shadow-sm bg-gray-50 hover:bg-gray-100 cursor-pointer flex justify-between items-center"
                         onClick={() => handleOpenModal(file)}
+                        className="p-1 mb-2 rounded border border-gray-200 flex items-center justify-between hover:bg-gray-50 cursor-pointer"
                       >
-                        <span>{formatFileName(file)}</span>
+                        <div className="flex items-center flex-grow min-w-0">
+                          <div className="min-w-[40px] flex items-center justify-center">
+                            {getFileIcon(file)}
+                          </div>
+                          <div className="ml-2 truncate">
+                            <span className="text-sm">{formatFileName(file)}</span>
+                          </div>
+                        </div>
                         <input
                           type="checkbox"
                           checked={isChecked}
                           onClick={e => e.stopPropagation()}
                           onChange={handleToggle(file)}
-                          className="ml-4 h-4 w-4"
+                          className="mr-1 h-4 w-4"
                         />
-                      </div>
+                      </li>
                     );
                   })}
-                </div>
+                </ul>
               ) : (
-                <p className="text-sm text-gray-400">요약된 파일이 없습니다.</p>
+                <div className="flex flex-col items-center justify-center h-[200px] text-gray-400">
+                  <FileText size={48} className="mb-2" />
+                  <p className="text-center px-4">
+                    파일을 선택하고 '요약 생성하기' 버튼을 클릭하여 문서 요약을 확인해보세요.
+                  </p>
+                </div>
               )}
             </div>
           </div>

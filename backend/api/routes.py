@@ -6,6 +6,7 @@ from pydantic import BaseModel, field_validator
 import logging
 import traceback
 import uuid
+import threading
 import re
 import subprocess
 import sys
@@ -61,7 +62,10 @@ class FileContentResponse(BaseModel): filename: str; content: str
 class DeleteFilesRequest(BaseModel): filenames: List[str]
 class DeleteFilesResponse(BaseModel): message: str; deleted_files: List[str]; failed_files: List[Dict[str, str]]
 class ChatQuery(BaseModel): query: str; sources: List[str] = []
-class ChatResponse(BaseModel): answer: str; images: List[str]
+class ChatResponse(BaseModel): 
+    task_id: Optional[str] = None
+    answer: str
+    images: List[str]
 class SummarizeRequest(BaseModel): filenames: List[str]
 class TaskStatusResponse(BaseModel): task_id: str; status: str; message: Optional[str] = None; progress: Optional[int] = None; result: Optional[Any] = None; error: Optional[str] = None
 class SummarizeResponse(BaseModel):
@@ -637,30 +641,53 @@ async def delete_doc_files(req: DeleteFilesRequest) -> DeleteFilesResponse:
 # -- 기타 API --
 # RAG 챗봇에 질문하고 답변을 받는 API
 @router.post("/chat", response_model=ChatResponse, tags=["Chat"])
-def chat(query: ChatQuery, request: Request) -> ChatResponse:
+async def chat(query: ChatQuery, request: Request) -> ChatResponse:
+    task_id = str(uuid.uuid4())
+    cancellation_event = threading.Event()
+    request.app.state.running_tasks[task_id] = cancellation_event
+    logger.info(f"[Task {task_id}] 채팅 작업 시작: '{query.query}'")
+
     try:
         rag_pipeline = getattr(request.app.state, 'rag_pipeline', None)
         if not rag_pipeline:
             raise HTTPException(status_code=503, detail="RAG 파이프라인을 사용할 수 없습니다.")
+
+        response = await asyncio.to_thread(
+            get_rag_response, 
+            query.query, 
+            query.sources, 
+            rag_pipeline,
+            cancellation_event
+        )
         
-        response = get_rag_response(query.query, query.sources, rag_pipeline)
-        return ChatResponse(**response)
+        logger.info(f"[Task {task_id}] 채팅 작업 완료.")
+        return ChatResponse(task_id=task_id, **response)
+
     except Exception as e:
-        logger.error(f"채팅 처리 중 오류: {e}", exc_info=True)
+        # InterruptedError는 service 계층에서 처리되므로 여기서는 일반 예외만 처리
+        logger.error(f"[Task {task_id}] 채팅 처리 중 예상치 못한 오류: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        # 작업 완료 후 딕셔너리에서 제거
+        if task_id in request.app.state.running_tasks:
+            del request.app.state.running_tasks[task_id]
+            logger.info(f"[Task {task_id}] 작업 상태 제거 완료.")
 
 # 진행 중인 백그라운드 작업을 ID로 지정하여 취소하는 API
 @router.post("/cancel", tags=["Task Management"])
-async def cancel_tasks_by_id(task_ids: List[str] = Body(..., embed=True)):
+async def cancel_tasks_by_id(request: Request, task_ids: List[str] = Body(..., embed=True)):
     cancelled_count = 0
+    running_tasks = request.app.state.running_tasks
+
     for task_id in task_ids:
-        if task_id in tasks:
+        if task_id in running_tasks:
             try:
-                cancel_task(task_id)
-                tasks[task_id]['status'] = 'cancelling'
-                tasks[task_id]['message'] = '작업 취소가 요청되었습니다.'
+                running_tasks[task_id].set() # 취소 신호 보내기
                 logger.info(f"[{task_id}] 작업 취소 요청됨.")
                 cancelled_count += 1
             except Exception as e:
                 logger.error(f"[{task_id}] 작업 취소 요청 중 오류: {e}", exc_info=True)
+        else:
+            logger.warning(f"취소 요청된 작업 ID를 찾을 수 없음: {task_id}")
+
     return {"message": f"총 {len(task_ids)}개 중 {cancelled_count}개 작업에 대한 취소 요청이 전달되었습니다."}

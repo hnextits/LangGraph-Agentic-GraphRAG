@@ -2,6 +2,8 @@ import os
 import sys
 import importlib.util
 import logging
+import threading
+from typing import Optional
 import re
 from utils.helpers import process_response_with_images, encode_image_to_base64
 
@@ -152,13 +154,13 @@ def process_markdown_tables(text):
     
     return '\n'.join(result_lines)
 
-def get_rag_response(query: str, sources: list, rag_pipeline):
+def get_rag_response(query: str, sources: list, rag_pipeline, cancellation_event: Optional[threading.Event] = None):
     """
     사용자 질문과 소스 정보를 받아 RAG 파이프라인을 통해 답변과 이미지를 생성합니다.
     """
     try:
-        # RAG 파이프라인 실행
-        results = rag_pipeline.process_query(query=query, top_k=5)
+        # RAG 파이프라인 실행 (취소 이벤트 전달)
+        results = rag_pipeline.process_query(query=query, top_k=5, cancellation_event=cancellation_event)
         raw_answer = results.get('answer', '답변을 생성하는 데 실패했습니다.')
         
         # 마크다운 테이블 처리 - 줄바꿈 문제 해결
@@ -190,6 +192,9 @@ def get_rag_response(query: str, sources: list, rag_pipeline):
 
         return {"answer": final_answer, "images": final_images}
 
+    except InterruptedError as e:
+        logger.info(f"RAG 파이프라인 작업이 사용자에 의해 중단되었습니다: {e}")
+        return {"answer": "요청이 중단되었습니다.", "images": []}
     except Exception as e:
-        logger.error(f"RAG 응답 생성 중 오류 발생: {e}")
+        logger.error(f"RAG 응답 생성 중 오류 발생: {e}", exc_info=True)
         return {"answer": "답변 생성 중 오류가 발생했습니다.", "images": []}

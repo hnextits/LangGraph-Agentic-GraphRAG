@@ -1,6 +1,7 @@
 import concurrent.futures
 import logging
-from typing import List, Dict, Any
+import threading
+from typing import List, Dict, Any, Optional
 
 from sentence_transformers import CrossEncoder
 
@@ -21,7 +22,7 @@ class ParallelSearcher:
         self.use_query_rewrite = getattr(self.config, 'ENABLE_QUERY_REWRITE', True)
         self.query_rewriter = query_rewriter
 
-    def search(self, query: str, selected_searchers: List[str], top_k: int = 3) -> Dict[str, Any]:
+    def search(self, query: str, selected_searchers: List[str], top_k: int = 3, cancellation_event: Optional[threading.Event] = None) -> Dict[str, Any]:
         """
         쿼리 재작성부터 병렬 검색, 재정렬까지 전체 검색 파이프라인을 실행합니다.
         """
@@ -91,7 +92,12 @@ class ParallelSearcher:
                     for rewritten_query in rewritten_queries:
                         # 모든 검색에 리랭킹 적용
                         rerank_needed = True
-                        futures.append(executor.submit(searcher.search, rewritten_query, top_k=top_k, rerank=rerank_needed))
+                        # 작업을 제출하기 전에 취소 확인
+                        if cancellation_event and cancellation_event.is_set():
+                            logger.info(f"Search for '{rewritten_query}' on '{searcher_name}' cancelled before execution.")
+                            continue # 다음 작업으로 넘어감
+
+                        futures.append(executor.submit(searcher.search, rewritten_query, top_k=top_k, rerank=rerank_needed, cancellation_event=cancellation_event))
             
             # 결과 취합 - 이미지와 텍스트 분리
             for i, future in enumerate(futures):

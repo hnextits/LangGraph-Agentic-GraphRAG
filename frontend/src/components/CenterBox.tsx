@@ -5,9 +5,10 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import api from '@/lib/api';
 import { FileContext } from '@/contexts/FileContext';
+import axios from 'axios';
 
 // 아이콘 임포트
-import { Send, Loader2, User, Bot } from 'lucide-react';
+import { Send, Loader2, User, Bot, Square } from 'lucide-react';
 
 interface Message {
   sender: 'user' | 'bot';
@@ -22,6 +23,7 @@ const CenterBox: React.FC<CenterBoxProps> = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -55,41 +57,79 @@ const CenterBox: React.FC<CenterBoxProps> = () => {
   };
 
   const handleSendMessage = async () => {
-    if (input.trim() === '' || isLoading) return;
+    if (!input.trim()) return;
 
-    const userMessage: Message = { sender: 'user', text: input };
-    setMessages(prev => [...prev, userMessage]);
+    const newUserMessage: Message = { sender: 'user', text: input };
+    setMessages(prev => [...prev, newUserMessage]);
     setInput('');
     setIsLoading(true);
 
+    // AbortController 생성 및 ref에 저장
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
-      // HTTP API 호출
-      abortControllerRef.current = new AbortController();
+      // api.postChat 호출 시 signal 전달
+      const response = await api.postChat(
+        input,
+        checkedFiles, // FileContext에서 가져온 checkedFiles 사용
+        {
+          signal: controller.signal,
+        }
+      );
 
-      const response = await api.postChat(input, checkedFiles, {
-        signal: abortControllerRef.current.signal as any,
-      });
+      // 백엔드에서 받은 task_id를 상태에 저장
+      if (response.data.task_id) {
+        setCurrentTaskId(response.data.task_id);
+      }
 
-      // 백엔드 응답 형식에 맞게 처리
       const botMessage: Message = {
         sender: 'bot',
-        text: (response.data as any)?.answer || '응답을 받을 수 없습니다.',
-        images: (response.data as any)?.images || [],
+        text: response.data.answer, 
+        images: response.data.images, // 'images' 필드로 수정
       };
-
       setMessages(prev => [...prev, botMessage]);
+
     } catch (error) {
-      console.error('API 호출 오류:', error);
-
-      const errorMessage: Message = {
-        sender: 'bot',
-        text: '메시지 전송 중 오류가 발생했습니다.',
-      };
-
-      setMessages(prev => [...prev, errorMessage]);
+      if (axios.isCancel(error)) {
+        // 사용자가 요청을 취소한 경우
+        console.log('Request canceled by user.');
+        const botMessage: Message = { sender: 'bot', text: '요청이 중단되었습니다.' };
+        setMessages(prev => [...prev, botMessage]);
+      } else {
+        // 기타 에러 처리
+        console.error('An error occurred:', error);
+        const botMessage: Message = { sender: 'bot', text: '오류가 발생했습니다. 다시 시도해주세요.' };
+        setMessages(prev => [...prev, botMessage]);
+      }
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
+  };
+
+  const handleStopStreaming = async () => {
+    // 1. 프론트엔드의 Axios 요청을 즉시 중단
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      console.log('Frontend request aborted.');
+    }
+
+    // 2. 백엔드에 실제 작업 중지를 요청
+    if (currentTaskId) {
+      try {
+        console.log(`Sending cancel request to backend for task: ${currentTaskId}`);
+        await api.postCancel([currentTaskId]); // api.ts에 정의된 함수 사용
+        console.log('Backend cancellation request sent successfully.');
+      } catch (error) {
+        console.error('Failed to send cancellation request to backend:', error);
+      }
+    }
+    
+    // 작업 상태 초기화
+    setIsLoading(false);
+    setCurrentTaskId(null);
+    abortControllerRef.current = null;
   };
 
   const scrollToBottom = () => {
@@ -277,23 +317,37 @@ const CenterBox: React.FC<CenterBoxProps> = () => {
       </div>
 
       {/* Input Area */}
-      <div className="p-2 border-t border-[#e0e0e0] bg-white">
-        <div className="flex space-x-1">
+      <div className="p-4 border-t border-gray-200">
+        <div className="relative">
           <input
-            className="w-full rounded-[20px] border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="질문을 입력하세요..."
+            type="text"
             value={input}
             onChange={handleInputChange}
-            onKeyPress={handleKeyPress}
+            onKeyDown={handleKeyPress}
+            placeholder="메시지를 입력하세요..."
+            className="w-full p-3 pr-20 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             disabled={isLoading}
           />
-          <button
-            className="text-blue-500 p-2 rounded-full hover:bg-blue-50 disabled:text-gray-400"
-            onClick={handleSendMessage}
-            disabled={isLoading || input.trim() === ''}
-          >
-            {isLoading ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
-          </button>
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+            {isLoading ? (
+              <button
+                onClick={handleStopStreaming}
+                className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 focus:outline-none"
+                title="중지"
+              >
+                <Square size={20} />
+              </button>
+            ) : (
+              <button
+                onClick={handleSendMessage}
+                className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none disabled:bg-gray-300"
+                disabled={!input.trim()}
+                title="전송"
+              >
+                <Send size={20} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* 선택된 파일 표시 */}

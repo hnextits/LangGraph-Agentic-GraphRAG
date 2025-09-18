@@ -3,13 +3,18 @@ import logging
 import uvicorn
 import sys
 from pathlib import Path
+import threading
 
 from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
 
+running_tasks = {} 
+
+
 # 현재 작업 디렉토리를 sys.path에 추가하여 모듈 검색 경로에 포함
 # 이렇게 하면 'search_test' 같은 로컬 패키지를 찾을 수 있습니다.
+
 if "." not in sys.path:
     sys.path.append(".")
 
@@ -46,8 +51,13 @@ app.title = "챗봇 API"
 @app.on_event("startup")
 def startup_event():
     """
-    애플리케이션 시작 시 RAG 파이프라인을 초기화하고 app.state에 저장합니다.
+    애플리케이션 시작 시 RAG 파이프라인을 초기화하고, 실행 중인 작업을 관리할 상태를 설정합니다.
     """
+    # 실행 중인 작업을 저장할 딕셔너리 초기화
+    # key: task_id (str), value: threading.Event 객체
+    app.state.running_tasks = {}
+    logger.info("실행 작업 관리자(running_tasks)가 초기화되었습니다.")
+
     logger.info("RAG 파이프라인 초기화를 시작합니다...")
     app.state.rag_pipeline = initialize_rag_pipeline()
     if app.state.rag_pipeline:

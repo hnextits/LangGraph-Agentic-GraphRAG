@@ -3,6 +3,7 @@ node_modules/
 npm-debug.log*
 .env
 dist/
+/frontend/.next
 
 # Python 
 __pycache__/

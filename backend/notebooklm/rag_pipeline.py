@@ -20,6 +20,7 @@ RAG 시스템 통합 파이프라인 - 전체 RAG 시스템을 통합하고 실�
 import json
 import logging
 import argparse
+import threading
 from typing import List, Dict, Any, Optional
 
 # 컴포넌트 임포트
@@ -62,7 +63,7 @@ class RAGPipeline:
         
         logger.info("RAG 파이프라인 초기화 완료")
     
-    def process_query(self, query: str, top_k: int = 5) -> Dict[str, Any]:
+    def process_query(self, query: str, top_k: int = 5, cancellation_event: Optional[threading.Event] = None) -> Dict[str, Any]:
         """
         질문 처리 및 답변 생성 (수정된 메서드)
         
@@ -75,8 +76,12 @@ class RAGPipeline:
         """
         logger.info(f"질문 처리 시작: '{query}'")
 
+        # 취소 확인
+        if cancellation_event and cancellation_event.is_set():
+            raise InterruptedError("Operation cancelled before routing and search")
+
         # 1. 라우팅 및 검색
-        search_results = self.router.search(query, top_k=top_k)
+        search_results = self.router.search(query, top_k=top_k, cancellation_event=cancellation_event)
         
         # 검색 결과 로깅
         for searcher_name, results_data in search_results.items():
@@ -90,8 +95,12 @@ class RAGPipeline:
                 count = len(results_data)
             logger.info(f"{searcher_name} 검색기 결과: {count}개 항목 검색됨")
 
+        # 취소 확인
+        if cancellation_event and cancellation_event.is_set():
+            raise InterruptedError("Operation cancelled before response generation")
+
         # 3. 답변 생성
-        results = self.generator.generate_response(query, search_results)
+        results = self.generator.generate_response(query, search_results, cancellation_event=cancellation_event)
         
         # 4. 피드백 루프 (필요시)
         if self.config.use_feedback_loop:
@@ -204,12 +213,16 @@ class RAGPipeline:
             results['image_paths'] = image_paths
             logger.info(f"이미지 경로 수: {len(image_paths)}개")
 
+        # 취소 확인
+        if cancellation_event and cancellation_event.is_set():
+            raise InterruptedError("Operation cancelled before refinement")
+
         # 6. 답변 정제 (필요시)
         if self.config.use_refiner and self.refiner is not None and "answer" in results:
             original_answer = results.get("answer", "")
             logger.info(f"Refiner 입력 (원본 답변): {original_answer[:150]}...")
             
-            refined_answer = self.refiner.refine_answer(query, original_answer)
+            refined_answer = self.refiner.refine_answer(query, original_answer, cancellation_event=cancellation_event)
             results["answer"] = refined_answer
             logger.info(f"Refiner 출력 (정제된 답변): {refined_answer[:150]}...")
         elif self.config.use_refiner and self.refiner is None:

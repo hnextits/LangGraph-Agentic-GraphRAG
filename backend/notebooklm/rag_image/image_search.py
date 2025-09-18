@@ -12,6 +12,7 @@ import torch
 import torch.nn.functional as F
 import numpy as np
 import faiss
+import threading
 from typing import List, Dict, Any, Optional, Tuple
 from transformers import AutoTokenizer, AutoModel
 from rag_image.image_reranker import RAGReranker
@@ -123,7 +124,7 @@ class ImageSearcher:
             logger.error(traceback.format_exc())
             return np.random.rand(self.dimension).astype('float32')  # 오류 발생 시 랜덤 벡터로 대체
 
-    def search(self, query: str, top_k: int = 10, rerank: bool = True) -> List[Dict[str, Any]]:
+    def search(self, query: str, top_k: int = 10, rerank: bool = True, cancellation_event: Optional[threading.Event] = None) -> List[Dict[str, Any]]:
         """이미지 쿼리로 검색을 수행합니다. 벡터 검색을 수행하고 결과에 해당하는 메타데이터를 가져옵니다.
         리랭크가 성공적으로 수행된 경우 리랭크된 결과만 반환하고, 그렇지 않은 경우 원본 결과를 반환합니다."""
         # 매 검색마다 인덱스 다시 로드
@@ -145,6 +146,10 @@ class ImageSearcher:
             normalized_query = query.strip()
             logger.info(f"정규화된 쿼리: '{normalized_query}'")
             
+            # 취소 확인
+            if cancellation_event and cancellation_event.is_set():
+                raise InterruptedError("Operation cancelled before image query embedding generation")
+
             # 쿼리 임베딩 생성
             query_embedding = self.shared_embedding.generate_embedding(normalized_query)
             
@@ -161,6 +166,10 @@ class ImageSearcher:
             # 임베딩 생성 실패 시 빈 결과 반환
             return []
         
+        # 취소 확인
+        if cancellation_event and cancellation_event.is_set():
+            raise InterruptedError("Operation cancelled before image vector search")
+
         # PyTorch 를 사용한 검색 방식
         try:
             # config에서 통일된 dtype 설정 사용
@@ -388,10 +397,15 @@ class ImageSearcher:
         if self.use_reranker and self.reranker and filtered_results:
             try:
                 logger.info(f"Reranker를 사용하여 결과 재정렬 시작")
+                # 취소 확인
+                if cancellation_event and cancellation_event.is_set():
+                    raise InterruptedError("Operation cancelled before image reranking")
+
                 reranked_results = self.reranker.rerank(
                     query=query,
                     results=filtered_results,
-                    top_k=top_k
+                    top_k=top_k,
+                    cancellation_event=cancellation_event
                 )
                 
                 # 점수 정규화 제거 - 원본 점수 그대로 사용

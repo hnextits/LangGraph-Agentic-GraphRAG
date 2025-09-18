@@ -41,7 +41,21 @@ api.interceptors.response.use(
     return response;
   },
   (error: any) => {
-    console.error('API 응답 오류:', error.response?.status, error.response?.data);
+    // Axios 요청 취소 에러인지 확인
+    if (axios.isCancel(error)) {
+      console.log('API 요청이 사용자에 의해 취소되었습니다.', error.message);
+      // 취소 에러는 그대로 다시 throw하여 각 컴포넌트의 catch 블록에서 처리하도록 함
+      return Promise.reject(error);
+    }
+
+    // 네트워크 오류 또는 기타 응답이 없는 에러
+    if (!error.response) {
+      console.error('네트워크 오류 또는 응답 없는 에러:', error.message);
+      return Promise.reject(new Error('네트워크 오류가 발생했습니다. 서버 상태를 확인해주세요.'));
+    }
+
+    // 서버에서 응답했지만, 상태 코드가 2xx가 아닌 경우
+    console.error('API 응답 오류:', error.response.status, error.response.data);
     return Promise.reject(error);
   }
 );

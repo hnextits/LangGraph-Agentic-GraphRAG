@@ -4,6 +4,7 @@ import os
 import sys
 import logging
 import torch
+import threading
 from typing import List, Dict, Any, Optional
 import time
 # *** 변경된 부분 시작 ***
@@ -109,7 +110,7 @@ class ImprovedTextReranker:
             return False
 
     @torch.no_grad()
-    def compute_similarity_batch(self, query: str, passages: List[str]) -> List[float]:
+    def compute_similarity_batch(self, query: str, passages: List[str], cancellation_event: Optional[threading.Event] = None) -> List[float]:
         """배치로 여러 문서의 유사도를 계산합니다."""
         if not self._load_model():
             logger.error("모델 로드 실패")
@@ -118,6 +119,10 @@ class ImprovedTextReranker:
         all_scores = []
         
         for i in range(0, len(passages), self.batch_size):
+            # 배치 처리 전 취소 확인
+            if cancellation_event and cancellation_event.is_set():
+                raise InterruptedError("Reranking operation cancelled during batch processing")
+
             batch_passages = passages[i:i + self.batch_size]
             
             # 토큰화는 한 번만 수행
@@ -209,6 +214,7 @@ class ImprovedTextReranker:
         results: List[Dict[str, Any]],
         top_k: int = None,
         min_score: float = 0.0, # Qwen 리랭커는 점수 범위가 다르므로 임계값 조정이 필요할 수 있습니다.
+        cancellation_event: Optional[threading.Event] = None
     ) -> List[Dict[str, Any]]:
         if not results:
             logger.info("리랭킹할 결과가 없습니다.")
@@ -227,7 +233,7 @@ class ImprovedTextReranker:
         
         # compute_similarity_batch 메서드 호출 - 이미 dtype 일관성 처리가 적용됨
         try:
-            scores = self.compute_similarity_batch(query, passages)
+            scores = self.compute_similarity_batch(query, passages, cancellation_event=cancellation_event)
             logger.info(f"리랭킹 점수 계산 완료: {len(scores)}개 점수")
         except Exception as e:
             logger.error(f"리랭킹 점수 계산 중 오류 발생: {e}")

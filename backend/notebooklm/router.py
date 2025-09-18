@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import concurrent.futures
+import threading
 from typing import Dict, List, Any, Optional, Tuple
 
 from config import RAGConfig
@@ -141,7 +142,7 @@ class RAGRouter:
         
         return selected_searchers
     
-    def search(self, query: str, top_k: int = 15) -> Dict[str, Any]:
+    def search(self, query: str, top_k: int = 15, cancellation_event: Optional[threading.Event] = None) -> Dict[str, Any]:
         """
         쿼리를 ParallelSearcher에 위임하여 최종 결과를 반환합니다.
         항상 RAG 검색을 사용하도록 수정되었습니다.
@@ -157,8 +158,12 @@ class RAGRouter:
         selected_searchers = self.route_query(query)
         logger.info(f"RAG 검색을 위해 선택된 검색기: {selected_searchers}")
 
+        # 취소 확인
+        if cancellation_event and cancellation_event.is_set():
+            raise InterruptedError("Operation cancelled before parallel search")
+
         # 2. ParallelSearcher에 검색 위임
-        search_results = self.parallel_searcher.search(query, selected_searchers, top_k)
+        search_results = self.parallel_searcher.search(query, selected_searchers, top_k, cancellation_event=cancellation_event)
         
         # 3. 메타데이터 보강 및 결과 반환
         search_results["metadata"]["search_mode"] = "RAG"  # 항상 RAG 모드 사용

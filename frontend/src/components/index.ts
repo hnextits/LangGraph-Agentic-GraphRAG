@@ -1,3 +1,5 @@
+// 배럴파일
+
 import CenterBox from './CenterBox';
 import FileContentBox from './FileContentBox';
 import FileUploadBox from './FileUploadBox';
