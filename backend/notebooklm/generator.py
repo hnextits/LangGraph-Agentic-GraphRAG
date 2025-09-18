@@ -116,6 +116,7 @@ class Generator:
             
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
+                attn_implementation="flash_attention_2",
                 **model_kwargs
             )
             

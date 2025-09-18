@@ -10,6 +10,7 @@ import threading
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 from datetime import datetime
 import asyncio
@@ -144,6 +145,26 @@ def run_document_pipeline(task_id: str, title: str, link: str):
     except Exception as e:
         logger.error(f"[{task_id}] 문서 파이프라인 실패: {e}", exc_info=True)
         tasks[task_id].update({'status': 'failed', 'error': str(e)})
+
+def check_and_handle_pause(task_id: str) -> bool:
+    """
+    취소 상태를 확인하고 처리합니다.
+    
+    Args:
+        task_id: 작업 ID
+        
+    Returns:
+        bool: 작업이 취소되었으면 True, 계속 진행해야 하면 False
+    """
+    # 취소 상태 확인
+    if is_cancelled(task_id):
+        if tasks.get(task_id, {}).get('status') != 'cancelled':
+            tasks[task_id]['status'] = 'cancelled'
+            tasks[task_id]['message'] = '작업이 취소되었습니다.'
+            logger.info(f"[Task {task_id}] 작업이 취소되었습니다.")
+        return True
+    
+    return False
 
 def run_text_indexing(task_id: str, file_path: str):
     """텍스트 인덱싱 실행 함수"""
