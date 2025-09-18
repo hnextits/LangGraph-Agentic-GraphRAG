@@ -17,7 +17,7 @@ import asyncio
 
 # --- 필요한 모듈 임포트 (프로젝트 구조에 맞게 설정) ---
 from api.pause_api import is_cancelled, cancel_task
-from services.rag_service import get_rag_response
+from services.rag_service import run_rag_in_background
 from search_test.crawler_pipeline import crawling_web, sanitize_filename
 
 # --- 로거 및 라우터 설정 ---
@@ -63,10 +63,9 @@ class FileContentResponse(BaseModel): filename: str; content: str
 class DeleteFilesRequest(BaseModel): filenames: List[str]
 class DeleteFilesResponse(BaseModel): message: str; deleted_files: List[str]; failed_files: List[Dict[str, str]]
 class ChatQuery(BaseModel): query: str; sources: List[str] = []
-class ChatResponse(BaseModel): 
-    task_id: Optional[str] = None
-    answer: str
-    images: List[str]
+class ChatResponse(BaseModel):
+    task_id: str
+    message: str
 class SummarizeRequest(BaseModel): filenames: List[str]
 class TaskStatusResponse(BaseModel): task_id: str; status: str; message: Optional[str] = None; progress: Optional[int] = None; result: Optional[Any] = None; error: Optional[str] = None
 class SummarizeResponse(BaseModel):
@@ -662,37 +661,36 @@ async def delete_doc_files(req: DeleteFilesRequest) -> DeleteFilesResponse:
 # -- 기타 API --
 # RAG 챗봇에 질문하고 답변을 받는 API
 @router.post("/chat", response_model=ChatResponse, tags=["Chat"])
-async def chat(query: ChatQuery, request: Request) -> ChatResponse:
+async def chat(query: ChatQuery, request: Request, background_tasks: BackgroundTasks) -> ChatResponse:
     task_id = str(uuid.uuid4())
     cancellation_event = threading.Event()
     request.app.state.running_tasks[task_id] = cancellation_event
     logger.info(f"[Task {task_id}] 채팅 작업 시작: '{query.query}'")
 
-    try:
-        rag_pipeline = getattr(request.app.state, 'rag_pipeline', None)
-        if not rag_pipeline:
-            raise HTTPException(status_code=503, detail="RAG 파이프라인을 사용할 수 없습니다.")
+    rag_pipeline = getattr(request.app.state, 'rag_pipeline', None)
+    if not rag_pipeline:
+        raise HTTPException(status_code=503, detail="RAG 파이프라인을 사용할 수 없습니다.")
 
-        response = await asyncio.to_thread(
-            get_rag_response, 
-            query.query, 
-            query.sources, 
-            rag_pipeline,
-            cancellation_event
-        )
-        
-        logger.info(f"[Task {task_id}] 채팅 작업 완료.")
-        return ChatResponse(task_id=task_id, **response)
+    # 전역 tasks 딕셔너리에 작업 상태 초기화
+    tasks[task_id] = {
+        "task_id": task_id,
+        "status": "pending",
+        "message": "채팅 작업이 대기 중입니다."
+    }
 
-    except Exception as e:
-        # InterruptedError는 service 계층에서 처리되므로 여기서는 일반 예외만 처리
-        logger.error(f"[Task {task_id}] 채팅 처리 중 예상치 못한 오류: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # 작업 완료 후 딕셔너리에서 제거
-        if task_id in request.app.state.running_tasks:
-            del request.app.state.running_tasks[task_id]
-            logger.info(f"[Task {task_id}] 작업 상태 제거 완료.")
+    # 백그라운드에서 RAG 파이프라인 실행
+    background_tasks.add_task(
+        run_rag_in_background,
+        task_id=task_id,
+        query=query.query,
+        sources=query.sources,
+        rag_pipeline=rag_pipeline,
+        cancellation_event=cancellation_event,
+        tasks_dict=tasks, # tasks 딕셔너리 전달
+        running_tasks_dict=request.app.state.running_tasks # running_tasks 딕셔너리 전달
+    )
+
+    return ChatResponse(task_id=task_id, message="채팅 작업이 시작되었습니다.")
 
 # 진행 중인 백그라운드 작업을 ID로 지정하여 취소하는 API
 @router.post("/cancel", tags=["Task Management"])

@@ -344,6 +344,10 @@ class Generator:
                 if cancellation_event and cancellation_event.is_set():
                     raise InterruptedError("Operation cancelled before text generation")
 
+                # 취소 확인
+                if cancellation_event and cancellation_event.is_set():
+                    raise InterruptedError("Operation cancelled before text generation")
+
                 logger.info("GPU에서 텍스트 생성 중...")
                 outputs = self.model.generate(**inputs, **generation_params)
             

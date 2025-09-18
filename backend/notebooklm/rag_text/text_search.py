@@ -255,13 +255,7 @@ class TextSearcher:
                     raise InterruptedError("Operation cancelled before reranking")
 
                 # ImprovedTextReranker의 rerank 메서드 호출
-                reranked_results = self.reranker.rerank(
-                    query=query, 
-                    results=results, 
-                    top_k=rerank_top_k,
-                    min_score=config.RELEVANCE_THRESHOLD,  # config에서 가져온 관련성 임계값
-                    cancellation_event=cancellation_event # 이벤트 전달
-                )
+                reranked_results = self.reranker.rerank(query, results, top_k=rerank_top_k, min_score=config.RELEVANCE_THRESHOLD, cancellation_event=cancellation_event)
                 
                 # 리랭킹 통계 로깅
                 if hasattr(self.reranker, 'get_statistics'):

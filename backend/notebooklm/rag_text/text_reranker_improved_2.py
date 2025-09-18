@@ -231,6 +231,10 @@ class ImprovedTextReranker:
             text = result.get('text', result.get('content', ''))
             passages.append(text)
         
+        # 취소 확인
+        if cancellation_event and cancellation_event.is_set():
+            raise InterruptedError("Operation cancelled during text reranking")
+
         # compute_similarity_batch 메서드 호출 - 이미 dtype 일관성 처리가 적용됨
         try:
             scores = self.compute_similarity_batch(query, passages, cancellation_event=cancellation_event)

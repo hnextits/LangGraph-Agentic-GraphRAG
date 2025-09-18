@@ -68,7 +68,16 @@ const LeftBox: React.FC<LeftBoxProps> = ({
   const queryClient = useQueryClient();
 
   // 파일 리스트 불러오기
-  const { data: files, isLoading: isLoadingFiles } = useGetFiles();
+    const { data: files, isLoading: isLoadingFiles } = useGetFiles({
+      onError: (error: Error) => {
+        console.error('파일 목록을 불러오는 데 실패했습니다:', error);
+        Swal.fire(
+          '오류',
+          '파일 목록을 불러오는 데 실패했습니다. 서버 상태를 확인해주세요.',
+          'error'
+        );
+      },
+    });
 
   // 파일 데이터가 로드되면 sources 상태 업데이트
   useEffect(() => {

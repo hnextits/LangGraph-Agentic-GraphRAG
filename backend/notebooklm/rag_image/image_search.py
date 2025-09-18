@@ -401,12 +401,7 @@ class ImageSearcher:
                 if cancellation_event and cancellation_event.is_set():
                     raise InterruptedError("Operation cancelled before image reranking")
 
-                reranked_results = self.reranker.rerank(
-                    query=query,
-                    results=filtered_results,
-                    top_k=top_k,
-                    cancellation_event=cancellation_event
-                )
+                reranked_results = self.reranker.rerank(query, filtered_results, top_k=top_k, cancellation_event=cancellation_event)
                 
                 # 점수 정규화 제거 - 원본 점수 그대로 사용
                 # 점수 분포 확인을 위한 로깅

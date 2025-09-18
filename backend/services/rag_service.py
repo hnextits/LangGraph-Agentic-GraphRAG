@@ -3,7 +3,7 @@ import sys
 import importlib.util
 import logging
 import threading
-from typing import Optional
+from typing import Optional, Dict, Any, List
 import re
 from utils.helpers import process_response_with_images, encode_image_to_base64
 
@@ -154,7 +154,38 @@ def process_markdown_tables(text):
     
     return '\n'.join(result_lines)
 
-def get_rag_response(query: str, sources: list, rag_pipeline, cancellation_event: Optional[threading.Event] = None):
+def run_rag_in_background(
+    task_id: str,
+    query: str,
+    sources: List[str],
+    rag_pipeline,
+    cancellation_event: threading.Event,
+    tasks_dict: Dict[str, Any],
+    running_tasks_dict: Dict[str, Any]
+):
+    """백그라운드에서 RAG 파이프라인을 실행하고 결과를 tasks_dict에 저장합니다."""
+    tasks_dict[task_id].update({"status": "processing", "message": "RAG 파이프라인 실행 중..."})
+    try:
+        response_data = get_rag_response(query, sources, rag_pipeline, cancellation_event)
+        tasks_dict[task_id].update({
+            "status": "completed",
+            "message": "채팅 작업이 완료되었습니다.",
+            "result": response_data
+        })
+    except Exception as e:
+        logger.error(f"[Task {task_id}] 백그라운드 RAG 작업 중 오류: {e}", exc_info=True)
+        tasks_dict[task_id].update({
+            "status": "failed",
+            "message": "오류가 발생했습니다.",
+            "error": str(e)
+        })
+    finally:
+        # running_tasks에서 해당 task 정리
+        if task_id in running_tasks_dict:
+            del running_tasks_dict[task_id]
+            logger.info(f"[Task {task_id}] running_tasks에서 제거 완료.")
+
+def get_rag_response(query: str, sources: List[str], rag_pipeline, cancellation_event: Optional[threading.Event] = None) -> Dict[str, Any]:
     """
     사용자 질문과 소스 정보를 받아 RAG 파이프라인을 통해 답변과 이미지를 생성합니다.
     """

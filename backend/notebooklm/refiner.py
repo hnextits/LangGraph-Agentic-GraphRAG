@@ -137,6 +137,9 @@ class Refiner:
         
         # LLM을 통한 정제 수행
         try:
+            if cancellation_event and cancellation_event.is_set():
+                raise InterruptedError("Operation cancelled before refinement generation")
+            
             refined_answer = self._generate_with_refiner_model(system_prompt, user_prompt, cancellation_event=cancellation_event)
             
             # <think> 태그가 있다면 제거하고 실제 답변만 추출
@@ -328,6 +331,10 @@ class Refiner:
                 "pad_token_id": self.refiner_tokenizer.eos_token_id,
                 "num_beams": 1,     # 샘플링과 빔서치 동시 사용 불가
             }
+
+            # 취소 확인
+            if cancellation_event and cancellation_event.is_set():
+                raise InterruptedError("Operation cancelled before refinement generation")
 
             # 취소 확인
             if cancellation_event and cancellation_event.is_set():

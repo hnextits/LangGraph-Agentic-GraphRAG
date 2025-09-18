@@ -81,6 +81,9 @@ class RAGPipeline:
             raise InterruptedError("Operation cancelled before routing and search")
 
         # 1. 라우팅 및 검색
+        # 취소 확인
+        if cancellation_event and cancellation_event.is_set():
+            raise InterruptedError("Operation cancelled before search")
         search_results = self.router.search(query, top_k=top_k, cancellation_event=cancellation_event)
         
         # 검색 결과 로깅
@@ -100,6 +103,9 @@ class RAGPipeline:
             raise InterruptedError("Operation cancelled before response generation")
 
         # 3. 답변 생성
+        # 취소 확인
+        if cancellation_event and cancellation_event.is_set():
+            raise InterruptedError("Operation cancelled before generation")
         results = self.generator.generate_response(query, search_results, cancellation_event=cancellation_event)
         
         # 4. 피드백 루프 (필요시)
@@ -222,6 +228,9 @@ class RAGPipeline:
             original_answer = results.get("answer", "")
             logger.info(f"Refiner 입력 (원본 답변): {original_answer[:150]}...")
             
+            # 취소 확인
+            if cancellation_event and cancellation_event.is_set():
+                raise InterruptedError("Operation cancelled before refinement")
             refined_answer = self.refiner.refine_answer(query, original_answer, cancellation_event=cancellation_event)
             results["answer"] = refined_answer
             logger.info(f"Refiner 출력 (정제된 답변): {refined_answer[:150]}...")

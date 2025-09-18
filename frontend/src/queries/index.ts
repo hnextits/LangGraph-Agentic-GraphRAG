@@ -1,13 +1,14 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, UseQueryOptions } from '@tanstack/react-query';
 import api from '@/lib/api';
 
-const useGetFiles = () => {
-  return useQuery<string[]>({
+const useGetFiles = (options?: Omit<UseQueryOptions<string[], Error>, 'queryKey' | 'queryFn'>) => {
+  return useQuery<string[], Error>({
     queryKey: ['files'],
     queryFn: async () => {
       const response = await api.getFiles();
       return response.data.files;
     },
+    ...options,
   });
 };
 

@@ -14,6 +14,7 @@ interface Message {
   sender: 'user' | 'bot';
   text: string;
   images?: string[];
+  sources?: string[];
 }
 
 interface CenterBoxProps {}
@@ -22,10 +23,11 @@ const CenterBox: React.FC<CenterBoxProps> = () => {
   const { checkedFiles } = useContext(FileContext);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // 메시지 목록이 업데이트될 때마다 스크롤을 맨 아래로 이동
   useEffect(() => {
@@ -45,92 +47,134 @@ const CenterBox: React.FC<CenterBoxProps> = () => {
     };
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
   };
 
-  const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !isLoading) {
+  // Textarea 높이 자동 조절
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'; // 높이를 초기화
+      const scrollHeight = textareaRef.current.scrollHeight;
+      // 3줄 높이를 대략적으로 계산 (line-height * 3)
+      // 실제 line-height와 padding에 따라 값을 조정해야 할 수 있습니다.
+      const maxHeight = 24 * 3 + 24; // (line-height * 3) + (padding-top + padding-bottom)
+      if (scrollHeight > maxHeight) {
+        textareaRef.current.style.height = `${maxHeight}px`;
+        textareaRef.current.style.overflowY = 'scroll';
+      } else {
+        textareaRef.current.style.height = `${scrollHeight}px`;
+        textareaRef.current.style.overflowY = 'hidden';
+      }
+    }
+  }, [input]);
+
+    const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey && !isStreaming) {
       e.preventDefault();
       handleSendMessage();
     }
   };
 
-  const handleSendMessage = async () => {
-    if (!input.trim()) return;
+    const handleSendMessage = async () => {
+    if (input.trim() && !isStreaming) {
+      const userMessage: Message = { sender: 'user', text: input };
+      setMessages(prev => [...prev, userMessage]);
+      setInput('');
+      setIsStreaming(true);
 
-    const newUserMessage: Message = { sender: 'user', text: input };
-    setMessages(prev => [...prev, newUserMessage]);
-    setInput('');
-    setIsLoading(true);
-
-    // AbortController 생성 및 ref에 저장
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    try {
-      // api.postChat 호출 시 signal 전달
-      const response = await api.postChat(
-        input,
-        checkedFiles, // FileContext에서 가져온 checkedFiles 사용
-        {
-          signal: controller.signal,
-        }
-      );
-
-      // 백엔드에서 받은 task_id를 상태에 저장
-      if (response.data.task_id) {
-        setCurrentTaskId(response.data.task_id);
-      }
-
-      const botMessage: Message = {
-        sender: 'bot',
-        text: response.data.answer, 
-        images: response.data.images, // 'images' 필드로 수정
-      };
-      setMessages(prev => [...prev, botMessage]);
-
-    } catch (error) {
-      if (axios.isCancel(error)) {
-        // 사용자가 요청을 취소한 경우
-        console.log('Request canceled by user.');
-        const botMessage: Message = { sender: 'bot', text: '요청이 중단되었습니다.' };
-        setMessages(prev => [...prev, botMessage]);
-      } else {
-        // 기타 에러 처리
-        console.error('An error occurred:', error);
-        const botMessage: Message = { sender: 'bot', text: '오류가 발생했습니다. 다시 시도해주세요.' };
-        setMessages(prev => [...prev, botMessage]);
-      }
-    } finally {
-      setIsLoading(false);
-      abortControllerRef.current = null;
-    }
-  };
-
-  const handleStopStreaming = async () => {
-    // 1. 프론트엔드의 Axios 요청을 즉시 중단
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      console.log('Frontend request aborted.');
-    }
-
-    // 2. 백엔드에 실제 작업 중지를 요청
-    if (currentTaskId) {
+      
       try {
-        console.log(`Sending cancel request to backend for task: ${currentTaskId}`);
-        await api.postCancel([currentTaskId]); // api.ts에 정의된 함수 사용
-        console.log('Backend cancellation request sent successfully.');
+        const response = await api.postChat(input, checkedFiles);
+        if (response.data.task_id) {
+          setCurrentTaskId(response.data.task_id);
+        } else {
+          throw new Error('task_id를 받지 못했습니다.');
+        }
       } catch (error) {
-        console.error('Failed to send cancellation request to backend:', error);
+        console.error('채팅 시작 API 호출 오류:', error);
+        const errorMessage: Message = {
+          sender: 'bot',
+          text: '작업을 시작하는 데 실패했습니다.',
+        };
+        setMessages(prev => [...prev, errorMessage]);
       }
     }
-    
-    // 작업 상태 초기화
-    setIsLoading(false);
-    setCurrentTaskId(null);
-    abortControllerRef.current = null;
   };
+
+  const stopPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  };
+
+    const handleStopStreaming = () => {
+    if (currentTaskId) {
+      api.postCancel([currentTaskId]); // 백엔드에 취소 요청
+      stopPolling();
+      setIsStreaming(false);
+      setCurrentTaskId(null);
+
+      // 사용자 요청에 의한 중단 메시지 추가
+      const cancelledMessage: Message = { sender: 'bot', text: '사용자의 요청에 의해 중단되었습니다.' };
+      setMessages(prev => [...prev, cancelledMessage]);
+    }
+  };
+
+  useEffect(() => {
+    if (currentTaskId) {
+      pollingIntervalRef.current = setInterval(async () => {
+        try {
+          const statusResponse = await api.getTaskStatus(currentTaskId);
+          const task = statusResponse.data;
+
+          if (task.status === 'completed') {
+            stopPolling();
+            const result = task.result;
+            const finalMessage: Message = {
+              sender: 'bot',
+              text: result.answer || '답변을 받지 못했습니다.',
+              images: result.image_paths || [],
+              sources: result.context ? result.context.split('\n') : [],
+            };
+            setMessages(prev => [...prev, finalMessage]);
+            setIsStreaming(false);
+            setCurrentTaskId(null);
+          } else if (task.status === 'failed') {
+            stopPolling();
+            const errorMessage: Message = {
+              sender: 'bot',
+              text: `오류가 발생했습니다: ${task.error || '알 수 없는 오류'}`,
+            };
+            setMessages(prev => [...prev, errorMessage]);
+            setIsStreaming(false);
+            setCurrentTaskId(null);
+          } else if (task.status === 'cancelled') {
+            stopPolling();
+            // handleStopStreaming에서 이미 메시지를 표시했을 수 있으므로, 상태만 정리
+            setIsStreaming(false);
+            setCurrentTaskId(null);
+            stopPolling();
+          }
+        } catch (error) {
+          console.error('작업 상태 확인 오류:', error);
+          stopPolling();
+          const errorMessage: Message = {
+            sender: 'bot',
+            text: '작업 상태를 확인하는 중 오류가 발생했습니다.',
+          };
+          setMessages(prev => [...prev, errorMessage]);
+          setIsStreaming(false);
+          setCurrentTaskId(null);
+        }
+      }, 2000);
+    }
+
+    return () => {
+      stopPolling();
+    };
+  }, [currentTaskId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -304,7 +348,7 @@ const CenterBox: React.FC<CenterBoxProps> = () => {
               )}
             </div>
           ))}
-          {isLoading && (
+          {isStreaming && (
             <div className="flex items-center space-x-1 ml-1">
               <div className="animate-spin">
                 <Loader2 size={20} />
@@ -319,17 +363,19 @@ const CenterBox: React.FC<CenterBoxProps> = () => {
       {/* Input Area */}
       <div className="p-4 border-t border-gray-200">
         <div className="relative">
-          <input
-            type="text"
+          <textarea
+            ref={textareaRef}
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyPress}
-            placeholder="메시지를 입력하세요..."
-            className="w-full p-3 pr-20 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={isLoading}
+            placeholder="메시지를 입력하세요... (Shift+Enter로 줄바꿈)"
+            className="w-full p-3 pr-20 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-hidden no-scrollbar"
+            disabled={isStreaming}
+            rows={1}
+            style={{ lineHeight: '1.5rem' }} // 24px
           />
           <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-            {isLoading ? (
+            {isStreaming ? (
               <button
                 onClick={handleStopStreaming}
                 className="p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 focus:outline-none"
