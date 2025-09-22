@@ -234,61 +234,33 @@ class Refiner:
         return result
     
     def _remove_duplicated_sentences(self, text: str) -> str:
-        """중복된 문장 제거 (마크다운 테이블 보존)"""
+        """중복된 문장/라인 제거 (마크다운 테이블 보존 + 줄바꿈 유지)"""
         if not text:
             return text
-        
-        # 마크다운 테이블 보존
-        processed_text, tables, table_tokens = self._preserve_markdown_tables(text)
-        
-        # 문장들을 분리
-        sentences = []
-        current_sentence = ""
-        
-        # 문장 분리 (테이블 토큰은 그대로 유지)
-        for line in processed_text.split('\n'):
-            # 테이블 토큰이면 그대로 추가
-            if any(token in line for token in table_tokens):
-                if current_sentence:
-                    sentences.append(current_sentence.strip())
-                    current_sentence = ""
-                sentences.append(line)
-                continue
-                
+
+        # 1) 테이블 보존
+        processed_text, tables, tokens = self._preserve_markdown_tables(text)
+
+        # 2) 줄 단위 처리
+        seen = set()
+        unique_lines = []
+        for line in processed_text.splitlines():
             if not line.strip():
-                if current_sentence:
-                    sentences.append(current_sentence.strip())
-                    current_sentence = ""
-                sentences.append("")
-            else:
-                if line.strip().endswith(('.', '!', '?', ':', ';')):
-                    current_sentence += line
-                    sentences.append(current_sentence.strip())
-                    current_sentence = ""
-                else:
-                    current_sentence += line + " "
-        
-        if current_sentence:
-            sentences.append(current_sentence.strip())
-        
-        # 중복 문장 제거 (테이블 토큰은 항상 유지)
-        seen_sentences = set()
-        unique_sentences = []
-        
-        for sentence in sentences:
-            # 테이블 토큰이거나 빈 줄은 그대로 유지
-            if not sentence or any(token in sentence for token in table_tokens):
-                unique_sentences.append(sentence)
+                unique_lines.append("")  # 빈 줄 그대로 유지
                 continue
-                
-            # 중복 문장 제거
-            if sentence.lower() not in seen_sentences:
-                seen_sentences.add(sentence.lower())
-                unique_sentences.append(sentence)
-        
-        # 테이블 토큰을 원래 테이블로 복원
-        result = '\n'.join(unique_sentences)
-        return self._restore_markdown_tables(result, tables, table_tokens)
+            if any(token in line for token in tokens):
+                unique_lines.append(line)  # 테이블 토큰은 무조건 유지
+                continue
+            norm = line.strip().lower()
+            if norm not in seen:
+                seen.add(norm)
+                unique_lines.append(line)
+
+        # 3) 다시 합치기
+        result = "\n".join(unique_lines)
+
+        # 4) 테이블 복원
+        return self._restore_markdown_tables(result, tables, tokens)
     
     def _generate_with_refiner_model(self, system_prompt: str, user_prompt: str, cancellation_event: Optional[threading.Event] = None) -> str:
         """

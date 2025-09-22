@@ -6,6 +6,7 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import api from '@/lib/api';
 import { FileContext } from '@/contexts/FileContext';
 import axios from 'axios';
+import MessageActions from './MessageActions';
 
 // 아이콘 임포트
 import { Send, Loader2, User, Bot, Square } from 'lucide-react';
@@ -47,7 +48,7 @@ const CenterBox: React.FC<CenterBoxProps> = () => {
     };
   }, []);
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
   };
 
@@ -56,8 +57,6 @@ const CenterBox: React.FC<CenterBoxProps> = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'; // 높이를 초기화
       const scrollHeight = textareaRef.current.scrollHeight;
-      // 3줄 높이를 대략적으로 계산 (line-height * 3)
-      // 실제 line-height와 padding에 따라 값을 조정해야 할 수 있습니다.
       const maxHeight = 24 * 3 + 24; // (line-height * 3) + (padding-top + padding-bottom)
       if (scrollHeight > maxHeight) {
         textareaRef.current.style.height = `${maxHeight}px`;
@@ -69,21 +68,20 @@ const CenterBox: React.FC<CenterBoxProps> = () => {
     }
   }, [input]);
 
-    const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !isStreaming) {
       e.preventDefault();
       handleSendMessage();
     }
   };
 
-    const handleSendMessage = async () => {
+  const handleSendMessage = async () => {
     if (input.trim() && !isStreaming) {
       const userMessage: Message = { sender: 'user', text: input };
       setMessages(prev => [...prev, userMessage]);
       setInput('');
       setIsStreaming(true);
 
-      
       try {
         const response = await api.postChat(input, checkedFiles);
         if (response.data.task_id) {
@@ -109,7 +107,7 @@ const CenterBox: React.FC<CenterBoxProps> = () => {
     }
   };
 
-    const handleStopStreaming = () => {
+  const handleStopStreaming = () => {
     if (currentTaskId) {
       api.postCancel([currentTaskId]); // 백엔드에 취소 요청
       stopPolling();
@@ -117,7 +115,10 @@ const CenterBox: React.FC<CenterBoxProps> = () => {
       setCurrentTaskId(null);
 
       // 사용자 요청에 의한 중단 메시지 추가
-      const cancelledMessage: Message = { sender: 'bot', text: '사용자의 요청에 의해 중단되었습니다.' };
+      const cancelledMessage: Message = {
+        sender: 'bot',
+        text: '사용자의 요청에 의해 중단되었습니다.',
+      };
       setMessages(prev => [...prev, cancelledMessage]);
     }
   };
@@ -200,143 +201,149 @@ const CenterBox: React.FC<CenterBoxProps> = () => {
               )}
 
               <div
-                className={`max-w-[80%] rounded-lg p-3 ${
-                  msg.sender === 'user'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-white border border-gray-200'
+                className={`max-w-[80%] flex flex-col ${
+                  msg.sender === 'user' ? 'items-end' : 'items-start'
                 }`}
               >
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    // 테이블 스타일링 개선
-                    table: ({ node, ...props }) => (
-                      <div className="table-container overflow-x-auto my-2">
-                        <table className="markdown-table border-collapse w-full" {...props} />
-                      </div>
-                    ),
-                    thead: props => <thead className="markdown-thead bg-[#f5f7fa]" {...props} />,
-                    tbody: props => <tbody className="markdown-tbody" {...props} />,
-                    tr: props => (
-                      <tr
-                        className="markdown-tr border-b border-gray-200 hover:bg-gray-50"
-                        {...props}
-                      />
-                    ),
-                    th: props => (
-                      <th
-                        className="markdown-th p-2 text-left font-semibold border-b-2 border-gray-300"
-                        {...props}
-                      />
-                    ),
-                    td: props => <td className="markdown-td p-2 border-gray-200" {...props} />,
-                    // 코드 블록
-                    code: ({ node, inline, className, children, ...props }) => {
-                      const match = /language-(.*)/.exec(className || '');
-                      const language = match ? match[1] : '';
-
-                      if (inline) {
-                        return (
-                          <code
-                            className="inline-code px-1 py-0.5 rounded bg-gray-100 text-red-500"
-                            {...props}
-                          >
-                            {children}
-                          </code>
-                        );
-                      }
-
-                      return (
-                        <div className="code-block-wrapper my-3 rounded overflow-hidden">
-                          {language && (
-                            <div className="code-header bg-gray-800 text-gray-200 text-xs px-4 py-1">
-                              <span className="language-tag">{language}</span>
-                            </div>
-                          )}
-                          <SyntaxHighlighter
-                            style={vscDarkPlus as any}
-                            language={language || 'text'}
-                            PreTag="div"
-                            className="code-block"
-                            showLineNumbers={!inline && language !== 'text'}
-                            wrapLines={true}
-                            {...props}
-                          >
-                            {String(children).replace(/\n$/, '')}
-                          </SyntaxHighlighter>
-                        </div>
-                      );
-                    },
-                    // 링크 (새 탭에서 열기)
-                    a: ({ href, children }) => (
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="markdown-link text-blue-600 hover:underline"
-                      >
-                        {children}
-                      </a>
-                    ),
-                  }}
+                <div
+                  className={`rounded-lg p-3 ${
+                    msg.sender === 'user'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white border border-gray-200'
+                  }`}
                 >
-                  {msg.text}
-                </ReactMarkdown>
-
-                {/* 이미지 갤러리 */}
-                {msg.images && msg.images.length > 0 && (
-                  <div className="image-gallery mt-3 space-y-3">
-                    {msg.images.map((img, idx) => {
-                      // 이미지 데이터 처리
-                      // @ts-ignore - 이미지 타입 정의 문제 해결
-                      let base64ForDisplay = typeof img === 'string' ? img : img?.base64 || '';
-                      let isValidBase64 =
-                        base64ForDisplay.startsWith('data:image/') ||
-                        base64ForDisplay.startsWith('data:application/');
-
-                      return (
-                        <div key={idx} className="border border-gray-200 p-2 rounded">
-                          <div className="font-medium text-sm mb-2">이미지 {idx + 1}</div>
-
-                          {isValidBase64 ? (
-                            <>
-                              <div className="text-center">
-                                <img
-                                  src={base64ForDisplay}
-                                  alt={`이미지 ${idx + 1}`}
-                                  className="mx-auto my-2 max-w-full max-h-[300px] object-contain rounded cursor-pointer"
-                                  loading="eager"
-                                  onClick={() => {
-                                    // 이미지 클릭 시 새 탭에서 열기
-                                    const newWindow = window.open();
-                                    if (newWindow) {
-                                      newWindow.document.write(`
-                                        <html>
-                                          <head><title>이미지 ${idx + 1}</title></head>
-                                          <body style="margin:0; display:flex; justify-content:center; align-items:center; min-height:100vh; background:#f0f0f0;">
-                                            <img src="${base64ForDisplay}" style="max-width:100%; max-height:100%; object-fit:contain;" alt="이미지 ${
-                                        idx + 1
-                                      }">
-                                          </body>
-                                        </html>
-                                      `);
-                                    }
-                                  }}
-                                />
-                              </div>
-
-                              <div className="mt-2 text-xs text-gray-500 text-center">
-                                클릭하면 새 탭에서 확대됩니다.
-                              </div>
-                            </>
-                          ) : (
-                            <div className="p-3 bg-red-100 text-red-700 text-center rounded">
-                              <p>이미지를 표시할 수 없습니다</p>
-                            </div>
-                          )}
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      table: ({ node, ...props }) => (
+                        <div className="table-container overflow-x-auto my-2">
+                          <table className="markdown-table border-collapse w-full" {...props} />
                         </div>
-                      );
-                    })}
+                      ),
+                      thead: props => <thead className="markdown-thead bg-[#f5f7fa]" {...props} />,
+                      tbody: props => <tbody className="markdown-tbody" {...props} />,
+                      tr: props => (
+                        <tr
+                          className="markdown-tr border-b border-gray-200 hover:bg-gray-50"
+                          {...props}
+                        />
+                      ),
+                      th: props => (
+                        <th
+                          className="markdown-th p-2 text-left font-semibold border-b-2 border-gray-300"
+                          {...props}
+                        />
+                      ),
+                      td: props => <td className="markdown-td p-2 border-gray-200" {...props} />,
+                      code: ({ node, inline, className, children, ...props }) => {
+                        const match = /language-(.*)/.exec(className || '');
+                        const language = match ? match[1] : '';
+
+                        if (inline) {
+                          return (
+                            <code
+                              className="inline-code px-1 py-0.5 rounded bg-gray-100 text-red-500"
+                              {...props}
+                            >
+                              {children}
+                            </code>
+                          );
+                        }
+
+                        return (
+                          <div className="code-block-wrapper my-3 rounded overflow-hidden">
+                            {language && (
+                              <div className="code-header bg-gray-800 text-gray-200 text-xs px-4 py-1">
+                                <span className="language-tag">{language}</span>
+                              </div>
+                            )}
+                            <SyntaxHighlighter
+                              style={vscDarkPlus as any}
+                              language={language || 'text'}
+                              PreTag="div"
+                              className="code-block"
+                              showLineNumbers={!inline && language !== 'text'}
+                              wrapLines={true}
+                              {...props}
+                            >
+                              {String(children).replace(/\n$/, '')}
+                            </SyntaxHighlighter>
+                          </div>
+                        );
+                      },
+                      a: ({ href, children }) => (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="markdown-link text-blue-600 hover:underline"
+                        >
+                          {children}
+                        </a>
+                      ),
+                    }}
+                  >
+                    {msg.text}
+                  </ReactMarkdown>
+
+                  {/* 이미지 갤러리 */}
+                  {msg.images && msg.images.length > 0 && (
+                    <div className="image-gallery mt-3 space-y-3">
+                      {msg.images.map((img, idx) => {
+                        // @ts-ignore
+                        let base64ForDisplay = typeof img === 'string' ? img : img?.base64 || '';
+                        let isValidBase64 =
+                          base64ForDisplay.startsWith('data:image/') ||
+                          base64ForDisplay.startsWith('data:application/');
+
+                        return (
+                          <div key={idx} className="border border-gray-200 p-2 rounded">
+                            <div className="font-medium text-sm mb-2">이미지 {idx + 1}</div>
+
+                            {isValidBase64 ? (
+                              <>
+                                <div className="text-center">
+                                  <img
+                                    src={base64ForDisplay}
+                                    alt={`이미지 ${idx + 1}`}
+                                    className="mx-auto my-2 max-w-full max-h-[300px] object-contain rounded cursor-pointer"
+                                    loading="eager"
+                                    onClick={() => {
+                                      const newWindow = window.open();
+                                      if (newWindow) {
+                                        newWindow.document.write(`
+                                          <html>
+                                            <head><title>이미지 ${idx + 1}</title></head>
+                                            <body style="margin:0; display:flex; justify-content:center; align-items:center; min-height:100vh; background:#f0f0f0;">
+                                              <img src="${base64ForDisplay}" style="max-width:100%; max-height:100%; object-fit:contain;" alt="이미지 ${
+                                          idx + 1
+                                        }">
+                                            </body>
+                                          </html>
+                                        `);
+                                      }
+                                    }}
+                                  />
+                                </div>
+
+                                <div className="mt-2 text-xs text-gray-500 text-center">
+                                  클릭하면 새 탭에서 확대됩니다.
+                                </div>
+                              </>
+                            ) : (
+                              <div className="p-3 bg-red-100 text-red-700 text-center rounded">
+                                <p>이미지를 표시할 수 없습니다</p>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                {msg.sender === 'bot' && (
+                  <div className="w-full flex justify-end">
+                    <MessageActions content={msg.text} />
                   </div>
                 )}
               </div>
@@ -369,12 +376,12 @@ const CenterBox: React.FC<CenterBoxProps> = () => {
             onChange={handleInputChange}
             onKeyDown={handleKeyPress}
             placeholder="메시지를 입력하세요... (Shift+Enter로 줄바꿈)"
-            className="w-full p-3 pr-20 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-hidden no-scrollbar"
+            className="w-full p-4 pr-20 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none overflow-hidden no-scrollbar"
             disabled={isStreaming}
             rows={1}
             style={{ lineHeight: '1.5rem' }} // 24px
           />
-          <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+          <div className="absolute inset-y-0 right-0 flex items-center pr-2">
             {isStreaming ? (
               <button
                 onClick={handleStopStreaming}

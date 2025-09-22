@@ -17,7 +17,7 @@ from config import RAGConfig
 logger = logging.getLogger(__name__)
 
 class QueryRewriter:
-    def __init__(self, model_name: str = 'naver-hyperclovax/HyperCLOVAX-SEED-Text-Instruct-1.5B', device: str = None):
+    def __init__(self, model_name: str = 'NEXTITS/Qwen3-0.6B-SFT-No.952', device: str = None):
         """
         QueryRewriter를 초기화합니다.
 

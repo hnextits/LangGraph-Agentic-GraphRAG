@@ -60,7 +60,7 @@ class RAGConfig:
         self.RERANKER_MODEL_NAME = "Qwen/Qwen3-Reranker-4B"
         
         # 쿼리 리라이터 모델
-        self.QUERY_REWRITE_MODEL_NAME = "naver-hyperclovax/HyperCLOVAX-SEED-Text-Instruct-1.5B"
+        self.QUERY_REWRITE_MODEL_NAME = "NEXTITS/Qwen3-0.6B-SFT-No.952"
         
         # 생성 모델
         self.LLM_MODEL = "unsloth/Qwen3-8B-unsloth-bnb-4bit"
@@ -109,7 +109,7 @@ class RAGConfig:
         # 파이프라인 설정
         self.debug_mode = False
         self.use_feedback_loop = True
-        self.use_refiner = True
+        self.use_refiner = False
         self.separate_image_text_results = True  # 이미지와 텍스트 결과 분리 여부
         
         # 메모리 관리 설정
@@ -238,59 +238,66 @@ class RAGConfig:
             Transform RAG answers into beautifully formatted Markdown for user display.
             CRITICAL: Output ONLY pure Markdown text. Do NOT use markdown or code blocks.
             ***You MUST respond in Korean ONLY. Do not use English or any other language. All explanations, terms, and sentences must be in Korean.***
-            :돋보기: Your Task:
-                Convert the original answer into well-structured Markdown while preserving all key information.
-            :클립보드: Requirements:
+
+            📋 Your Task
+                Convert the original answer into visually appealing, well-structured Markdown while preserving all key information.
+
+            ✅ Requirements
             1. Pure Markdown Output
                 Use only Markdown syntax (no code blocks).
-            2. Strict Structure with Mandatory Line Breaks
+
+            2. Beautiful Structure with Proper Line Breaks
                 Use #, ##, ### headings to organize content clearly.
+                Add relevant emojis to headings and key points.
                 ALWAYS add blank lines between different sections.
                 ALWAYS add blank lines between headings and content.
-                ALWAYS add blank lines before and after lists.
-                ALWAYS add blank lines before and after tables.
-                NEVER combine multiple list items into a single line.
-                NEVER skip blank lines where required by these rules.
-            3. :경고: Critical Line Break Rules (MUST FOLLOW)
-                Insert a blank line after EVERY heading (# ## ###).
-                Insert a blank line before EVERY list item start.
-                Insert a blank line after EVERY list section ends.
-                Each bullet point (-) or numbered item (1.) MUST be on its own line.
-                ALWAYS add blank lines between paragraphs.
+                Tables → must be Markdown tables, with proper line breaks inside cells.
+                Lists → use bullet points (-) or numbered lists.
+                Each list item must be on a separate line.
+                Add blank lines between different groups of content (text, lists, tables).
+
+            3. Strict Line Break Rules
+                Insert a blank line after every heading.
+                Insert a blank line between sections.
+                Each bullet point must be on its own line.
+                Add blank lines between different content types (paragraphs, lists, tables).
                 Use double blank lines to separate major sections.
-            4. :막대_차트: Table Formatting (CRITICAL)
-                If table content contains multiple items, each item MUST appear on a new line within the same cell.
-                Never collapse multiple list items into a single line in tables.
+
+            4. Table Formatting (CRITICAL)
+                If table content contains multiple items, each item must appear on a new line within the same cell.
+                Never collapse multiple list items into a single line.
                 Example of correct formatting:
-                | Category | Details |
-                | --- | --- |
-                | :음표: Major Albums | - Heartbreaker (2009)
+                Category	Details
+                🎵 Major Albums	- Heartbreaker (2009)
                 One Of A Kind (2012)
                 Coup D'etat (2013)
                 POWER (2025) |
-                | :tv: Music Show Wins | - Heartbreaker → 11 wins
+                | 📺 Music Show Wins | - Heartbreaker → 11 wins
                 Coup D'etat → 4 wins
                 HOME SWEET HOME → 4 wins |
-            5. :예술: Visual Enhancement
-                Use emojis for main section headings and key points only.
-                Use bold (**text**) for important terms and concepts.
-                Use italic (*text*) sparingly for emphasis.
-                Ensure consistent spacing throughout the document.
-            6. :메모: Content Preservation
-                Preserve all important information from the original answer.
-                Organize information logically with clear hierarchy.
-                Use headings to separate main topics.
-                Use lists for sequential or grouped information.
-            7. :압정: Example Structure
-                # :다트: 주요 주제
-                ## :클립보드: 핵심 정보
-                - **중요 개념**: 설명
-                - **또 다른 개념**: 설명
-                ## :전구: 세부 내용
-                1. 첫 번째 항목
-                2. 두 번째 항목
-                ### :흰색_확인_표시: 추가 정보
-                표나 목록은 반드시 위아래에 빈 줄을 포함해야 합니다.
+                | 🌍 Billboard Rankings | - One Of A Kind → #161
+                Coup D'etat → #182
+                POWER → #29
+                HOME SWEET HOME → #27 |
+
+            5. Visual Enhancement
+                Add emojis that match the context.
+                Use bold and italic for emphasis.
+                Ensure consistent spacing.
+
+            6. Remove Redundancy
+                Delete repetitive or unnecessary phrases.
+
+            7. Keep Content
+                Preserve all important information.
+                ✨ Example Structure
+                🎯 Main Topic
+                📋 Key Information
+                📌 Important point
+                ✅ Another key point
+                💡 Details
+                Bold key concepts and use emojis appropriately.
+                👉 This ensures perfect Markdown rendering with strict line-break handling, especially for tables with multiple items per cell. 
             """
                         
         

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useGetSummarizes } from '@/queries';
+import { useGetSummaries } from '@/queries';
 import api from '@/lib/api';
 import {
   ChevronLeft,
@@ -145,7 +145,7 @@ const RightBox: React.FC<RightBoxProps> = ({
     let name = fileName.startsWith('summary_') ? fileName.substring(8) : fileName;
     // 파일 이름 끝에 .md가 반복되는 경우 모두 제거
     while (name.endsWith('.md')) {
-        name = name.slice(0, -3);
+      name = name.slice(0, -3);
     }
     return name;
   };
@@ -212,7 +212,11 @@ const RightBox: React.FC<RightBoxProps> = ({
                     : 'disabled:opacity-50 disabled:cursor-not-allowed'
                 }`}
               >
-                {isLoading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                {isLoading ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <RefreshCw size={16} />
+                )}
               </button>
             </div>
 
@@ -240,124 +244,115 @@ const RightBox: React.FC<RightBoxProps> = ({
             </div>
           </div>
         ) : (
-          <div className="flex-grow overflow-y-auto p-4">
-            {/* 요약 생성 버튼 */}
-            <div className="mb-4">
+          <div className="flex-grow flex flex-col overflow-hidden">
+            {/* --- Action Toolbar --- */}
+            <div className="flex items-center justify-between p-2 border-b border-gray-200 bg-gray-50/50">
               <button
                 onClick={handleGenerateSummary}
                 disabled={isLoading || selectedFiles.length === 0}
-                className={`flex items-center justify-center px-4 py-2 rounded-md w-full ${
-                  isLoading || selectedFiles.length === 0
-                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-500 text-white hover:bg-blue-600'
-                }`}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-sm rounded-md bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-50 w-full justify-center"
               >
                 {isLoading ? (
                   <>
-                    <Loader2 size={16} className="mr-2 animate-spin" />
-                    요약 생성 중...
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>요약 생성 중...</span>
                   </>
                 ) : (
                   <>
-                    <RefreshCw size={16} className="mr-2" />
-                    요약 생성하기
+                    <RefreshCw size={16} />
+                    <span>요약 생성하기</span>
                   </>
                 )}
               </button>
-
-              <div className="mt-2 text-xs text-gray-500">
-                {selectedFiles.length > 0 ? (
-                  <span>선택된 파일: {selectedFiles.length}개</span>
-                ) : (
-                  <span className="text-red-500">요약할 파일을 선택해주세요.</span>
-                )}
-              </div>
+            </div>
+            <div className="p-2 border-b border-gray-200 text-xs text-gray-500">
+              {selectedFiles.length > 0 ? (
+                <span>선택된 파일: {selectedFiles.length}개</span>
+              ) : (
+                <span className="text-red-500">요약할 파일을 선택해주세요.</span>
+              )}
             </div>
 
             {/* 에러 메시지 */}
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-start">
+              <div className="m-2 p-3 bg-red-50 border border-red-200 rounded-md flex items-start flex-shrink-0">
                 <AlertCircle size={16} className="text-red-500 mr-2 mt-0.5" />
                 <p className="text-red-600 text-sm">{error}</p>
               </div>
             )}
 
-            
-            {/* 삭제 */}
-            <div className="flex justify-between items-center px-2 mb-2 h-9">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  onChange={handleSelectAll}
-                  checked={
-                    summarizedFiles.length > 0 &&
-                    checkedSummarizes.length === summarizedFiles.length
-                  }
-                  className="mr-2 h-4 w-4"
-                />
-                <span className="text-sm">전체 선택</span>
+            <div className="h-full flex flex-col flex-grow overflow-hidden">
+              <div className="flex-shrink-0 flex justify-between items-center p-2 border-b border-gray-200 bg-gray-50/50">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    onChange={handleSelectAll}
+                    checked={
+                      summarizedFiles.length > 0 &&
+                      checkedSummarizes.length === summarizedFiles.length
+                    }
+                    className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">전체 선택</span>
+                </div>
+                <button
+                  onClick={handleDelete}
+                  disabled={checkedSummarizes.length === 0}
+                  className={`p-1 rounded-md disabled:text-gray-300 disabled:cursor-not-allowed text-gray-600 hover:bg-gray-200`}
+                >
+                  <Trash2 size={18} />
+                </button>
               </div>
-              <button
-                onClick={handleDelete}
-                disabled={checkedSummarizes.length === 0}
-                className={`p-1 rounded-md ${
-                  checkedSummarizes.length === 0
-                    ? 'text-gray-300 cursor-not-allowed'
-                    : 'hover:bg-gray-100 text-gray-700 cursor-pointer'
-                }`}
-              >
-                <Trash2 size={18} />
-              </button>
-            </div>
 
-            <div className="">
-              {isSummariesLoading ? (
-                <div className="flex flex-col items-center justify-center h-[200px] text-gray-400">
-                  <Loader2 size={32} className="mb-2 animate-spin" />
-                  <p>요약 목록을 불러오는 중...</p>
-                </div>
-              ) : isSummariesError ? (
-                <div className="flex flex-col items-center justify-center h-[200px] text-red-400">
-                  <AlertCircle size={32} className="mb-2" />
-                  <p>목록을 불러오는데 실패했습니다.</p>
-                </div>
-              ) : summarizedFiles.length > 0 ? (
-                <ul className="space-y-2">
-                  {summarizedFiles.map((file, index) => {
-                    const isChecked = checkedSummarizes.includes(file);
-                    return (
-                      <li
-                        key={index}
-                        onClick={() => handleOpenModal(file)}
-                        className="p-1 mb-2 rounded border border-gray-200 flex items-center justify-between hover:bg-gray-50 cursor-pointer"
-                      >
-                        <div className="flex items-center flex-grow min-w-0">
-                          <div className="min-w-[40px] flex items-center justify-center">
-                            {getFileIcon(file)}
+              <div className="flex-grow overflow-y-auto no-scrollbar p-2">
+                {isSummariesLoading ? (
+                  <div className="flex flex-col items-center justify-center h-[200px] text-gray-400">
+                    <Loader2 size={32} className="mb-2 animate-spin" />
+                    <p>요약 목록을 불러오는 중...</p>
+                  </div>
+                ) : isSummariesError ? (
+                  <div className="flex flex-col items-center justify-center h-[200px] text-red-400">
+                    <AlertCircle size={32} className="mb-2" />
+                    <p>목록을 불러오는데 실패했습니다.</p>
+                  </div>
+                ) : summarizedFiles.length > 0 ? (
+                  <ul className="space-y-2">
+                    {summarizedFiles.map((file, index) => {
+                      const isChecked = checkedSummarizes.includes(file);
+                      return (
+                        <li
+                          key={index}
+                          onClick={() => handleOpenModal(file)}
+                          className="p-1 mb-2 rounded border border-gray-200 flex items-center justify-between hover:bg-gray-50 cursor-pointer"
+                        >
+                          <div className="flex items-center flex-grow min-w-0">
+                            <div className="min-w-[40px] flex items-center justify-center">
+                              {getFileIcon(file)}
+                            </div>
+                            <div className="ml-2 truncate">
+                              <span className="text-sm">{formatFileName(file)}</span>
+                            </div>
                           </div>
-                          <div className="ml-2 truncate">
-                            <span className="text-sm">{formatFileName(file)}</span>
-                          </div>
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onClick={e => e.stopPropagation()}
-                          onChange={handleToggle(file)}
-                          className="mr-1 h-4 w-4"
-                        />
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-[200px] text-gray-400">
-                  <FileText size={48} className="mb-2" />
-                  <p className="text-center px-4">
-                    파일을 선택하고 '요약 생성하기' 버튼을 클릭하여 문서 요약을 확인해보세요.
-                  </p>
-                </div>
-              )}
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onClick={e => e.stopPropagation()}
+                            onChange={handleToggle(file)}
+                            className="mr-1 h-4 w-4"
+                          />
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-[200px] text-gray-400">
+                    <FileText size={48} className="mb-2" />
+                    <p className="text-center px-4">
+                      파일을 선택하고 '요약 생성하기' 버튼을 클릭하여 문서 요약을 확인해보세요.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
