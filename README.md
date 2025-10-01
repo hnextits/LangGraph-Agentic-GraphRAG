@@ -1,6 +1,6 @@
 # NextitsLM SGLang 프로젝트 개요
 
-NextITS LMS GL은 **RAG (Retrieval-Augmented Generation) 기술**을 기반으로 하는 차세대 **지능형 학습 관리 시스템 (LM)**입니다. 텍스트와 이미지를 모두 처리하는 **멀티모달 AI 시스템**으로, 고성능 **SGLang** 기반 LLM 인프라를 활용하여 실시간으로 정확한 문서 검색 및 질의응답 서비스를 제공합니다.
+NextITSLM SGLang은 **RAG (Retrieval-Augmented Generation) 기술**을 기반으로 하는 차세대 **지능형 학습 관리 시스템 (LM)**입니다. 텍스트와 이미지를 모두 처리하는 **멀티모달 AI 시스템**으로, 고성능 **SGLang** 기반 LLM 인프라를 활용하여 실시간으로 정확한 문서 검색 및 질의응답 서비스를 제공합니다.
 
 ---
 
