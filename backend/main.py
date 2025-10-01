@@ -15,14 +15,22 @@ running_tasks = {}
 # 현재 작업 디렉토리를 sys.path에 추가하여 모듈 검색 경로에 포함
 # 이렇게 하면 'search_test' 같은 로컬 패키지를 찾을 수 있습니다.
 
+# 현재 디렉토리를 가장 우선순위로 추가
 if "." not in sys.path:
-    sys.path.append(".")
+    sys.path.insert(0, ".")
 
 # search_test 경로를 시스템 경로에 추가
 sys.path.append(os.path.join(os.path.dirname(__file__), 'search_test'))
 
-# 설정 가져오기
-from config import HOST, PORT
+# 설정 가져오기 - 절대 경로 사용
+import importlib.util
+spec = importlib.util.spec_from_file_location("backend_config", os.path.join(os.path.dirname(__file__), "config.py"))
+backend_config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(backend_config)
+
+# 설정에서 필요한 변수 가져오기
+HOST = backend_config.HOST
+PORT = backend_config.PORT
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -56,6 +64,12 @@ def startup_event():
     # 실행 중인 작업을 저장할 딕셔너리 초기화
     # key: task_id (str), value: threading.Event 객체
     app.state.running_tasks = {}
+
+    # 작업 상태 관리를 위한 전역 변수들을 app.state에 초기화
+    app.state.tasks = {}
+    app.state.task_status = {}
+    app.state.task_cache = {}
+    app.state.task_cache_timestamps = {}
     logger.info("실행 작업 관리자(running_tasks)가 초기화되었습니다.")
 
     logger.info("RAG 파이프라인 초기화를 시작합니다...")

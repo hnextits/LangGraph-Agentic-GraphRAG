@@ -1,0 +1,16 @@
+uvicorn
+fastapi
+python-dotenv
+weaviate-client==3.26.2
+sse-starlette
+requests
+
+# Langchain
+langchain
+langchain-community
+langchain-corearn
+PyMuPDF
+Pillow
+beautifulsoup4
+markdown
+python-dotenv

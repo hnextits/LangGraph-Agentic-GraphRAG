@@ -35,7 +35,7 @@ const RightBox: React.FC<RightBoxProps> = ({
     data: summarizedFiles = [],
     isLoading: isSummariesLoading,
     isError: isSummariesError,
-  } = useGetSummarizes();
+  } = useGetSummaries();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +60,7 @@ const RightBox: React.FC<RightBoxProps> = ({
       await api.summarize({
         filenames: selectedFiles,
       });
-      queryClient.invalidateQueries({ queryKey: ['summarizes'] });
+      queryClient.invalidateQueries({ queryKey: ['summaries'] });
     } catch (error) {
       console.error('요약 요청 실패:', error);
       setError('서버 연결에 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.');
@@ -119,7 +119,7 @@ const RightBox: React.FC<RightBoxProps> = ({
         if (response.data?.deleted_files && response.data.deleted_files.length > 0) {
           setCheckedSummarizes([]);
           Swal.fire('삭제 완료!', '요약이 삭제되었습니다.', 'success');
-          queryClient.invalidateQueries({ queryKey: ['summarizes'] });
+          queryClient.invalidateQueries({ queryKey: ['summaries'] });
         } else {
           const errorMessage =
             response.data?.failed_files?.length > 0

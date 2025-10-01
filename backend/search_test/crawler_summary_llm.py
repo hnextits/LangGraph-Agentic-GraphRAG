@@ -1,9 +1,20 @@
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 import json
-from config import SearchEngineConfig
 import os
+import sys
+import importlib.util
+from pathlib import Path
 
+# 절대 경로로 config.py 가져오기
+backend_dir = Path(__file__).parent.parent.absolute()
+config_path = backend_dir / "config.py"
+spec = importlib.util.spec_from_file_location("backend_config", config_path)
+backend_config = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(backend_config)
+
+# SearchEngineConfig 가져오기
+SearchEngineConfig = backend_config.SearchEngineConfig
 config = SearchEngineConfig()
 
 class AnswerGenerator:

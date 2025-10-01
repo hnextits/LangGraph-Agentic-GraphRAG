@@ -2,188 +2,148 @@
 # -*- coding: utf-8 -*-
 
 """
-RAG 시스템 생성기 - 검색 결과를 기반으로 LLM을 통해 답변을 생성합니다. (GPU 최적화 버전)
+RAG 시스템 생성기 - SGLang을 사용하여 로컬에서 모델을 로드하고 추론합니다.
 """
 
 import os
 import json
 import logging
 import copy
-import torch
+import threading
 from typing import List, Dict, Any, Optional
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import sglang as sgl
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-import time
-import threading
-
-class Generator:
+class SGLangGenerator:
     """
-    RAG 시스템 생성기 (GPU 강제 사용)
+    RAG 시스템 생성기 (SGLang 버전)
     """
     
     def __init__(self, config):
         """
-        생성기 초기화 (모델 즉시 로딩)
+        생성기 초기화
         """
         self.config = config
         self.model_name = self.config.LLM_MODEL
         self.prompt_template = self.config.PROMPT_TEMPLATES
-        self.model = None
-        self.tokenizer = None
-        self.model_loaded_on_gpu = False
+        self.runtime = None
+        self.model_loaded = False
+        self.tokenizer = None  # 임시 토크나이저 속성 추가
         
-        # GPU 사용 가능성 체크
-        if not torch.cuda.is_available():
-            logger.error("CUDA를 사용할 수 없습니다. GPU 드라이버와 PyTorch CUDA 버전을 확인하세요.")
-            raise RuntimeError("CUDA가 사용 불가능합니다.")
-        
-        # GPU 디바이스 설정 (명시적)
-        self.device = self._get_gpu_device()
-        logger.info(f"사용할 GPU 디바이스: {self.device}")
-        logger.info(f"CUDA 디바이스 개수: {torch.cuda.device_count()}")
-        
-        # torch_dtype 설정
-        self.torch_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
-        logger.info(f"사용할 데이터 타입: {self.torch_dtype}")
-        
-        # 토크나이저와 모델을 즉시 로드
-        self._load_tokenizer()
+        # 모델 로드
         self._load_model()
         
         logger.info("Generator 초기화 및 모델 로딩 완료")
 
-    def _get_gpu_device(self):
-        """가장 적합한 GPU 디바이스 반환"""
-        if hasattr(self.config, 'TEXT_GENERATOR_DEVICE') and self.config.TEXT_GENERATOR_DEVICE:
-            config_device = self.config.TEXT_GENERATOR_DEVICE
-            # "auto"가 아닌 구체적인 디바이스 설정인 경우
-            if config_device != "auto" and "cuda" in str(config_device):
-                return config_device
-        
-        # 기본적으로 첫 번째 GPU 사용
-        return "cuda:0" if torch.cuda.device_count() > 0 else "cuda"
-
-    def _load_tokenizer(self):
-        """토크나이저 로드"""
-        try:
-            logger.info(f"토크나이저 로딩 중: {self.model_name}")
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model_name,
-                cache_dir=getattr(self.config, 'CACHE_DIR', None),
-                trust_remote_code=True  # 필요한 경우
-            )
-            if self.tokenizer.pad_token_id is None:
-                self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
-            logger.info("토크나이저 로딩 완료")
-        except Exception as e:
-            logger.error(f"토크나이저 로딩 실패: {e}")
-            raise
-
     def _load_model(self):
-        """모델을 GPU에 강제 로드"""
-        logger.info(f"모델을 GPU에 로딩 중: {self.model_name}")
-        
+        """SGLang Engine 초기화"""
         try:
-            # GPU 메모리 정리
+            logger.info(f"SGLang Engine 초기화 중: {self.model_name}")
+            
+            # PyTorch를 사용하여 GPU 메모리 사용량 제한
+            import torch
             if torch.cuda.is_available():
+                # GPU 메모리의 50%만 사용하도록 설정
+                memory_fraction = 0.5
+                logger.info(f"GPU 메모리 사용량 제한: {memory_fraction * 100}%")
+                torch.cuda.set_per_process_memory_fraction(memory_fraction, 0)
+                # 미사용 캐시 메모리 해제
                 torch.cuda.empty_cache()
             
-            # 멀티 GPU 환경에서는 device_map 사용
-            if torch.cuda.device_count() > 1:
-                logger.info(f"멀티 GPU 환경 감지 ({torch.cuda.device_count()}개 GPU)")
-                model_kwargs = {
-                    "torch_dtype": self.torch_dtype,
-                    "device_map": "auto",  # 멀티 GPU 자동 분산
-                    "trust_remote_code": True,
-                    "low_cpu_mem_usage": True
-                }
-            else:
-                # 단일 GPU 환경에서는 명시적 device 지정
-                logger.info("단일 GPU 환경")
-                model_kwargs = {
-                    "torch_dtype": self.torch_dtype,
-                    "trust_remote_code": True,
-                    "low_cpu_mem_usage": True
-                }
+            # test_QWEN.py 처럼 Engine API를 직접 사용하는 방식으로 변경
+            logger.info("SGLang Engine API 직접 사용 - HTTP 서버 없이 직접 추론")
             
-            # 캐시 디렉토리 설정
-            if hasattr(self.config, 'CACHE_DIR') and self.config.CACHE_DIR:
-                model_kwargs["cache_dir"] = self.config.CACHE_DIR
-            
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.model_name,
-                attn_implementation="flash_attention_2",
-                **model_kwargs
+            # Engine 클래스를 사용하여 모델 초기화
+            # 문서에서 찾은 파라미터 적용
+            self.engine = sgl.Engine(
+                model_path=self.model_name,
+                mem_fraction_static=0.3,  # 메모리 할당량 제한 (30%)
+                disable_cuda_graph=True,  # CUDA 그래프 비활성화로 안정성 향상
+                trust_remote_code=True,   # 원격 코드 신뢰
+                dtype="auto"              # 자동으로 적절한 dtype 선택
             )
             
-            # 단일 GPU 환경에서 명시적으로 GPU로 이동
-            if torch.cuda.device_count() == 1 or "device_map" not in model_kwargs:
-                logger.info(f"모델을 {self.device}로 이동 중...")
-                self.model = self.model.to(self.device)
-            
-            # 모델이 실제로 GPU에 로드되었는지 확인
-            self._verify_gpu_loading()
-            
-            self.model_loaded_on_gpu = True
-            logger.info("모델 GPU 로딩 완료")
-            
+            self.model_loaded = True
+            logger.info("SGLang Engine 초기화 완료")
         except Exception as e:
-            logger.error(f"모델 GPU 로딩 실패: {e}")
-            self.model = None
-            self.model_loaded_on_gpu = False
+            logger.error(f"SGLang Engine 초기화 실패: {e}")
+            self.model_loaded = False
             raise
-
-    def _verify_gpu_loading(self):
-        """모델이 실제로 GPU에 로드되었는지 확인"""
-        if self.model is None:
-            raise RuntimeError("모델이 로드되지 않았습니다.")
-        
-        # 모델의 첫 번째 파라미터의 디바이스 확인
-        first_param_device = next(self.model.parameters()).device
-        logger.info(f"모델 파라미터가 위치한 디바이스: {first_param_device}")
-        
-        # GPU에 로드되었는지 확인
-        if first_param_device.type != 'cuda':
-            raise RuntimeError(f"모델이 CPU({first_param_device})에 로드되었습니다. GPU 로딩이 실패했습니다.")
-        
-        # 입력 임베딩 레이어의 디바이스 확인
-        if hasattr(self.model, 'get_input_embeddings'):
-            embedding_device = self.model.get_input_embeddings().weight.device
-            logger.info(f"입력 임베딩 레이어 디바이스: {embedding_device}")
-            if embedding_device.type != 'cuda':
-                logger.warning(f"입력 임베딩이 CPU에 있습니다: {embedding_device}")
 
     def generate_response(self, query: str, results, cancellation_event: Optional[threading.Event] = None) -> Dict[str, Any]:
         """
         검색 결과를 기반으로 답변 생성
         """
         try:
-            # GPU 상태 재확인
-            if not self.model_loaded_on_gpu:
-                raise RuntimeError("모델이 GPU에 로드되지 않았습니다.")
+            # 모델 로드 확인
+            if not self.model_loaded:
+                raise RuntimeError("모델이 로드되지 않았습니다.")
             
             # 기존 로직과 동일
             filtered_results = copy.deepcopy(results)
             image_paths = []
 
-            if isinstance(filtered_results, dict) and 'image' in filtered_results:
-                image_results = filtered_results.get('image', [])
-                filtered_images = [img for img in image_results if isinstance(img, dict) and img.get('score', 0) > 0.6]
-                logger.info(f"유사도 필터링 후 이미지 개수: {len(filtered_images)}/{len(image_results)}")
+            # 검색 결과가 없는지 확인
+            has_results = False
+            
+            if isinstance(filtered_results, dict):
+                # 텍스트 결과 확인
+                if 'text_documents' in filtered_results and filtered_results['text_documents']:
+                    has_results = True
                 
-                filtered_results['image'] = filtered_images
-                image_paths = [img['file_path'] for img in filtered_images if 'file_path' in img]
+                # 이미지 결과 확인
+                if 'image_documents' in filtered_results and filtered_results['image_documents']:
+                    has_results = True
+                    
+                # 이전 형식 호환성
+                if 'image' in filtered_results:
+                    image_results = filtered_results.get('image', [])
+                    filtered_images = [img for img in image_results if isinstance(img, dict) and img.get('score', 0) > 0.6]
+                    logger.info(f"유사도 필터링 후 이미지 개수: {len(filtered_images)}/{len(image_results)}")
+                    
+                    if filtered_images:
+                        has_results = True
+                    
+                    filtered_results['image'] = filtered_images
+                    image_paths = [img['file_path'] for img in filtered_images if 'file_path' in img]
+            
+            # 검색 결과가 없으면 적절한 메시지 반환
+            if not has_results:
+                logger.warning("검색 결과가 없습니다. '제공된 자료에서 해당 정보를 찾을 수 없습니다.' 메시지를 반환합니다.")
+                return {
+                    "answer": "제공된 자료에서 해당 정보를 찾을 수 없습니다.",
+                    "image_paths": [],
+                    "feedback_loops": 0,
+                    "final_query": query,
+                    "context": "",
+                    "search_results": filtered_results
+                }
 
             context = self.format_context(filtered_results)
+            
+            # 검색 결과가 없거나 빈 문서인 경우 추가 처리
+            if not context or context.strip() == "":
+                logger.warning("포맷팅된 컨텍스트가 비어 있습니다. '제공된 자료에서 해당 정보를 찾을 수 없습니다.' 메시지를 반환합니다.")
+                return {
+                    "answer": "제공된 자료에서 해당 정보를 찾을 수 없습니다.",
+                    "image_paths": [],
+                    "feedback_loops": 0,
+                    "final_query": query,
+                    "context": "",
+                    "search_results": filtered_results
+                }
             
             system_prompt = self.prompt_template["system"]
             user_prompt = self.prompt_template["user"].format(context=context, query=query)
 
-            response = self._generate_text(system_prompt, user_prompt, cancellation_event=cancellation_event)
+            # 취소 확인
+            if cancellation_event and cancellation_event.is_set():
+                raise InterruptedError("Operation cancelled before text generation")
+
+            response = self._generate_text_sglang(system_prompt, user_prompt, cancellation_event=cancellation_event)
             
             return {
                 "answer": response,
@@ -280,7 +240,7 @@ class Generator:
                     continue
 
                 formatted_result = ""
-                content_type = result.get("con_type")
+                content_type = result.get("con_type") or result.get("content_type")
                 if content_type == "image" or "file_path" in result:
                     formatted_result = self._format_image_result(result, i)
                 elif content_type == "table" or "table_data" in result or "table" in result:
@@ -295,87 +255,79 @@ class Generator:
         
         return "\n".join(context_parts)
     
-    def _generate_text(self, system_prompt: str, user_prompt: str, cancellation_event: Optional[threading.Event] = None) -> str:
-        """허깅페이스 모델을 사용하여 텍스트 생성 (GPU 강제 사용)"""
-        if self.model is None or self.tokenizer is None:
-            raise Exception("모델 또는 토크나이저가 로드되지 않았습니다.")
-        
-        # Qwen3 모델을 위한 채팅 템플릿
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt}
-        ]
-        
-        full_prompt = self.tokenizer.apply_chat_template(
-            messages, 
-            tokenize=False, 
-            add_generation_prompt=True, 
-            enable_thinking=False
-        )
-        
-        logger.info(f"텍스트 생성 시작: {self.model_name}")
+    def _generate_text_sglang(self, system_prompt: str, user_prompt: str, cancellation_event: Optional[threading.Event] = None) -> str:
+        """SGLang Engine을 사용하여 텍스트 생성"""
+        if not self.model_loaded:
+            raise Exception("SGLang Engine이 초기화되지 않았습니다.")
         
         try:
-            # 모델의 실제 디바이스 확인
-            model_device = next(self.model.parameters()).device
-            logger.info(f"모델 디바이스: {model_device}")
+            logger.info("SGLang Engine으로 텍스트 생성 시작")
             
-            # 입력을 모델과 같은 디바이스로 이동
-            inputs = self.tokenizer(full_prompt, return_tensors="pt")
-            inputs = {k: v.to(model_device) for k, v in inputs.items()}
-            logger.info(f"입력 텐서 디바이스: {inputs['input_ids'].device}")
+            # 취소 확인
+            if cancellation_event and cancellation_event.is_set():
+                raise InterruptedError("Operation cancelled before text generation")
+
+            # 채팅 형식 프롬프트 구성
+            prompt = f"""<|im_start|>system
+{system_prompt}<|im_end|>
+<|im_start|>user
+{user_prompt}<|im_end|>
+<|im_start|>assistant
+"""
             
-            with torch.no_grad():
-                generation_params = {
-                    "max_new_tokens": getattr(self.config, 'GENERATOR_MAX_TOKENS', 512),
-                    # "num_beams": getattr(self.config, 'GENERATOR_NUM_BEAMS', 1),
-                    # "do_sample": getattr(self.config, 'GENERATOR_DO_SAMPLE', True),
-                    "pad_token_id": self.tokenizer.eos_token_id
-                }
-
-                if generation_params["max_new_tokens"]:
-                    generation_params.update({
-                        "temperature": getattr(self.config, 'GENERATOR_TEMPERATURE', 0.7),
-                        # "top_p": getattr(self.config, 'GENERATOR_TOP_P', 0.9),
-                        # "top_k": getattr(self.config, 'GENERATOR_TOP_K', 50)
-                    })
-
-                # 취소 확인
-                if cancellation_event and cancellation_event.is_set():
-                    raise InterruptedError("Operation cancelled before text generation")
-
-                # 취소 확인
-                if cancellation_event and cancellation_event.is_set():
-                    raise InterruptedError("Operation cancelled before text generation")
-
-                logger.info("GPU에서 텍스트 생성 중...")
-                outputs = self.model.generate(**inputs, **generation_params)
+            # 샘플링 파라미터 설정
+            sampling_params = {
+                "temperature": self.config.GENERATOR_TEMPERATURE,
+                "top_p": self.config.GENERATOR_TOP_P,
+                "max_new_tokens": self.config.GENERATOR_MAX_TOKENS,
+                "stop": ["<|im_end|>", "<|endoftext|>", "### 질문:", "### 답변:", "### 시스템:"]
+            }
             
-            # 생성된 토큰만 디코딩
-            response = self.tokenizer.decode(
-                outputs[0][inputs['input_ids'].shape[1]:], 
-                skip_special_tokens=True
-            )
-            
-            logger.info("GPU 텍스트 생성 완료")
+            # 백그라운드 스레드에서 실행될 때 이벤트 루프 문제 해결
+            try:
+                # 일반 동기 방식으로 시도
+                result = self.engine.generate(prompt=prompt, sampling_params=sampling_params)
+                response = result["text"]
+            except RuntimeError as e:
+                if "no current event loop" in str(e):
+                    # 이벤트 루프 문제 발생 시 이벤트 루프 생성 후 다시 시도
+                    import asyncio
+                    try:
+                        loop = asyncio.get_event_loop()
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        asyncio.set_event_loop(loop)
+                    
+                    # 다시 시도
+                    result = self.engine.generate(prompt=prompt, sampling_params=sampling_params)
+                    response = result["text"]
+                else:
+                    # 다른 오류는 그대로 전파
+                    raise
+
+            logger.info("SGLang 텍스트 생성 완료")
             return response
             
         except Exception as e:
-            logger.error(f"텍스트 생성 실패: {str(e)}", exc_info=True)
-            raise
+            logger.error(f"SGLang 텍스트 생성 실패: {str(e)}", exc_info=True)
+            # 오류 발생 시 임시 응답 생성
+            fallback_response = f"""오류 발생: {str(e)}
+
+질문: {user_prompt}
+
+응답: 죄송합니다. 텍스트 생성 중 오류가 발생했습니다. 오류 내용: {str(e)}"""
+            return fallback_response
 
     def get_model_info(self):
         """모델 상태 정보 반환 (디버깅용)"""
-        if self.model is None:
+        if not self.model_loaded:
             return {"status": "모델이 로드되지 않음"}
         
-        model_device = next(self.model.parameters()).device
         return {
-            "model_loaded": self.model_loaded_on_gpu,
-            "model_device": str(model_device),
-            "cuda_available": torch.cuda.is_available(),
-            "cuda_device_count": torch.cuda.device_count(),
-            "current_device": torch.cuda.current_device() if torch.cuda.is_available() else None,
-            "memory_allocated": torch.cuda.memory_allocated() if torch.cuda.is_available() else 0,
-            "memory_reserved": torch.cuda.memory_reserved() if torch.cuda.is_available() else 0
+            "model_loaded": self.model_loaded,
+            "model_name": self.model_name,
+            "max_tokens": self.config.GENERATOR_MAX_TOKENS,
+            "temperature": self.config.GENERATOR_TEMPERATURE
         }
+
+

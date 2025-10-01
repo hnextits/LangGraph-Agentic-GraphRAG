@@ -3,7 +3,11 @@ import logging
 import threading
 from typing import List, Dict, Any, Optional
 
-from sentence_transformers import CrossEncoder
+# 환경 문제로 인해 임포트 우회
+try:
+    from sentence_transformers import CrossEncoder
+except ImportError:
+    CrossEncoder = None
 
 from config import RAGConfig
 from query_rewriter import QueryRewriter
@@ -82,7 +86,7 @@ class ParallelSearcher:
         # 2. 병렬 검색 실행 - 이미지와 텍스트 결과 분리
         text_results = []
         image_results = []
-        max_workers = min(len(selected_searchers) * len(rewritten_queries), 5)  # 최대 쓰레드 수 제한
+        max_workers = max(1, min(len(selected_searchers) * len(rewritten_queries), 5))  # 최대 쓰레드 수 제한 (최소 1)
         
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = []

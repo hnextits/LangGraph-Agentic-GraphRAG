@@ -66,7 +66,7 @@ class Refiner:
         # Refiner 전용 모델 설정
         self.refiner_model_name = self.config.REFINER_MODEL # 'self.config.' 를 추가하여 수정
         self.device = self.config.REFINER_DEVICE # Refiner 전용 디바이스 설정을 사용하도록 변경
-        self.torch_dtype = generator.torch_dtype
+        self.torch_dtype = self.config.GENERATOR_TORCH_DTYPE  # generator에서 가져오는 대신 config에서 가져오도록 수정
         
         # 모델 즉시 로딩
         self.refiner_model = None

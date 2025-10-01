@@ -161,24 +161,45 @@ def run_rag_in_background(
     rag_pipeline,
     cancellation_event: threading.Event,
     tasks_dict: Dict[str, Any],
-    running_tasks_dict: Dict[str, Any]
+    running_tasks_dict: Dict[str, Any],
+    app_state: Any  # app.state를 직접 받음
 ):
-    """백그라운드에서 RAG 파이프라인을 실행하고 결과를 tasks_dict에 저장합니다."""
+    """백그라운드에서 RAG 파이프라인을 실행하고 결과를 app_state에 저장합니다."""
+    import time
+
+    # app.state에서 캐시 관련 딕셔너리를 가져옵니다.
+    task_cache = app_state.task_cache
+    task_cache_timestamps = app_state.task_cache_timestamps
+
     tasks_dict[task_id].update({"status": "processing", "message": "RAG 파이프라인 실행 중..."})
     try:
         response_data = get_rag_response(query, sources, rag_pipeline, cancellation_event)
-        tasks_dict[task_id].update({
+        final_status = {
             "status": "completed",
             "message": "채팅 작업이 완료되었습니다.",
             "result": response_data
-        })
+        }
+        tasks_dict[task_id].update(final_status)
+        
+        # 작업 완료 시 캐시에 저장
+        task_cache[task_id] = tasks_dict[task_id].copy()
+        task_cache_timestamps[task_id] = time.time()
+        logger.info(f"[Task {task_id}] 작업 상태를 캐시에 저장했습니다.")
+
     except Exception as e:
         logger.error(f"[Task {task_id}] 백그라운드 RAG 작업 중 오류: {e}", exc_info=True)
-        tasks_dict[task_id].update({
+        final_status = {
             "status": "failed",
             "message": "오류가 발생했습니다.",
             "error": str(e)
-        })
+        }
+        tasks_dict[task_id].update(final_status)
+
+        # 작업 실패 시에도 캐시에 저장
+        task_cache[task_id] = tasks_dict[task_id].copy()
+        task_cache_timestamps[task_id] = time.time()
+        logger.info(f"[Task {task_id}] 실패한 작업 상태를 캐시에 저장했습니다.")
+            
     finally:
         # running_tasks에서 해당 task 정리
         if task_id in running_tasks_dict:

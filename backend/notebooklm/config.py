@@ -3,6 +3,7 @@ import json
 import logging
 import torch
 from pathlib import Path
+import weaviate
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -51,6 +52,18 @@ class RAGConfig:
         self.CACHE_DIR = Path.home() / ".cache" / "huggingface" / "hub"
         
         #############################################
+        # 1-1. Weaviate 설정
+        #############################################
+        # Weaviate 호스트 설정 - 로컬호스트 사용
+        self.WEAVIATE_HOST = "127.0.0.1"
+        self.WEAVIATE_PORT = 8080
+        self.WEAVIATE_URL = f"http://{self.WEAVIATE_HOST}:{self.WEAVIATE_PORT}"
+        self.WEAVIATE_BATCH_SIZE = 100
+        self.WEAVIATE_TEXT_CLASS = "TextDocument"
+        self.WEAVIATE_IMAGE_CLASS = "ImageDocument"
+        self.WEAVIATE_VECTORIZER = "text2vec-model2vec"  # 컨테이너에서 설정한 vectorizer
+        
+        #############################################
         # 2. 모델 설정 (모델 이름)
         #############################################
         # 임베딩 모델
@@ -63,7 +76,7 @@ class RAGConfig:
         self.QUERY_REWRITE_MODEL_NAME = "NEXTITS/Qwen3-0.6B-SFT-No.952"
         
         # 생성 모델
-        self.LLM_MODEL = "unsloth/Qwen3-8B-unsloth-bnb-4bit"
+        self.LLM_MODEL = "Qwen/Qwen3-8B"
         
         # 정제 모델
         self.REFINER_MODEL = "Qwen/Qwen3-1.7B-FP8"
@@ -81,6 +94,9 @@ class RAGConfig:
         self.GENERATOR_TOP_P = 0.9
         self.GENERATOR_TOP_K = 3
         self.GENERATOR_DO_SAMPLE = True  # 샘플링 활성화
+        
+        # SGLang 설정 - Engine API 직접 사용
+        self.SGLANG_USE_DIRECT_ENGINE = True  # SGLang Engine API 직접 사용
         self.GENERATOR_NUM_BEAMS = 1     # 빔 서치 비활성화 (그리디 서치)
         self.GENERATOR_PAD_TOKEN_ID = None  # 토크나이저에서 설정
         self.GENERATOR_ENABLE_THINKING = False
@@ -132,7 +148,7 @@ class RAGConfig:
         self.IMAGE_TOP_K = 5  # 이미지 검색 초기 결과 수
         self.IMAGE_FINAL_K = 3  # 이미지 리랭킹 후 최종 결과 수
         self.TOP_K = 3  # 기존 호환성을 위한 기본값
-        self.RELEVANCE_THRESHOLD = 0.5  # 텍스트 검색 임계값
+        self.RELEVANCE_THRESHOLD = 0.3  # 텍스트 검색 임계값 (0.5 -> 0.3)
         self.TEXT_RERANKER_TOKEN_FALSE_ID = 2152  # no
         
         # 이미지 리랭커 토큰 ID
@@ -144,9 +160,9 @@ class RAGConfig:
         self.KEYWORD_WEIGHT = 0.5
         
         # 이미지 관련 설정
-        self.IMAGE_THRESHOLD = 0.7
-        self.IMAGE_RERANK_SCORE_THRESHOLD = 0.8  # 이미지 리랭크 점수 임계값 (0.8 -> 0.7)
-        self.IMAGE_RELEVANCE_THRESHOLD = 0.8   # 이미지 관련성 임계값 (generator에서 사용)
+        self.IMAGE_THRESHOLD = 0.3  # 이미지 검색 임계값 (0.7 -> 0.3)
+        self.IMAGE_RERANK_SCORE_THRESHOLD = 0.4  # 이미지 리랭크 점수 임계값 (0.8 -> 0.4)
+        self.IMAGE_RELEVANCE_THRESHOLD = 0.4   # 이미지 관련성 임계값 (0.8 -> 0.4)
         self.IMAGE_RERANK_AMPLIFICATION = 1.5  # 시그모이드 증폭 계수
         self.CAPTION_WEIGHT = 8.0      # 이미지 캡션 가중치
         self.TAG_WEIGHT = 2.0         # 이미지 태그 가중치
@@ -160,14 +176,14 @@ class RAGConfig:
         # 5-1. 프롬프트 템플릿 설정
         #############################################
         self.PROMPT_TEMPLATES = {
-            "system": "You are an AI assistant. Your goal is to answer the user's question using the documents below.\n"
+            "system": "You are an AI assistant. Your goal is to answer the user's question using ONLY the documents below.\n"
                     "Each document has a field called con_type which is either 'text' or 'image'.\n"
                     "Each document, including images, is provided with a similarity field, indicating its relevance to the user's question.\n"
                     "For text documents, prioritize using data blocks where the similarity is close to 1 to build the answer, ensuring the most relevant information is utilized. Aim to provide a comprehensive answer from these text documents.\n"
                     "The provided documents may contain tables in Markdown format. Interpret the rows and columns of the table to accurately answer the question.\n"
                     "Do NOT describe the contents of the image.\n"
                     "Do not display metadata such as similarity score, document name, or page number in the response.\n"
-                    "STRICT RULE: You MUST ONLY use information that is explicitly present in the provided documents. Do NOT use your general knowledge, make assumptions, or provide information from outside sources.\n"
+                    "EXTREMELY STRICT RULE: You MUST ONLY use information that is explicitly present in the provided documents. Do NOT use your general knowledge, make assumptions, or provide information from outside sources.\n"
                     "If ANY part of the answer cannot be found in the provided documents, you MUST respond with ONLY: '제공된 자료에서 해당 정보를 찾을 수 없습니다.' Do NOT attempt to answer partially or provide general explanations.\n"
                     "NEVER combine document information with your general knowledge. If the documents are incomplete or unclear, still respond with '제공된 자료에서 해당 정보를 찾을 수 없습니다.'\n"
                     "***You MUST respond in Korean ONLY. Do not use English or any other language. All explanations, terms, and sentences must be in Korean.***\n"
@@ -180,6 +196,7 @@ class RAGConfig:
                     "Final Conclusion: End with a one-sentence takeaway\n"
                     "Special Rule: If the user's question explicitly includes requests such as '장단점 알려줘', '비교해줘', '표로 정리해줘', or '테이블로 정리해줘', you MUST present the answer in a Markdown table format in addition to the structured explanation.\n"
                     "IMPORTANT: Only follow this structure if you can answer the question completely using the provided documents. If not, respond only with '제공된 자료에서 해당 정보를 찾을 수 없습니다.'\n"
+                    "CRITICAL: If the retrieved documents section is empty or contains no relevant information, respond ONLY with '제공된 자료에서 해당 정보를 찾을 수 없습니다.' without any additional explanation.\n"
                     "Write the answer in a professional, well-structured, and concise manner, similar to a ChatGPT expert Q&A response, with no unnecessary content.",
             "user": "Question : \n{query} \n\n  Retrieved documents:\n  {context} \n\n response: "
         }
@@ -479,3 +496,29 @@ class RAGConfig:
             except Exception as e:
                 logger.error(f"임베딩 모델 해제 실패: {str(e)}")
         return False
+        
+    @classmethod
+    def get_weaviate_client(cls):
+        """Weaviate 클라이언트 초기화 및 반환"""
+        config = cls()
+        try:
+            # Weaviate 클라이언트 초기화
+            import weaviate
+            # 버전 확인
+            weaviate_version = weaviate.__version__
+            logger.info(f"Weaviate 버전: {weaviate_version}")
+            
+            try:
+                # v3 API 사용
+                client = weaviate.Client(
+                    url=config.WEAVIATE_URL,
+                    startup_period=30  # 시작 대기 시간을 30초로 늘림
+                )
+            except Exception as e:
+                logger.error(f"Weaviate 클라이언트 초기화 오류: {e}")
+                return None
+            logger.info(f"Weaviate 클라이언트 연결 성공: {config.WEAVIATE_URL} (버전: {weaviate_version})")
+            return client
+        except Exception as e:
+            logger.error(f"Weaviate 클라이언트 연결 실패: {str(e)}")
+            return None

@@ -58,7 +58,8 @@ def load_model(config):
             gpu_memory_utilization=config["gpu_memory_utilization"],
             max_model_len=config["max_model_len"],
             trust_remote_code=True,  # 일부 모델은 이 옵션이 필요할 수 있습니다
-            # attn_backend="flash_attn"  # Flash-Attention 2 사용 명시
+            # attn_backend="eager"  # Flash-Attention 2 사용 명시
+            enforce_eager=True,
         )
         print("vLLM model loaded successfully.")
     return LLM_MODEL

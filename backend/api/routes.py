@@ -10,7 +10,7 @@ import threading
 import re
 import subprocess
 import sys
-import time
+import time  # 이미 임포트됨
 from pathlib import Path
 from datetime import datetime
 import asyncio
@@ -49,7 +49,31 @@ except ImportError as e:
     raise
 
 # --- 작업 상태 관리 ---
-tasks: Dict[str, Dict[str, Any]] = {}
+# 작업 상태는 main.py의 app.state를 통해 중앙에서 관리됩니다.
+
+# 캐시 유효 시간 (1시간)
+TASK_CACHE_TTL = 60 * 60
+
+def cleanup_task_cache(request: Request):
+    """오래된 작업 상태 캐시 정리"""
+    current_time = time.time()
+    expired_tasks = []
+    task_cache_timestamps = request.app.state.task_cache_timestamps
+    task_cache = request.app.state.task_cache
+
+    for task_id, timestamp in list(task_cache_timestamps.items()):
+        if current_time - timestamp > TASK_CACHE_TTL:
+            expired_tasks.append(task_id)
+    
+    for task_id in expired_tasks:
+        if task_id in task_cache:
+            del task_cache[task_id]
+        if task_id in task_cache_timestamps:
+            del task_cache_timestamps[task_id]
+    
+    if expired_tasks:
+        logger.info(f"오래된 작업 상태 {len(expired_tasks)}개 정리됨")
+
 
 # --- Pydantic 모델 정의 ---
 class RootResponse(BaseModel): message: str
@@ -60,6 +84,7 @@ class TaskCreationResponse(BaseModel): task_id: str; status: str
 class UploadResponse(BaseModel): message: str; files: List[Dict[str, Any]]
 class FileListResponse(BaseModel): files: List[str]
 class FileContentResponse(BaseModel): filename: str; content: str
+class DeleteResponse(BaseModel): message: str; filename: str; deleted: Optional[bool] = None
 class DeleteFilesRequest(BaseModel): filenames: List[str]
 class DeleteFilesResponse(BaseModel): message: str; deleted_files: List[str]; failed_files: List[Dict[str, str]]
 class ChatQuery(BaseModel): query: str; sources: List[str] = []
@@ -427,14 +452,61 @@ async def process_search_and_summarize(task_id: str, query: str):
 
 # 작업 상태를 확인하는 API
 @router.get("/tasks/{task_id}", response_model=TaskStatusResponse, tags=["Task Management"])
-async def get_task_status(task_id: str) -> TaskStatusResponse:
-    # tasks와 task_status 두 딕셔너리 모두 확인
-    if task_id in tasks:
-        return TaskStatusResponse(**tasks[task_id])
-    elif task_id in task_status:
-        return TaskStatusResponse(**task_status[task_id])
-    else:
-        raise HTTPException(status_code=404, detail=f"작업 ID {task_id}를 찾을 수 없습니다.")
+async def get_task_status(task_id: str, request: Request) -> TaskStatusResponse:
+    # app.state에서 상태 변수들을 가져옵니다.
+    tasks = request.app.state.tasks
+    task_status = request.app.state.task_status
+    task_cache = request.app.state.task_cache
+    task_cache_timestamps = request.app.state.task_cache_timestamps
+
+    # 오래된 캐시 정리 실행
+    try:
+        cleanup_task_cache(request)
+    except Exception as e:
+        logger.error(f"캐시 정리 중 오류 발생: {e}")
+    
+    try:
+        # tasks, task_status, task_cache 순서로 확인
+        if task_id in tasks:
+            task_info = tasks[task_id]
+            if task_info.get("status") in ["completed", "failed", "cancelled"]:
+                task_cache[task_id] = task_info.copy()
+                task_cache_timestamps[task_id] = time.time()
+            return TaskStatusResponse(**task_info)
+
+        if task_id in task_status:
+            task_info = task_status[task_id]
+            if task_info.get("status") in ["completed", "failed", "cancelled"]:
+                task_cache[task_id] = task_info.copy()
+                task_cache_timestamps[task_id] = time.time()
+            return TaskStatusResponse(**task_info)
+
+        if task_id in task_cache:
+            task_cache_timestamps[task_id] = time.time()
+            return TaskStatusResponse(**task_cache[task_id])
+        else:
+            # 로그 추가
+            logger.warning(f"요청된 작업 ID가 존재하지 않음: {task_id}")
+            raise HTTPException(
+                status_code=404, 
+                detail={
+                    "message": f"작업 ID {task_id}를 찾을 수 없습니다.",
+                    "error_code": "task_not_found",
+                    "task_id": task_id
+                }
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"작업 상태 확인 중 오류: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500, 
+            detail={
+                "message": f"작업 상태 확인 중 오류가 발생했습니다: {str(e)}",
+                "error_code": "internal_server_error",
+                "task_id": task_id
+            }
+        )
 
 # -- 검색 및 요약 관련 API --
 # 웹 검색 결과를 반환하는 API
@@ -638,28 +710,51 @@ async def get_ocr_file_content(filename: str) -> FileContentResponse:
     return {"filename": file_path.name, "content": content}
 
 # 업로드된 파일을 삭제하는 API
-@router.delete("/files", response_model=DeleteFilesResponse, tags=["Document Management"])
-async def delete_doc_files(req: DeleteFilesRequest) -> DeleteFilesResponse:
-    deleted, failed = [], []
-    for filename in req.filenames:
+@router.delete("/files/{filename}", response_model=DeleteResponse, tags=["Document Management"])
+async def delete_file(filename: str) -> DeleteResponse:
+    try:
         file_path = DOC_DIR / filename
-        try:
-            if file_path.is_file():
-                file_path.unlink()
-                deleted.append(filename)
-            else:
-                failed.append({"filename": filename, "reason": "파일을 찾을 수 없음"})
-        except Exception as e:
-            logger.error(f"Doc 파일 삭제 오류 ('{filename}'): {e}", exc_info=True)
-            failed.append({"filename": filename, "reason": str(e)})
-    return {
-        "message": f"Doc 파일 {len(deleted)}개 삭제 성공, {len(failed)}개 실패.",
-        "deleted_files": deleted,
-        "failed_files": failed
-    }
+        if file_path.exists():
+            os.remove(file_path)
+            
+            # 관련 파일도 삭제
+            ocr_file = OCR_DIR / f"{filename}.txt"
+            if ocr_file.exists():
+                os.remove(ocr_file)
+                
+            # 처리된 파일도 삭제
+            processed_file = PROCESSED_DIR / f"{filename}.json"
+            if processed_file.exists():
+                os.remove(processed_file)
+            
+            # Weaviate에서 관련 데이터 삭제
+            delete_result = False
+            try:
+                from notebooklm.config import RAGConfig
+                from notebooklm.weaviate_utils import delete_document_by_filename
+                
+                config = RAGConfig()
+                client = config.get_weaviate_client()
+                
+                if client:
+                    # 파일명으로 문서 삭제
+                    delete_result = delete_document_by_filename(client, filename)
+                    if delete_result:
+                        logger.info(f"Weaviate에서 문서 '{filename}' 관련 데이터 삭제 완료")
+                    else:
+                        logger.warning(f"Weaviate에서 문서 '{filename}' 관련 데이터를 찾을 수 없습니다.")
+            except Exception as e:
+                logger.error(f"Weaviate 데이터 삭제 오류: {str(e)}")
+                
+            return DeleteResponse(message=f"파일이 성공적으로 삭제되었습니다.", filename=filename, deleted=delete_result)
+        else:
+            raise HTTPException(status_code=404, detail=f"파일을 찾을 수 없습니다: {filename}")
+    except Exception as e:
+        logger.error(f"파일 삭제 오류: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"파일 삭제 중 오류 발생: {str(e)}")
 
 # -- 기타 API --
-# RAG 챗봇에 질문하고 답변을 받는 API
+# RAG 채팅봇에 질문하고 답변을 받는 API
 @router.post("/chat", response_model=ChatResponse, tags=["Chat"])
 async def chat(query: ChatQuery, request: Request, background_tasks: BackgroundTasks) -> ChatResponse:
     task_id = str(uuid.uuid4())
@@ -668,10 +763,11 @@ async def chat(query: ChatQuery, request: Request, background_tasks: BackgroundT
     logger.info(f"[Task {task_id}] 채팅 작업 시작: '{query.query}'")
 
     rag_pipeline = getattr(request.app.state, 'rag_pipeline', None)
-    if not rag_pipeline:
+    if rag_pipeline is None:
         raise HTTPException(status_code=503, detail="RAG 파이프라인을 사용할 수 없습니다.")
 
-    # 전역 tasks 딕셔너리에 작업 상태 초기화
+    # app.state의 tasks 딕셔너리에 작업 상태 초기화
+    tasks = request.app.state.tasks
     tasks[task_id] = {
         "task_id": task_id,
         "status": "pending",
@@ -686,8 +782,9 @@ async def chat(query: ChatQuery, request: Request, background_tasks: BackgroundT
         sources=query.sources,
         rag_pipeline=rag_pipeline,
         cancellation_event=cancellation_event,
-        tasks_dict=tasks, # tasks 딕셔너리 전달
-        running_tasks_dict=request.app.state.running_tasks # running_tasks 딕셔너리 전달
+        tasks_dict=tasks,  # app.state.tasks를 전달
+        running_tasks_dict=request.app.state.running_tasks, # app.state.running_tasks를 전달
+        app_state=request.app.state  # app.state 전체를 전달
     )
 
     return ChatResponse(task_id=task_id, message="채팅 작업이 시작되었습니다.")

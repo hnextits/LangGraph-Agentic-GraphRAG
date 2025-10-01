@@ -29,7 +29,7 @@ from image_processor import image_processor
 
 from config import RAGConfig
 from router import RAGRouter
-from generator import Generator
+from generator import SGLangGenerator as Generator
 from evaluator import Evaluator
 from refiner import Refiner
 
@@ -53,13 +53,9 @@ class RAGPipeline:
         self.router = RAGRouter(self.config)
         self.generator = Generator(self.config)
         self.evaluator = Evaluator(self.config)
-        # 지연 로딩 방식의 Generator와 호환: 토크나이저가 로드되어 있으면 정상으로 판단
-        if self.generator and self.generator.tokenizer:
-            self.refiner = Refiner(self.generator, self.config)
-            logger.info("Refiner 초기화 완료.")
-        else:
-            self.refiner = None
-            logger.warning("Generator 또는 토크나이저 로딩 실패로 인해 Refiner가 초기화되지 않았습니다.")
+        # 환경 문제로 인해 Refiner 사용 안함
+        self.refiner = None
+        logger.info("환경 문제로 인해 Refiner를 사용하지 않습니다.")
         
         logger.info("RAG 파이프라인 초기화 완료")
     
