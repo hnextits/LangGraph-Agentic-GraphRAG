@@ -37,7 +37,7 @@ NextITS LMS GL은 모듈화된 3-Tier 아키텍처로 설계되었습니다.
                        └─────────────────┘
 ```
 
-```mermaid
+```TSX
 graph LR
     A[Frontend (Next.js/React)] -->|REST API| B(Backend API (FastAPI));
     B -->|Query/Context| C(LLM Service (SGLang));
