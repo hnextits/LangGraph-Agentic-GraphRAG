@@ -2,6 +2,8 @@
 ### python embedding_system.py --json data/combined_metadata_2.json --type image
 ### python embedding_system.py --json data/test_text_2.json --type text
 
+# python /home/jeonghs/workspace/nextitslm/backend/notebooklm/embedding_system.py --type image --recreate
+
 import os
 import re
 import json
@@ -112,7 +114,11 @@ class VectorDBService:
                         {"name": "image_path", "dataType": ["text"]},
                         {"name": "page_num", "dataType": ["int"]},
                         {"name": "con_type", "dataType": ["text"]},
-                        {"name": "metadata", "dataType": ["object"]},
+                        {"name": "metadata", "dataType": ["object"], "nestedProperties": [
+                            {"name": "document_id", "dataType": ["text"]},
+                            {"name": "content_type", "dataType": ["text"]},
+                            {"name": "file_path", "dataType": ["text"]}
+                        ]},
                         {"name": "tags", "dataType": ["text[]"]}
                     ]
                 }
@@ -131,7 +137,7 @@ class VectorDBService:
     
     def generate_text_embedding(self, text: str) -> Optional[np.ndarray]:
         """
-        SentenceTransformer를 사용하여 텍스트 임베딩 생성
+        SharedEmbeddingModel을 사용하여 텍스트 임베딩 생성
 
         Args:
             text: 임베딩할 텍스트
@@ -144,14 +150,17 @@ class VectorDBService:
             return None
 
         try:
-            # show_progress_bar=False 옵션으로 불필요한 출력 방지
-            embedding = self.embedding_model.encode(
+            # SharedEmbeddingModel의 generate_embedding 메서드 사용
+            embedding = self.embedding_model.generate_embedding(
                 text.strip(),
-                normalize_embeddings=True,
-                show_progress_bar=False
+                normalize=True  # SharedEmbeddingModel에서는 normalize를 사용함
             )
-            # SentenceTransformer는 자동으로 numpy 배열을 반환합니다.
-            return embedding
+            # numpy 배열 반환 확인
+            if embedding is not None:
+                return embedding
+            else:
+                logger.error("임베딩 생성 결과가 None입니다.")
+                return None
         except Exception as e:
             logger.error(f"임베딩 생성 중 오류 발생: {e}", exc_info=True)
             return None
@@ -203,15 +212,31 @@ class VectorDBService:
             if 'con_type' not in metadata:
                 metadata['con_type'] = content_type
                 
+            # page_num을 정수형으로 변환
+            page_num = metadata.get("page_num", 0)
+            if isinstance(page_num, str):
+                try:
+                    page_num = int(page_num)
+                except (ValueError, TypeError):
+                    page_num = 0
+            
+            # metadata에서 필요한 필드만 추출
+            filtered_metadata = {
+                "document_id": metadata.get("id", ""),
+                "content_type": metadata.get("con_type", content_type),
+                "file_path": image_path,
+                "text": metadata.get("text", "") # text 필드 추가
+            }
+            
             # 데이터 객체 준비
             data_object = {
                 "title": metadata.get("title", ""),
                 "caption": metadata.get("caption", ""),
                 "text": metadata.get("text", ""),
-                "image_path": metadata.get("image_path", "") or metadata.get("file_path", ""),
-                "page_num": metadata.get("page_num", 0),
+                "image_path": image_path,
+                "page_num": page_num,  # 정수형으로 변환된 page_num 사용
                 "con_type": metadata.get("con_type", content_type),
-                "metadata": metadata  # 추가 메타데이터는 객체로 저장
+                "metadata": filtered_metadata  # 필터링된 메타데이터 사용
             }
             
             # 태그가 있으면 추가
@@ -572,7 +597,7 @@ class VectorDBService:
             logger.info("스키마 재생성 모드")
             # 스키마 재생성 플래그를 설정하고 스키마 초기화
             self.recreate_schema = True
-            self._init_schema()
+            self._init_schema(content_type)
         
         # 이미지 데이터 처리
         indexed_count = self._process_image_data(items, image_base_path)

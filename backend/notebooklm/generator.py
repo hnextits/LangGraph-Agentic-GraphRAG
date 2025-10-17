@@ -5,10 +5,7 @@
 RAG 시스템 생성기 - SGLang을 사용하여 로컬에서 모델을 로드하고 추론합니다.
 """
 
-import os
-import json
-import logging
-import copy
+import os, re, copy, logging
 import threading
 from typing import List, Dict, Any, Optional
 import sglang as sgl
@@ -288,6 +285,15 @@ class SGLangGenerator:
                 # 일반 동기 방식으로 시도
                 result = self.engine.generate(prompt=prompt, sampling_params=sampling_params)
                 response = result["text"]
+
+                response = re.sub(r'<[tT]hink>.*?</[tT]hink>', '', response, flags=re.DOTALL)
+
+                # 2. 불필요한 공백/줄바꿈 정리
+                response = response.strip()
+
+
+                return response
+
             except RuntimeError as e:
                 if "no current event loop" in str(e):
                     # 이벤트 루프 문제 발생 시 이벤트 루프 생성 후 다시 시도
@@ -301,6 +307,13 @@ class SGLangGenerator:
                     # 다시 시도
                     result = self.engine.generate(prompt=prompt, sampling_params=sampling_params)
                     response = result["text"]
+
+                    # <think> 태그 제거 로직 추가
+                    response = re.sub(r'<[tT]hink>.*?</[tT]hink>', '', response, flags=re.DOTALL)
+                    
+                    # 불필요한 공백/줄바꿈 정리
+                    response = response.strip()
+                    
                 else:
                     # 다른 오류는 그대로 전파
                     raise
@@ -329,5 +342,3 @@ class SGLangGenerator:
             "max_tokens": self.config.GENERATOR_MAX_TOKENS,
             "temperature": self.config.GENERATOR_TEMPERATURE
         }
-
-

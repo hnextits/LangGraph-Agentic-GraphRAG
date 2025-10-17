@@ -59,6 +59,54 @@ class RAGPipeline:
         
         logger.info("RAG 파이프라인 초기화 완료")
     
+    def _process_image_document(self, img_doc: Dict[str, Any], processed_images: List[Dict[str, Any]], image_paths: List[str]) -> None:
+        """
+        단일 이미지 문서를 처리하여 base64로 변환합니다.
+        
+        Args:
+            img_doc: 처리할 이미지 문서
+            processed_images: 처리된 이미지를 추가할 리스트
+            image_paths: 이미지 경로를 추가할 리스트
+        """
+        image_base64 = img_doc.get('image_base64')
+        file_path = img_doc.get('file_path')
+        
+        if image_base64:
+            # 이미 인코딩된 base64 데이터 사용
+            logger.debug(f"이미 인코딩된 base64 데이터 사용: {file_path}")
+            img_doc['base64'] = image_base64
+            img_doc['image_available'] = True
+            processed_images.append(img_doc)
+            
+            if file_path:
+                image_paths.append(file_path)
+                
+        elif file_path:
+            # 이미지 경로 저장
+            image_paths.append(file_path)
+            
+            # 파일 존재 여부 확인
+            if not os.path.exists(file_path):
+                logger.error(f"이미지 파일이 존재하지 않음: {file_path}")
+                return
+            
+            # base64 변환 시도
+            try:
+                base64_data = image_processor.encode_image_to_base64(file_path)
+                if base64_data:
+                    img_doc['base64'] = base64_data
+                    img_doc['image_available'] = True
+                    processed_images.append(img_doc)
+                    logger.debug(f"이미지 base64 변환 성공: {file_path}")
+                else:
+                    img_doc['image_available'] = False
+                    logger.warning(f"이미지 base64 변환 실패: {file_path}")
+            except Exception as e:
+                logger.error(f"이미지 base64 변환 중 오류: {file_path}, 오류: {str(e)}")
+                img_doc['image_available'] = False
+        else:
+            logger.warning(f"이미지 문서에 file_path가 없음: {img_doc.get('id', 'unknown')}")
+    
     def process_query(self, query: str, top_k: int = 5, cancellation_event: Optional[threading.Event] = None) -> Dict[str, Any]:
         """
         질문 처리 및 답변 생성 (수정된 메서드)
@@ -116,86 +164,43 @@ class RAGPipeline:
         # 5. 이미지 결과 처리 및 base64 변환
         processed_images = []
         image_paths = []
+        processed_ids = set()  # 중복 방지를 위한 ID 추적
         
         # search_results에서 이미지 문서 추출 및 처리
         logger.info(f"search_results 구조: {list(search_results.keys()) if isinstance(search_results, dict) else type(search_results)}")
         
-        # 직접 image_documents 키가 있는지 확인 (parallel_search.py에서 직접 반환)
-        if isinstance(search_results, dict) and 'image_documents' in search_results:
-            image_docs = search_results['image_documents']
-            logger.info(f"직접 image_documents에서 {len(image_docs)}개의 이미지 문서 처리 시작")
-            
-            for img_doc in image_docs:
-                file_path = img_doc.get('file_path')
-                logger.info(f"이미진 문서 처리 시도: {file_path}")
-                if file_path:
-                    # 이미지 경로 저장
-                    image_paths.append(file_path)
-                    
-                    # 파일 존재 여부 확인
-                    import os
-                    if not os.path.exists(file_path):
-                        logger.error(f"이미지 파일이 존재하지 않음: {file_path}")
-                        continue
-                        
-                    logger.info(f"이미지 파일 확인됨, base64 변환 시도: {file_path}")
-                    # base64 변환 시도
-                    try:
-                        base64_data = image_processor.encode_image_to_base64(file_path)
-                        if base64_data:
-                            img_doc['base64'] = base64_data
-                            img_doc['image_available'] = True
-                            processed_images.append(img_doc)
-                            logger.info(f"이미지 base64 변환 성공: {file_path}, base64 길이: {len(base64_data)}")
-                        else:
-                            img_doc['image_available'] = False
-                            logger.warning(f"이미지 base64 변환 실패 (None 반환): {file_path}")
-                    except Exception as e:
-                        logger.error(f"이미지 base64 변환 중 오류: {file_path}, 오류: {str(e)}")
-                        img_doc['image_available'] = False
-                else:
-                    logger.warning(f"이미진 문서에 file_path가 없음: {img_doc}")
+        # 모든 이미지 문서를 수집
+        all_image_docs = []
         
-        # 기존 searcher별 구조도 확인 (하위 호환성)
+        # 1. 직접 image_documents 키에서 수집
+        if isinstance(search_results, dict) and 'image_documents' in search_results:
+            all_image_docs.extend(search_results['image_documents'])
+            logger.info(f"image_documents에서 {len(search_results['image_documents'])}개 수집")
+        
+        # 2. searcher별 구조에서 수집 (하위 호환성)
         for searcher_name, searcher_results in search_results.items():
             if searcher_name in ["text_documents", "image_documents", "metadata"]:
                 continue
-                
-            # searcher별 분리된 구조 처리
+            
             if isinstance(searcher_results, dict) and 'image_documents' in searcher_results:
-                image_docs = searcher_results['image_documents']
-                logger.info(f"{searcher_name}에서 {len(image_docs)}개의 이미지 문서 처리 시작")
-                
-                for img_doc in image_docs:
-                    file_path = img_doc.get('file_path')
-                    logger.info(f"이미직 문서 처리 시도: {file_path}")
-                    if file_path:
-                        # 이미지 경로 저장
-                        image_paths.append(file_path)
-                        
-                        # 파일 존재 여부 확인
-                        import os
-                        if not os.path.exists(file_path):
-                            logger.error(f"이미진 파일이 존재하지 않음: {file_path}")
-                            continue
-                            
-                        logger.info(f"이미직 파일 확인됨, base64 변환 시도: {file_path}")
-                        # base64 변환 시도
-                        try:
-                            base64_data = image_processor.encode_image_to_base64(file_path)
-                            if base64_data:
-                                img_doc['base64'] = base64_data
-                                img_doc['image_available'] = True
-                                processed_images.append(img_doc)
-                                logger.info(f"이미직 base64 변환 성공: {file_path}, base64 길이: {len(base64_data)}")
-                            else:
-                                img_doc['image_available'] = False
-                                logger.warning(f"이미직 base64 변환 실패 (None 반환): {file_path}")
-                        except Exception as e:
-                            logger.error(f"이미지 base64 변환 중 오류: {file_path}, 오류: {str(e)}")
-                            img_doc['image_available'] = False
-                    else:
-                        logger.warning(f"이미직 문서에 file_path가 없음: {img_doc}")
+                all_image_docs.extend(searcher_results['image_documents'])
+                logger.info(f"{searcher_name}에서 {len(searcher_results['image_documents'])}개 수집")
+        
+        # 3. 수집된 모든 이미지 문서를 한 번에 처리 (중복 제거)
+        logger.info(f"총 {len(all_image_docs)}개의 이미지 문서 처리 시작")
+        for img_doc in all_image_docs:
+            # ID 기반 중복 체크
+            doc_id = img_doc.get('id')
+            if doc_id and doc_id in processed_ids:
+                logger.debug(f"중복된 이미지 문서 건너뜀: {doc_id}")
+                continue
+            
+            # 이미지 처리
+            self._process_image_document(img_doc, processed_images, image_paths)
+            
+            # 처리된 ID 기록
+            if doc_id:
+                processed_ids.add(doc_id)
         
         # 처리된 이미지를 결과에 추가
         logger.info(f"processed_images 리스트 길이: {len(processed_images)}")

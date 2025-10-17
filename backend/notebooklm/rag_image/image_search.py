@@ -8,19 +8,21 @@
 import os
 import sys
 import json
-import logging
 import torch
 import torch.nn.functional as F
 import numpy as np
 import threading
+import logging
+import time
+import base64
 from typing import List, Dict, Any, Optional, Tuple
+from PIL import Image
 import weaviate
 
-# config.py 파일이 있는 디렉토리를 sys.path에 추가
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import RAGConfig
-from weaviate_utils import create_schema
+from shared_embedding import shared_embedding
 from rag_image.image_reranker import RAGReranker
+from weaviate_utils import create_schema
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
@@ -151,7 +153,8 @@ class ImageSearcher:
         
         try:
             # Weaviate 벡터 검색 수행
-            search_top_k = top_k * 3 if rerank else top_k
+            # 필요한 개수만 검색 (리랭킹은 검색된 결과에 대해서만 수행)
+            search_top_k = top_k
             
             logger.debug(f"Weaviate 이미지 검색 시작: 클래스={self.class_name}, top_k={search_top_k}")
             
@@ -159,7 +162,7 @@ class ImageSearcher:
                 # metadata 필드에 대한 서브 셀렉션 문제 해결
                 vector_search_results = (
                     self.client.query
-                    .get(self.class_name, ["caption", "title", "file_path", "content_type", "tags"])
+                    .get(self.class_name, ["caption", "title", "image_path", "con_type", "tags", "text"])
                     .with_near_vector({
                         "vector": query_embedding.tolist()
                     })
@@ -185,22 +188,25 @@ class ImageSearcher:
                     # 거리를 유사도 점수로 변환 (1 - 거리)
                     similarity_score = 1 - score if score <= 1 else 0
                     
-                    # 텍스트 필드 준비 - caption이 없으면 title 활용
+                    # 텍스트 필드 준비 - text > caption > title 우선순위
+                    text = item.get("text", "")
                     caption = item.get("caption", "")
-                    if not caption:
-                        caption = item.get("title", "")
+                    title = item.get("title", "")
+                    
+                    # text 필드 우선, 없으면 caption, 그것도 없으면 title
+                    doc_text = text if text else (caption if caption else title)
                     
                     result = {
                         'score': similarity_score,
                         'index': i,
                         'id': item.get("id", f"img_{i}"),
-                        'title': item.get("title", f"이미지 {i}"),
+                        'title': title if title else f"이미지 {i}",
                         'caption': caption,
-                        'file_path': item.get("file_path", ""),
-                        'content_type': item.get("content_type", "image"),
+                        'file_path': item.get("image_path", ""),  # image_path를 file_path로 변환
+                        'content_type': item.get("con_type", "image"),  # con_type을 content_type으로 변환
                         'tags': item.get("tags", []),
                         'page_num': 1,  # 기본값 사용
-                        'text': caption,  # text 필드를 caption으로 설정 (호환성 유지)
+                        'text': doc_text,  # OCR 텍스트 우선 사용
                     }
                     results.append(result)
             
@@ -209,7 +215,7 @@ class ImageSearcher:
             # 검색 결과의 content_type 확인
             content_types = {}
             for r in results[:10]:
-                ct = r.get('content_type', 'None')
+                ct = r.get('content_type', 'None')  # 이미 변환된 content_type 사용
                 if ct in content_types:
                     content_types[ct] += 1
                 else:
@@ -225,7 +231,7 @@ class ImageSearcher:
             
             # 지원하는 모든 타입(image, chart 등)에 대해 검색 결과 포함
             filtered_results = [r for r in results if r['score'] >= config.IMAGE_THRESHOLD and 
-                               r.get('content_type', 'image') in self.supported_types]
+                               r.get('content_type', 'image') in self.supported_types]  # 이미 변환된 content_type 사용
             
             if len(filtered_results) < len(results):
                 logger.info(f"임계값({config.IMAGE_THRESHOLD}) 및 타입 필터링 후 결과 수: {len(filtered_results)}")
@@ -233,7 +239,7 @@ class ImageSearcher:
             # 검색 결과의 content_type 분포 확인
             content_types_filtered = {}
             for r in filtered_results[:10]:
-                ct = r.get('content_type', 'None')
+                ct = r.get('content_type', 'None')  # 이미 변환된 content_type 사용
                 if ct in content_types_filtered:
                     content_types_filtered[ct] += 1
                 else:
@@ -274,7 +280,8 @@ class ImageSearcher:
                         print(f"   정규화 점수: {result.get('score', 0):.4f}")
                         print(f"   원본 점수: {result.get('original_score', 0):.4f}")
                         print(f"   제목: {result.get('title', '제목 없음')}")
-                        print(f"   캡션: {result.get('caption', '캡션 없음')[:100]}...")
+                        caption = result.get('caption') or '캡션 없음'
+                        print(f"   캡션: {caption[:100]}...")
                         print()
                     
                     return reranked_results[:top_k]

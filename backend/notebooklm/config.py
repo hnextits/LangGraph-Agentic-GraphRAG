@@ -3,7 +3,7 @@ import json
 import logging
 import torch
 from pathlib import Path
-import weaviate
+
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -89,8 +89,8 @@ class RAGConfig:
         self.MAX_LENGTH = 512  # 최대 텍스트 길이
         
         # 생성기(GENERATOR) 파라미터
-        self.GENERATOR_MAX_TOKENS = 8192
-        self.GENERATOR_TEMPERATURE = 0.7
+        self.GENERATOR_MAX_TOKENS = 4096
+        self.GENERATOR_TEMPERATURE = 0.6  
         self.GENERATOR_TOP_P = 0.9
         self.GENERATOR_TOP_K = 3
         self.GENERATOR_DO_SAMPLE = True  # 샘플링 활성화
@@ -143,9 +143,9 @@ class RAGConfig:
         # 4. 검색 및 리랭킹 설정
         #############################################
         # 벡터 검색 설정
-        self.TEXT_TOP_K = 7  # 텍스트 검색 결과 수
+        self.TEXT_TOP_K = 5  # 텍스트 검색 결과 수 (7 -> 5)
         self.TEXT_FINAL_K = 3  # 텍스트 리랭킹 후 최종 결과 수
-        self.IMAGE_TOP_K = 5  # 이미지 검색 초기 결과 수
+        self.IMAGE_TOP_K = 3  # 이미지 검색 초기 결과 수 (5 -> 3, 속도 향상)
         self.IMAGE_FINAL_K = 3  # 이미지 리랭킹 후 최종 결과 수
         self.TOP_K = 3  # 기존 호환성을 위한 기본값
         self.RELEVANCE_THRESHOLD = 0.3  # 텍스트 검색 임계값 (0.5 -> 0.3)
@@ -160,9 +160,9 @@ class RAGConfig:
         self.KEYWORD_WEIGHT = 0.5
         
         # 이미지 관련 설정
-        self.IMAGE_THRESHOLD = 0.3  # 이미지 검색 임계값 (0.7 -> 0.3)
-        self.IMAGE_RERANK_SCORE_THRESHOLD = 0.4  # 이미지 리랭크 점수 임계값 (0.8 -> 0.4)
-        self.IMAGE_RELEVANCE_THRESHOLD = 0.4   # 이미지 관련성 임계값 (0.8 -> 0.4)
+        self.IMAGE_THRESHOLD = 0.5  # 이미지 검색 임계값 (벡터 유사도 기준)
+        self.IMAGE_RERANK_SCORE_THRESHOLD = 0.7  # 이미지 리랭크 점수 임계값 (소프트맥스 확률 기준, 70% 이상 확신)
+        self.IMAGE_RELEVANCE_THRESHOLD = 0.7   # 이미지 관련성 임계값
         self.IMAGE_RERANK_AMPLIFICATION = 1.5  # 시그모이드 증폭 계수
         self.CAPTION_WEIGHT = 8.0      # 이미지 캡션 가중치
         self.TAG_WEIGHT = 2.0         # 이미지 태그 가중치
@@ -170,35 +170,38 @@ class RAGConfig:
         #############################################
         # 5. 쿼리 리라이팅 설정
         #############################################
-        self.ENABLE_QUERY_REWRITE = True  # 쿼리 리라이팅 기능 활성화
+        self.ENABLE_QUERY_REWRITE = False  # 쿼리 리라이팅 비활성화 (속도 향상)
         
         #############################################
         # 5-1. 프롬프트 템플릿 설정
         #############################################
         self.PROMPT_TEMPLATES = {
-            "system": "You are an AI assistant. Your goal is to answer the user's question using ONLY the documents below.\n"
-                    "Each document has a field called con_type which is either 'text' or 'image'.\n"
-                    "Each document, including images, is provided with a similarity field, indicating its relevance to the user's question.\n"
-                    "For text documents, prioritize using data blocks where the similarity is close to 1 to build the answer, ensuring the most relevant information is utilized. Aim to provide a comprehensive answer from these text documents.\n"
-                    "The provided documents may contain tables in Markdown format. Interpret the rows and columns of the table to accurately answer the question.\n"
-                    "Do NOT describe the contents of the image.\n"
-                    "Do not display metadata such as similarity score, document name, or page number in the response.\n"
-                    "EXTREMELY STRICT RULE: You MUST ONLY use information that is explicitly present in the provided documents. Do NOT use your general knowledge, make assumptions, or provide information from outside sources.\n"
-                    "If ANY part of the answer cannot be found in the provided documents, you MUST respond with ONLY: '제공된 자료에서 해당 정보를 찾을 수 없습니다.' Do NOT attempt to answer partially or provide general explanations.\n"
-                    "NEVER combine document information with your general knowledge. If the documents are incomplete or unclear, still respond with '제공된 자료에서 해당 정보를 찾을 수 없습니다.'\n"
-                    "***You MUST respond in Korean ONLY. Do not use English or any other language. All explanations, terms, and sentences must be in Korean.***\n"
-                    "When writing the answer, follow this structured, ChatGPT-style format:\n"
-                    "Question Summary: Briefly summarize the intent of the question (1 sentence)\n"
-                    "Key Answer: Provide 3–5 concise lines that directly address the question\n"
-                    "Detailed Explanation:"
-                    "Use numbered lists and bullet points for step-by-step clarity\n"
-                    "Highlight important terms in bold\n"
-                    "Final Conclusion: End with a one-sentence takeaway\n"
-                    "Special Rule: If the user's question explicitly includes requests such as '장단점 알려줘', '비교해줘', '표로 정리해줘', or '테이블로 정리해줘', you MUST present the answer in a Markdown table format in addition to the structured explanation.\n"
-                    "IMPORTANT: Only follow this structure if you can answer the question completely using the provided documents. If not, respond only with '제공된 자료에서 해당 정보를 찾을 수 없습니다.'\n"
-                    "CRITICAL: If the retrieved documents section is empty or contains no relevant information, respond ONLY with '제공된 자료에서 해당 정보를 찾을 수 없습니다.' without any additional explanation.\n"
-                    "Write the answer in a professional, well-structured, and concise manner, similar to a ChatGPT expert Q&A response, with no unnecessary content.",
-            "user": "Question : \n{query} \n\n  Retrieved documents:\n  {context} \n\n response: "
+            "system": (
+                "You are an AI assistant that answers user questions using ONLY the provided documents. The documents include both text and images.\n"
+                "You MUST strictly follow the rules below when generating your response.\n"
+                "\n"
+                "**🎯 Core Rules**\n"
+                "- **ONLY use information explicitly present** in the provided documents. Do not use any external knowledge or make assumptions.\n"
+                "- If the answer cannot be found in the documents, respond with **'제공된 자료에서 해당 정보를 찾을 수 없습니다.'** and nothing else.\n"
+                "- Do NOT describe the contents of images. (e.g., 'In the image...', 'The photo shows...')\n"
+                "- Do NOT include metadata like similarity scores, filenames, or page numbers in your answer.\n"
+                "- Your response **MUST be in Korean ONLY.** Do not use any English.\n"
+                "\n"
+                "**✍️ Response Format Guidelines**\n"
+                "- Write your output in **Markdown format** and do not use code blocks.\n"
+                "- Use `#` and `##` for headings to improve readability, and separate paragraphs with a blank line.\n"
+                "- **Bold** key terms and use `-` or numbered lists to organize information clearly.\n"
+                "- If the user asks for a comparison, pros and cons, or a table, you **MUST** use a **Markdown table**.\n"
+                "- Structure your answer with a 'Summary' and 'Detailed Explanation'. Keep it concise and to the point, avoiding unnecessary introductions or conclusions.\n"
+                "\n"
+                "**✅ Example Response Structure**\n"
+                "### 💡 핵심 요약\n"
+                "A 3-5 sentence summary of the answer to the question.\n"
+                "\n"
+                "### 📝 상세 설명\n"
+                "A detailed, step-by-step or itemized explanation of the core content. Use bullet points and bolding where necessary.\n"
+            ),
+            "user": "Question: \n{query} \n\nRetrieved documents:\n{context}\n\nresponse: "
         }
         
         # 2025. 08. 18 프롬프트

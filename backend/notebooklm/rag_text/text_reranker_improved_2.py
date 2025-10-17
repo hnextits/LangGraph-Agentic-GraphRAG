@@ -24,7 +24,7 @@ class ImprovedTextReranker:
         self,
         model_name: str = None,
         device: str = None,
-        max_length: int = 512,  # 리랭커는 보통 512로 충분합니다.
+        max_length: int = 512,
         batch_size: int = 8
     ):
         self.config = RAGConfig()
@@ -42,7 +42,7 @@ class ImprovedTextReranker:
                 self.device = config.RERANKER_DEVICE if torch.cuda.is_available() else "cpu"
         
         self.max_length = max_length
-        self.batch_size = 1  # 패딩 토큰 문제로 인해 배치 크기를 1로 설정
+        self.batch_size = 8  # 배치 크기 증가 (1 -> 8, 속도 향상)
         
         self.tokenizer = None
         self.model = None
@@ -75,6 +75,12 @@ class ImprovedTextReranker:
             # 패딩 토큰 설정 (배치 처리를 위해 필수)
             if self.tokenizer.pad_token is None:
                 self.tokenizer.pad_token = self.tokenizer.eos_token
+                logger.info(f"패딩 토큰을 EOS 토큰으로 설정: {self.tokenizer.eos_token}")
+            
+            # pad_token_id도 명시적으로 설정
+            if self.tokenizer.pad_token_id is None:
+                self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
+                logger.info(f"패딩 토큰 ID 설정: {self.tokenizer.pad_token_id}")
             
             # 비결정적 추론을 위한 시드 설정
             torch.manual_seed(42)
@@ -84,7 +90,7 @@ class ImprovedTextReranker:
             self.torch_dtype = torch.float16
             logger.info(f"리랭커 모델 dtype 설정: {self.torch_dtype}")
             
-            # device_map 대신 직접 로드 후 이동 (더 안정적)
+            # device_map 대신 직접 로드 후 이동
             self.model = AutoModelForSequenceClassification.from_pretrained(
                 self.model_name,
                 trust_remote_code=True,
@@ -93,6 +99,11 @@ class ImprovedTextReranker:
                 local_files_only=True
             ).to(self.device)
             logger.info(f"리랭커 모델을 {self.device}에 로드했습니다.")
+            
+            # 모델 설정에도 패딩 토큰 ID 설정
+            if hasattr(self.model, 'config') and self.model.config.pad_token_id is None:
+                self.model.config.pad_token_id = self.tokenizer.pad_token_id
+                logger.info(f"모델 config에 pad_token_id 설정: {self.model.config.pad_token_id}")
             
             # 모델 파라미터의 dtype 확인 및 로깅
             param_dtypes = set(p.dtype for p in self.model.parameters())
@@ -135,10 +146,6 @@ class ImprovedTextReranker:
                 return_tensors="pt"
             )
             
-            # *** 수정된 부분 시작 ***
-            # 각 텐서를 적절한 dtype으로 변환하여 디바이스로 이동
-            # input_ids와 token_type_ids는 정수형으로 유지하고 디바이스로만 이동
-            # attention_mask는 모델의 torch_dtype과 일치하도록 변환
             
             # 입력 텐서를 디바이스로 이동 및 필요한 경우 dtype 변환
             for k, v in inputs.items():

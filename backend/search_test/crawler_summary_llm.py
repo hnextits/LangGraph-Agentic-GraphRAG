@@ -1,5 +1,6 @@
-from transformers import AutoTokenizer, AutoModelForCausalLM
-import torch
+import sglang as sgl
+import logging
+import re
 import json
 import os
 import sys
@@ -17,58 +18,61 @@ spec.loader.exec_module(backend_config)
 SearchEngineConfig = backend_config.SearchEngineConfig
 config = SearchEngineConfig()
 
+# 로깅 설정
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
 class AnswerGenerator:
-    """요약된 텍스트를 기반으로 답변을 생성하는 클래스"""
+    """요약된 텍스트를 기반으로 답변을 생성하는 클래스 (SGLang 버전)"""
     
     def __init__(self):
         self.model_name = config.model # 질문 응답에 적합한 모델
-        self.tokenizer = None
-        self.model = None
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.engine = None
+        self.model_loaded = False
     
     def load_model(self):
-        """모델 로드 - Qwen3 공식 사용법에 맞게 구현"""
+        """SGLang Engine 초기화"""
         try:
-            print(f"답변 생성 모델 로딩 중: {self.model_name}")
+            logger.info(f"SGLang Engine 초기화 중: {self.model_name}")
             
-            # 토크나이저 로드 - Qwen3 권장 설정
-            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+            # PyTorch를 사용하여 GPU 메모리 사용량 제한
+            import torch
+            if torch.cuda.is_available():
+                # GPU 메모리의 50%만 사용하도록 설정
+                memory_fraction = 0.5
+                logger.info(f"GPU 메모리 사용량 제한: {memory_fraction * 100}%")
+                torch.cuda.set_per_process_memory_fraction(memory_fraction, 0)
+                # 미사용 캐시 메모리 해제
+                torch.cuda.empty_cache()
             
-            # 모델 로드 - 공식 권장 설정 사용
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.model_name,
-                torch_dtype="auto",  # 자동으로 최적의 dtype 선택
-                device_map="auto"    # 자동으로 최적의 디바이스 할당
+            # Engine 클래스를 사용하여 모델 초기화
+            self.engine = sgl.Engine(
+                model_path=self.model_name,
+                mem_fraction_static=0.3,  # 메모리 할당량 제한 (30%)
+                disable_cuda_graph=True,  # CUDA 그래프 비활성화로 안정성 향상
+                trust_remote_code=True,   # 원격 코드 신뢰
+                dtype="auto"              # 자동으로 적절한 dtype 선택
             )
             
-            # 디바이스 정보 업데이트
-            self.device = next(self.model.parameters()).device
-            print(f"모델이 {self.device}에 로드되었습니다.")
-                
-            print("답변 생성 모델 로딩 완료")
+            self.model_loaded = True
+            logger.info("SGLang Engine 초기화 완료")
             return True
         except Exception as e:
-            print(f"모델 로딩 실패: {e}")
+            logger.error(f"SGLang Engine 초기화 실패: {e}")
+            self.model_loaded = False
             return False
     
     def cleanup_model(self):
         """모델 메모리 정리"""
         try:
-            if self.model is not None:
-                del self.model
-                self.model = None
-            if self.tokenizer is not None:
-                del self.tokenizer
-                self.tokenizer = None
+            if self.engine is not None:
+                del self.engine
+                self.engine = None
             
-            # GPU 메모리 정리
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-                torch.cuda.synchronize()
-            
-            print("모델 메모리 정리 완료")
+            self.model_loaded = False
+            logger.info("모델 메모리 정리 완료")
         except Exception as e:
-            print(f"모델 메모리 정리 중 오류: {e}")
+            logger.error(f"모델 메모리 정리 중 오류: {e}")
     
     @staticmethod
     def make_llm_input_data(save_dir,json_data):
@@ -120,109 +124,84 @@ class AnswerGenerator:
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
     def generate_answer(self, google_search_results):
-        """요약된 텍스트를 기반으로 답변 생성 - Qwen3 공식 사용법에 맞게 구현"""
+        """요약된 텍스트를 기반으로 답변 생성 - SGLang 버전"""
         
         if not google_search_results:
             return "(관련된 구글 검색 결과를 찾을 수 없습니다)"
         
         # 모델이 로드되지 않았으면 로드
-        if not self.model or not self.tokenizer:
+        if not self.model_loaded:
             if not self.load_model():
                 return "모델 로딩에 실패하여 답변을 생성할 수 없습니다."
         
         try:
-            # 요약 생성을 위한 프롬프트 작성
-            prompt = f"""
-                # Role
-                You are a summarization assistant. Follow the strict format below when generating summaries.
+            # 요약 생성을 위한 시스템 프롬프트
+            system_prompt = """You are a summarization assistant. Follow the strict format below when generating summaries.
 
-                ***You MUST respond in Korean ONLY. Do not use English or any other language. All explanations, terms, and sentences must be in Korean.***
-                
-                # Output Format & Rules
-                ■ Overall Structure
-                - Do not add any introduction or explanation before the summary.
-                - The summary must begin with **1. Topic Name**.
-                - Divide the content into 1 to 5 topics.
-                - Each topic must be bolded and numbered. (Example: **1. Founding of the Hanwha Eagles**)
-                - Each topic must consist of 4–5 sentences.
-                - The entire summary must be at least 25 lines long.
+***You MUST respond in Korean ONLY. Do not use English or any other language. All explanations, terms, and sentences must be in Korean.***
 
-                ■ Content Creation and Source Citation
-                - At the end of every sentence, indicate the source number in square brackets. (Example: ...did [1])
-                - If background knowledge is required due to insufficient search results, add the phrase **(Background Information)** at the end of the sentence.
-                - The summary must be written entirely in Korean. No English, Chinese, or other languages are allowed.
+# Output Format & Rules
+■ Overall Structure
+- Do not add any introduction or explanation before the summary.
+- The summary must begin with **1. Topic Name**.
+- Divide the content into 1 to 5 topics.
+- Each topic must be bolded and numbered. (Example: **1. Founding of the Hanwha Eagles**)
+- Each topic must consist of 4–5 sentences.
+- The entire summary must be at least 25 lines long.
 
-                # Final Output Structure
-                - After completing the summary, insert a separator line (`---`).
-                - Below the separator, create a **Source Links** section.
-                - List all sources in numerical order with their corresponding links.
+■ Content Creation and Source Citation
+- At the end of every sentence, indicate the source number in square brackets. (Example: ...did [1])
+- If background knowledge is required due to insufficient search results, add the phrase **(Background Information)** at the end of the sentence.
+- The summary must be written entirely in Korean. No English, Chinese, or other languages are allowed.
 
-                # Input
-                [Google Search Results]
-                {google_search_results}
-                """
+# Final Output Structure
+- After completing the summary, insert a separator line (`---`).
+- Below the separator, create a **Source Links** section.
+- List all sources in numerical order with their corresponding links."""
             
-            # Qwen3 공식 사용법에 따른 메시지 형식
-            messages = [
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": prompt}
-            ]
+            # 사용자 프롬프트
+            user_prompt = f"""# Input
+[Google Search Results]
+{google_search_results}"""
             
-            # Qwen3 공식 사용법에 따른 토크나이저 설정
-            text = self.tokenizer.apply_chat_template(
-                messages, 
-                tokenize=False, 
-                add_generation_prompt=True,
-                enable_thinking=False  # 생각 모드 비활성화
-            )
+            # 채팅 형식 프롬프트 구성
+            prompt = f"""<|im_start|>system
+{system_prompt}<|im_end|>
+<|im_start|>user
+{user_prompt}<|im_end|>
+<|im_start|>assistant
+"""
             
-            # 모델 입력 준비 - 공식 문서에 따른 방식
-            model_inputs = self.tokenizer([text], return_tensors="pt").to(self.device)
-            
-            # 공식 문서에 따른 생성 파라미터 설정
-            # 안정적인 생성을 위해 보수적인 설정 사용
-            generation_config = {
-                "max_new_tokens": 8192,  # 적절한 최대 토큰 수
-                "do_sample": False,      # 결정적 생성을 위해 False 사용
-                "temperature": 0.7,      # 적절한 온도
-                "repetition_penalty": 1.1  # 반복 패널티
+            # 샘플링 파라미터 설정
+            sampling_params = {
+                "temperature": 0.7,
+                "top_p": 0.9,
+                "max_new_tokens": 8192,
+                "stop": ["<|im_end|>", "</think>"]
             }
             
-            # 텍스트 생성
-            with torch.no_grad():  # 메모리 사용량 감소를 위해 그래디언트 계산 비활성화
-                generated_ids = self.model.generate(
-                    **model_inputs,
-                    **generation_config
-                )
+            # SGLang Engine으로 텍스트 생성
+            logger.info("SGLang Engine으로 텍스트 생성 시작")
             
-            # 생성된 텍스트 추출 - 공식 문서 방식 사용
-            output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist()
+            result = self.engine.generate(prompt=prompt, sampling_params=sampling_params)
+            response = result["text"]
             
-            # 생각 컨텐츠 처리 (생각 모드를 사용하는 경우)
-            try:
-                # </think> 토큰 ID 찾기 (151668)
-                think_end_token_id = 151668
-                index = len(output_ids) - output_ids[::-1].index(think_end_token_id) if think_end_token_id in output_ids else 0
-            except ValueError:
-                index = 0
-                
-            # 생성된 콘텐츠 추출
-            content = self.tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("\n")
+            # <think> 태그 제거
+            response = re.sub(r'<[tT]hink>.*?</[tT]hink>', '', response, flags=re.DOTALL)
             
-            # 메모리 정리
-            del model_inputs, generated_ids, output_ids
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-                
-            return content
+            # 불필요한 공백/줄바꿈 정리
+            response = response.strip()
+            
+            logger.info("SGLang 텍스트 생성 완료")
+            return response
             
         except Exception as e:
-            print(f"답변 생성 중 오류 발생: {e}")
+            logger.error(f"답변 생성 중 오류 발생: {e}")
             return f"답변 생성에 실패했습니다: {str(e)}"
 
 
-def main():
-    None
+# def main():
+#     None
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()

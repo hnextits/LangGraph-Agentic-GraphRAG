@@ -136,7 +136,7 @@ const CenterBox: React.FC<CenterBoxProps> = () => {
             const finalMessage: Message = {
               sender: 'bot',
               text: result.answer || '답변을 받지 못했습니다.',
-              images: result.image_paths || [],
+              images: result.images || result.image_paths || [],
               sources: result.context ? result.context.split('\n') : [],
             };
             setMessages(prev => [...prev, finalMessage]);

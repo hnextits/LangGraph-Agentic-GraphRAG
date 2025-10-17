@@ -229,13 +229,14 @@ def get_rag_response(query: str, sources: List[str], rag_pipeline, cancellation_
         if pipeline_images:
             logger.info(f"RAG 파이프라인에서 직접 반환된 {len(pipeline_images)}개의 이미지를 처리합니다.")
             for img_item in pipeline_images:
-                # file_path가 있고, 아직 추가되지 않았으며, base64 데이터가 있는지 확인
-                if 'file_path' in img_item and img_item['file_path'] not in processed_image_paths and 'base64' in img_item:
+                # file_path가 있고, 아직 추가되지 않았으며, base64 또는 image_base64 데이터가 있는지 확인
+                base64_data = img_item.get('base64') or img_item.get('image_base64')
+                if 'file_path' in img_item and img_item['file_path'] not in processed_image_paths and base64_data:
                     images.append({
                         'path': img_item['file_path'],
                         'alt': os.path.basename(img_item.get('title', img_item['file_path'])),
                         'title': img_item.get('title', os.path.basename(img_item['file_path'])),
-                        'base64': img_item['base64']
+                        'base64': base64_data  # 이미 가져온 base64_data 사용
                     })
                     processed_image_paths.add(img_item['file_path'])
         

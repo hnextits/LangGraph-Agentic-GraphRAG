@@ -123,7 +123,7 @@ class TextSearcher:
             logger.error("Weaviate 클라이언트가 초기화되지 않았습니다.")
             return []
         
-        search_top_k = top_k * 3 if rerank else top_k
+        search_top_k = top_k  # 리랭킹 사용 시에도 필요한 개수만 검색 (속도 향상)
         
         # 취소 확인
         if cancellation_event and cancellation_event.is_set():

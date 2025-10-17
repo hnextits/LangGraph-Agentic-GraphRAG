@@ -24,7 +24,7 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     answer: str
-    images: List[Dict[str, Any]] = []  # 이미지 데이터 리스트
+    images: List[str] = []  # base64 문자열 리스트
 
 @router.post("/chat", response_model=ChatResponse)
 async def handle_chat(request: ChatRequest, rag_pipeline: Any = Depends(get_rag_pipeline)):
@@ -34,20 +34,24 @@ async def handle_chat(request: ChatRequest, rag_pipeline: Any = Depends(get_rag_
     """
     try:
         # RAG 응답 생성
-        answer = get_rag_response(
-            query=request.query, 
-            sources=request.sources, 
-            rag_pipeline=rag_pipeline
+        # 개선된 RAG 파이프라인을 직접 사용하여 응답 생성
+        response_data = await rag_pipeline.get_response(
+            query=request.query,
+            sources=request.sources,
+            use_image_search=True  # 이미지 검색 활성화
         )
+        answer = response_data.get('answer', '답변을 생성하지 못했습니다.')
         
         # 응답에서 이미지 추출 및 처리
         processed_response = process_response_with_images(answer)
         
         logger.info(f"이미지 처리 결과: {len(processed_response['images'])}개 이미지 발견")
+        # 프론트엔드 형식에 맞게 이미지 데이터를 base64 문자열의 리스트로 변환
+        image_base64_list = [img.get('base64', '') for img in processed_response.get('images', []) if img.get('base64')]
         
         return ChatResponse(
             answer=processed_response['response'],
-            images=processed_response['images']
+            images=image_base64_list
         )
     except Exception as e:
         logger.error(f"Error in chat endpoint: {e}")
