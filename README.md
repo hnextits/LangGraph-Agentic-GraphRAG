@@ -1,26 +1,26 @@
 # NextitsLM SGLang 프로젝트 개요
 
-NextITSLM SGLang은 **RAG (Retrieval-Augmented Generation) 기술**을 기반으로 하는 차세대 **지능형 학습 관리 시스템 (LM)**입니다. 텍스트와 이미지를 모두 처리하는 **멀티모달 AI 시스템**으로, 고성능 **SGLang** 기반 LLM 인프라를 활용하여 실시간으로 정확한 문서 검색 및 질의응답 서비스를 제공합니다.
+NextITSLM SGLang은 RAG (Retrieval-Augmented Generation) 기술을 기반으로 하는 차세대 지능형 학습 관리 시스템입니다. 텍스트와 이미지를 모두 처리하는 멀티모달 AI 시스템으로, 고성능 SGLang 기반 LLM 인프라를 활용하여 실시간으로 정확한 문서 검색 및 질의응답 서비스를 제공합니다.
 
 ---
 
-## 🚀 주요 기능
+## 주요 기능
 
 ### AI 기반 지능형 Q&A 시스템
-- **멀티모달 RAG**: 텍스트와 이미지를 동시에 처리하는 통합 검색 및 질의응답.
-- **고속 실시간 응답**: **SGLang** 기반의 LLM 서비스로 응답 속도를 극대화.
-- **지능형 질의 라우팅**: 질의 유형을 분석하여 텍스트/이미지 검색기를 병렬로 실행.
-- **답변 정제 및 평가**: 검색된 컨텍스트를 활용한 정확한 답변 생성, 답변 품질 자동 평가 및 정제 기능.
+- **멀티모달 RAG**: 텍스트와 이미지를 동시에 처리하는 통합 검색 및 질의응답
+- **고속 실시간 응답**: SGLang 기반의 LLM 서비스로 응답 속도 달성 최적화
+- **지능형 질의 라우팅**: 질의 유형을 분석하여 텍스트/이미지 검색기를 병렬로 실행
+- **답변 정제 및 평가**: 검색된 컨텍스트를 활용한 정확한 답변 생성, 답변 품질 자동 평가 및 정제 기능
 
 ### 데이터 처리 및 인프라
-- **문서 처리 파이프라인**: OCR, 레이아웃 분석, 시맨틱 청킹을 통한 문서 구조화 및 배치 처리.
-- **고성능 벡터 검색**: **Weaviate** 기반 벡터 데이터베이스를 활용한 고성능 유사도 검색 엔진.
-- **웹 크롤링 및 수집**: Google 검색 API 및 웹 크롤링을 통한 콘텐츠 자동 수집 및 정제.
-- **실시간 모니터링**: 문서 처리 및 비동기 작업의 진행 상태 추적.
+- **문서 처리 파이프라인**: OCR, 레이아웃 분석, Late Chunking을 통한 문서 구조화 및 배치 처리
+- **고성능 벡터 검색**: Weaviate 기반 벡터 데이터베이스를 활용한 고성능 유사도 검색 엔진
+- **웹 크롤링 및 수집**: Google 검색 API 및 웹 크롤링을 통한 콘텐츠 자동 수집 및 정제
+- **실시간 모니터링**: 문서 처리 및 비동기 작업의 진행 상태 추적
 
 ---
 
-## 🏗️ 시스템 아키텍처
+## 시스템 아키텍처
 
 NextITS LMS GL은 모듈화된 3-Tier 아키텍처로 설계되었습니다.
 
@@ -49,18 +49,43 @@ graph LR
 
 ```
 nextitslm/
-├── backend/                 # 백엔드 서버 (FastAPI)
-│   ├── api/                # API 라우터
-│   ├── notebooklm/         # RAG 시스템 핵심 모듈
-│   ├── nextits_data/       # 데이터 처리 파이프라인
-│   ├── search_test/        # 웹 크롤링 모듈
-│   ├── services/           # 비즈니스 로직 서비스
-│   └── utils/              # 유틸리티 함수
-└── frontend/               # 프론트엔드 (Next.js)
-    └── src/
-        ├── components/     # React 컴포넌트
-        ├── pages/          # 페이지 컴포넌트
-        └── styles/         # 스타일 정의
+├── backend/                     # 백엔드 서버 (FastAPI)
+│   ├── api/                    # API 라우터
+│   │   ├── chat.py            # 채팅 API
+│   │   ├── routes.py          # 메인 라우트
+│   │   └── pause_api.py       # 일시정지 API
+│   ├── notebooklm/             # RAG 시스템 핵심 모듈
+│   │   ├── rag_pipeline.py    # RAG 파이프라인 오케스트레이터
+│   │   ├── embedding_system.py # 임베딩 시스템
+│   │   ├── generator.py       # LLM 답변 생성기
+│   │   ├── evaluator.py       # 답변 품질 평가기
+│   │   ├── refiner.py         # 답변 정제기
+│   │   ├── router.py          # 질의 라우팅
+│   │   ├── query_rewriter.py  # 질의 재작성
+│   │   ├── parallel_search.py # 병렬 검색
+│   │   ├── qwen3_late_chunking.py # Late Chunking 구현
+│   │   ├── weaviate_utils.py  # Weaviate 유틸리티
+│   │   ├── rag_text/          # 텍스트 검색 모듈
+│   │   │   ├── text_search.py
+│   │   │   └── text_reranker_improved_2.py
+│   │   └── rag_image/         # 이미지 검색 모듈
+│   │       ├── image_search.py
+│   │       └── image_reranker.py
+│   ├── nextits_data/           # 데이터 처리 파이프라인
+│   ├── search_test/            # 웹 크롤링 모듈
+│   ├── services/               # 비즈니스 로직 서비스
+│   ├── utils/                  # 유틸리티 함수
+│   ├── main.py                 # FastAPI 메인 서버
+│   ├── app.py                  # 애플리케이션 설정
+│   └── requirements.txt        # Python 의존성
+├── frontend/                   # 프론트엔드 (Next.js)
+│   └── src/
+│       ├── components/         # React 컴포넌트
+│       ├── pages/              # 페이지 컴포넌트
+│       └── styles/             # 스타일 정의
+├── pyproject.toml              # Poetry 프로젝트 설정
+├── poetry.lock                 # Poetry 의존성 잠금 파일
+└── Jenkinsfile                 # CI/CD 파이프라인
 ```
 
 ## 백엔드 구조 상세
@@ -79,10 +104,16 @@ nextitslm/
   - 텍스트/이미지 검색 결과 통합 및 base64 이미지 변환
   - 피드백 루프 및 답변 정제 기능
 
-- **`shared_embedding.py`**: 공유 임베딩 모델 (싱글톤 패턴)
+- **`embedding_system.py`**: 통합 임베딩 시스템
   - 텍스트와 이미지 검색에서 동일한 임베딩 모델 공유로 메모리 효율성 극대화
   - Qwen 모델 기반 고품질 임베딩 생성
+  - Late Chunking 기법 적용으로 컨텍스트 보존
   - GPU 메모리 사용량 모니터링 및 최적화
+
+- **`qwen3_late_chunking.py`**: Late Chunking 구현
+  - 문서를 청킹한 후 임베딩하는 대신, 전체 문서를 임베딩한 후 청킹
+  - 청크 간 컨텍스트 보존으로 검색 품질 향상
+  - Qwen3 모델에 최적화된 구현
 
 - **`router.py`**: 지능형 질의 라우팅
   - 질의 유형 분석 및 적절한 검색기 선택
@@ -100,9 +131,13 @@ nextitslm/
   - 생성된 답변의 품질 향상 및 일관성 보장
 
 #### 검색 시스템
-- **텍스트 검색** (`rag_text/`): Weaviate 기반 시맨틱 검색
-- **이미지 검색** (`rag_image/`): 이미지 임베딩 기반 유사도 검색
-- **병렬 검색** (`parallel_search.py`): 다중 검색기 동시 실행
+- **텍스트 검색** (`rag_text/`)
+  - `text_search.py`: Weaviate 기반 시맨틱 검색
+  - `text_reranker_improved_2.py`: 검색 결과 재순위화
+- **이미지 검색** (`rag_image/`)
+  - `image_search.py`: 이미지 임베딩 기반 유사도 검색
+  - `image_reranker.py`: 이미지 검색 결과 재순위화
+- **병렬 검색** (`parallel_search.py`): 다중 검색기 동시 실행으로 성능 최적화
 
 #### 설정 관리 (`config.py`)
 - **모델 설정**: 임베딩 모델, 생성 모델 설정
@@ -112,12 +147,12 @@ nextitslm/
 ### 3. 데이터 처리 파이프라인 (`nextits_data/`)
 
 #### 파이프라인 구조 (`pipe/`)
-- **`pipeline_text.py`**: 텍스트 문서 처리 파이프라인
+- **텍스트 문서 처리 파이프라인**
   - 레이아웃 JSON 파일 처리
   - 텍스트 블록 정렬 및 구조화
-  - 마크다운 변환 및 시맨틱 청킹
+  - 마크다운 변환 및 Late Chunking 적용
 
-- **`pipeline_image.py`**: 이미지 문서 처리 파이프라인
+- **이미지 문서 처리 파이프라인**
   - 이미지 OCR 및 레이아웃 분석
   - 이미지 임베딩 생성 및 인덱싱
 
@@ -125,20 +160,22 @@ nextitslm/
 1. **문서 업로드**: 다양한 형식의 문서 지원 (PDF, 이미지 등)
 2. **OCR 처리**: 텍스트 추출 및 레이아웃 분석
 3. **구조화**: 텍스트 블록 정렬 및 의미 단위 분할
-4. **임베딩 생성**: 텍스트/이미지 임베딩 벡터 생성
-5. **인덱싱**: Weaviate 벡터 인덱스 구축
+4. **Late Chunking**: 전체 문서 임베딩 후 청킹으로 컨텍스트 보존
+5. **임베딩 생성**: 텍스트/이미지 임베딩 벡터 생성
+6. **인덱싱**: Weaviate 벡터 인덱스 구축
 
 ### 4. API 엔드포인트 (`api/`)
 
 #### 주요 엔드포인트
+- **`POST /v1/chat`**: RAG 기반 질의응답 (chat.py)
 - **`POST /search`**: 웹 검색 수행
 - **`POST /add_document_from_search`**: 검색 결과에서 문서 추가
 - **`POST /upload`**: 파일 업로드 및 처리
-- **`POST /v1/chat`**: RAG 기반 질의응답
-- **`POST /search_and_summarize`**: 검색 및 요약 (LLM 없이)
+- **`POST /search_and_summarize`**: 검색 및 요약
 - **`GET /task_status/{task_id}`**: 비동기 작업 상태 확인
 - **`GET /files`**: 문서 목록 조회
 - **`GET /file/{filename}`**: 문서 내용 조회
+- **`POST /pause`**: 작업 일시정지 (pause_api.py)
 
 #### 비동기 처리
 - **백그라운드 작업**: 파일 처리, 인덱싱 등 시간이 오래 걸리는 작업
@@ -210,12 +247,16 @@ npm start
 ## 주요 설정
 
 ### 모델 설정
-- **임베딩 모델**: Qwen 시리즈 모델 (기본: Qwen/Qwen3-4B)
-- **생성 모델**: 다양한 LLM 지원 (GPT, Claude, Qwen3 등)
+- **임베딩 모델**: Qwen 시리즈 모델 (Qwen2.5-7B-Instruct 등)
+- **생성 모델**: SGLang 기반 LLM 서비스 (Qwen, GPT, Claude 등)
 - **디바이스**: CUDA GPU 자동 감지 및 활용
+- **Late Chunking**: 컨텍스트 보존을 위한 청킹 기법 적용
 
 ### 성능 최적화
 
+- **12초 응답 시간**: 최적화된 RAG 파이프라인으로 빠른 응답 속도 달성
+- **Late Chunking**: 컨텍스트 보존으로 검색 품질 향상
+- **병렬 검색**: 텍스트/이미지 검색 동시 실행
 - **캐싱**: 작업 상태 1시간 캐시 유지
 - **비동기 처리**: 백그라운드 작업 처리
 - **벡터 검색 최적화**: Weaviate 인덱싱 최적화
@@ -228,14 +269,21 @@ npm start
 
 ## 데이터 플로우
 
+### 문서 처리 플로우
 1. **문서 입력**: 파일 업로드 또는 웹 크롤링
 2. **전처리**: OCR, 레이아웃 분석, 텍스트 추출
-3. **구조화**: 시맨틱 청킹 및 메타데이터 추출
+3. **구조화**: Late Chunking 및 메타데이터 추출
 4. **임베딩**: 텍스트/이미지 벡터 임베딩 생성
 5. **인덱싱**: Weaviate 벡터 인덱스 구축
-6. **검색**: 질의에 대한 유사도 기반 검색
-7. **생성**: 검색된 컨텍스트 기반 답변 생성
-8. **정제**: 답변 품질 향상 및 최종 응답
+
+### 질의응답 플로우
+1. **질의 입력**: 사용자 질문 수신
+2. **질의 분석**: 라우터가 질의 유형 분석
+3. **병렬 검색**: 텍스트/이미지 검색 동시 실행
+4. **재순위화**: 검색 결과 재순위화 및 필터링
+5. **답변 생성**: SGLang 기반 LLM으로 답변 생성
+6. **답변 평가**: 답변 품질 자동 평가
+7. **답변 정제**: 필요시 답변 개선 및 최종 응답
 
 ## 로깅 및 모니터링
 
