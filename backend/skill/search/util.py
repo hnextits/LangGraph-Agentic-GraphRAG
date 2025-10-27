@@ -3,6 +3,32 @@
 import requests
 from urllib.parse import urlparse, unquote, quote
 import os
+import re
+
+
+def sanitize_filename(filename: str) -> str:
+    """
+    파일명에서 사용할 수 없는 문자를 제거하고 안전한 파일명으로 변환
+    
+    Args:
+        filename: 원본 파일명
+        
+    Returns:
+        str: 안전한 파일명
+    """
+    # 파일명에 사용할 수 없는 문자 제거
+    filename = re.sub(r'[<>:"/\\|?*]', '', filename)
+    # 연속된 공백을 하나로
+    filename = re.sub(r'\s+', ' ', filename)
+    # 앞뒤 공백 제거
+    filename = filename.strip()
+    # 최대 길이 제한 (255자)
+    if len(filename) > 255:
+        filename = filename[:255]
+    # 빈 문자열이면 기본값
+    if not filename:
+        filename = "untitled"
+    return filename
 
 def remove_think(response):
     '''
@@ -195,3 +221,84 @@ def find_table_and_remove_style(article,soup):
         table.replace_with(soup.new_string(placeholder))
 
     return tables, article
+
+
+def crawling_web(result: dict, output_dir: str) -> str:
+    """
+    웹 페이지를 크롤링하여 파일로 저장
+    
+    Args:
+        result: {'title': str, 'link': str, 'snippet': str (optional)} 형태의 딕셔너리
+        output_dir: 저장할 디렉토리 경로
+        
+    Returns:
+        str: 저장된 파일 경로
+    """
+    import requests
+    from bs4 import BeautifulSoup
+    from pathlib import Path
+    import re
+    
+    title = result.get('title', 'untitled')
+    link = result.get('link', '')
+    snippet = result.get('snippet', '')
+    
+    if not link:
+        raise ValueError("링크가 제공되지 않았습니다")
+    
+    # 파일명 생성
+    safe_filename = sanitize_filename(title)
+    output_path = Path(output_dir) / f"{safe_filename}.md"
+    
+    # 디렉토리 생성
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    
+    try:
+        # 웹 페이지 가져오기
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        response = requests.get(link, headers=headers, timeout=10)
+        response.raise_for_status()
+        
+        # HTML 파싱
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # 본문 추출 (여러 태그 시도)
+        content = ""
+        for tag in ['article', 'main', 'div[class*="content"]', 'div[id*="content"]']:
+            elements = soup.select(tag)
+            if elements:
+                content = "\n\n".join([elem.get_text(strip=True) for elem in elements])
+                break
+        
+        # 본문을 찾지 못한 경우 body 전체 사용
+        if not content:
+            body = soup.find('body')
+            if body:
+                content = body.get_text(strip=True)
+        
+        # 마크다운 형식으로 저장
+        markdown_content = f"# {title}\n\n"
+        markdown_content += f"**출처:** {link}\n\n"
+        if snippet:
+            markdown_content += f"**요약:** {snippet}\n\n"
+        markdown_content += f"## 본문\n\n{content}\n"
+        
+        # 파일 저장
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(markdown_content)
+        
+        return str(output_path)
+        
+    except Exception as e:
+        # 오류 발생 시 스니펫만이라도 저장
+        markdown_content = f"# {title}\n\n"
+        markdown_content += f"**출처:** {link}\n\n"
+        markdown_content += f"**요약:** {snippet}\n\n"
+        markdown_content += f"**오류:** 페이지 크롤링 실패 - {str(e)}\n"
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(markdown_content)
+        
+        return str(output_path)

@@ -5,9 +5,8 @@ import api from '@/lib/api';
 import FileContentBox from './FileContentBox';
 import Searchbox from './SearchBox';
 import FileUploadBox from './FileUploadBox';
-import { useGetFiles } from '@/queries';
 import { useQueryClient } from '@tanstack/react-query';
-import Swal from 'sweetalert2';
+import AlertModal from './AlertModal';
 import {
   ChevronLeft,
   ChevronRight,
@@ -21,6 +20,10 @@ import {
   Image as ImageIcon,
   Code,
   FileType,
+  WandSparkles,
+  Loader2,
+  Circle,
+  CircleCheck,
 } from 'lucide-react';
 
 // 타입 정의
@@ -36,6 +39,8 @@ interface LeftBoxProps {
   onToggleCollapse?: () => void;
   onFileUploadClick?: () => void;
   onFilesSelected?: (files: string[]) => void;
+  files: string[] | undefined;
+  isLoadingFiles: boolean;
 }
 
 const LeftBox: React.FC<LeftBoxProps> = ({
@@ -43,6 +48,8 @@ const LeftBox: React.FC<LeftBoxProps> = ({
   onToggleCollapse = () => {},
   onFileUploadClick,
   onFilesSelected,
+  files,
+  isLoadingFiles,
 }) => {
   const [sources, setSources] = useState<SourceItem[]>([]);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
@@ -56,15 +63,18 @@ const LeftBox: React.FC<LeftBoxProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<string[]>([]);
   const [fileUploadModalOpen, setFileUploadModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleteSuccessModalOpen, setIsDeleteSuccessModalOpen] = useState(false);
+  const [isDeleteFailModalOpen, setIsDeleteFailModalOpen] = useState(false);
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState('');
+
+  // 요약 관련 상태
+  const [isSummaryLoading, setIsSummaryLoading] = useState<boolean>(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [isSelectFileModalOpen, setIsSelectFileModalOpen] = useState(false);
+  const [isNotSupportSummaryModalOpen, setIsNotSupportSummaryModalOpen] = useState(false); // 요약을 지원하지 않는 팡리 경고 모달
 
   const queryClient = useQueryClient();
-
-  const { data: files, isLoading: isLoadingFiles } = useGetFiles({
-    onError: (error: Error) => {
-      console.error('파일 목록을 불러오는 데 실패했습니다:', error);
-      Swal.fire('오류', '파일 목록을 불러오는 데 실패했습니다. 서버 상태를 확인해주세요.', 'error');
-    },
-  });
 
   useEffect(() => {
     if (files) {
@@ -73,12 +83,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
         title: fileName,
         status: 'completed' as const,
       }));
-      setSources(prevSources => {
-        const processingSources = prevSources.filter(source => source.status === 'processing');
-        const existingFiles = new Set(prevSources.map(s => s.title));
-        const uniqueNewSources = newSources.filter(s => !existingFiles.has(s.title));
-        return [...uniqueNewSources, ...processingSources];
-      });
+      setSources(newSources);
     }
   }, [files]);
 
@@ -126,38 +131,34 @@ const LeftBox: React.FC<LeftBoxProps> = ({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (checkedFiles.length === 0) return;
-    const result = await Swal.fire({
-      title: '정말 삭제하시겠습니까?',
-      text: '삭제된 파일은 복구할 수 없습니다',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: '삭제',
-      cancelButtonText: '취소',
-      reverseButtons: true,
-    });
-    if (result.isConfirmed) {
-      try {
-        const response = await api.deleteFile(checkedFiles);
-        if (response.data?.deleted_files?.length > 0) {
-          setChecked([]);
-          setCheckedFiles([]);
-          Swal.fire('삭제 완료!', '파일이 삭제되었습니다.', 'success');
-          queryClient.invalidateQueries({ queryKey: ['files'] });
-        } else {
-          const errorMessage =
-            response.data?.failed_files?.length > 0
-              ? `파일 삭제 실패: ${response.data.failed_files
-                  .map((f: { filename: string; reason: string }) => f.filename)
-                  .join(', ')}`
-              : '파일 삭제에 실패했습니다.';
-          Swal.fire('파일 삭제에 실패했습니다.', errorMessage, 'error');
-        }
-      } catch (error) {
-        console.error('파일 삭제 오류 발생:', error);
-        Swal.fire('오류가 발생했습니다.', '파일 삭제 중 오류가 발생했습니다.', 'error');
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleteModalOpen(false);
+    try {
+      const response = await api.deleteFile(checkedFiles);
+      if (response.data?.deleted_files?.length > 0) {
+        setChecked([]);
+        setCheckedFiles([]);
+        queryClient.invalidateQueries({ queryKey: ['files'] });
+        setIsDeleteSuccessModalOpen(true);
+      } else {
+        const errorMessage =
+          response.data?.failed_files?.length > 0
+            ? `파일 삭제 실패: ${response.data.failed_files
+                .map((f: { filename: string; reason: string }) => f.filename)
+                .join(', ')}`
+            : '파일 삭제에 실패했습니다.';
+        setDeleteErrorMessage(errorMessage);
+        setIsDeleteFailModalOpen(true);
       }
+    } catch (error) {
+      console.error('파일 삭제 오류 발생:', error);
+      setDeleteErrorMessage('파일 삭제 중 오류가 발생했습니다.');
+      setIsDeleteFailModalOpen(true);
     }
   };
 
@@ -204,15 +205,28 @@ const LeftBox: React.FC<LeftBoxProps> = ({
   const getFileIcon = (fileName: string) => {
     const lowerFileName = fileName.toLowerCase();
     if (lowerFileName.endsWith('.pdf') || lowerFileName.endsWith('_pdf'))
-      return <FileType className="text-red-500" size={20} />;
-    if (lowerFileName.endsWith('.md')) return <FileText className="text-blue-500" size={20} />;
+      return (
+        <div className="bg-red-100 rounded-md p-1 items-center">
+          <FileType className="text-red-500" size={20} />
+        </div>
+      );
+    if (lowerFileName.endsWith('.md'))
+      return (
+        <div className="bg-blue-100 rounded-md p-1 items-center">
+          <FileText className="text-blue-500" size={20} />
+        </div>
+      );
     if (
       lowerFileName.endsWith('.jpg') ||
       lowerFileName.endsWith('.png') ||
       lowerFileName.endsWith('.jpeg') ||
       lowerFileName.endsWith('.gif')
     )
-      return <ImageIcon className="text-green-500" size={20} />;
+      return (
+        <div className="bg-green-100 rounded-md p-1 items-center">
+          <ImageIcon className="text-green-500" size={20} />
+        </div>
+      );
     if (
       lowerFileName.endsWith('.js') ||
       lowerFileName.endsWith('.py') ||
@@ -220,7 +234,11 @@ const LeftBox: React.FC<LeftBoxProps> = ({
       lowerFileName.endsWith('.html') ||
       lowerFileName.endsWith('.css')
     )
-      return <Code className="text-purple-500" size={20} />;
+      return (
+        <div className="bg-purple-100 rounded-md p-1 items-center">
+          <Code className="text-purple-500" size={20} />
+        </div>
+      );
     return <File size={20} />;
   };
 
@@ -254,6 +272,35 @@ const LeftBox: React.FC<LeftBoxProps> = ({
     return name;
   };
 
+  // 요약 생성 핸들러
+  const handleGenerateSummary = async () => {
+    if (checkedFiles.length === 0) {
+      setIsSelectFileModalOpen(true);
+      return;
+    }
+
+    const isNotSupportSummary = checkedFiles.some(file => file.toLowerCase().endsWith('pdf'));
+    if (isNotSupportSummary) {
+      setIsNotSupportSummaryModalOpen(true);
+      return;
+    }
+
+    setIsSummaryLoading(true);
+    setSummaryError(null);
+
+    try {
+      await api.summarize({
+        filenames: checkedFiles,
+      });
+      queryClient.invalidateQueries({ queryKey: ['summaries'] });
+    } catch (error) {
+      console.error('요약 요청 실패:', error);
+      setSummaryError('서버 연결에 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.'); // TODO: 이 에러도 AlertModal로 표시
+    } finally {
+      setIsSummaryLoading(false);
+    }
+  };
+
   return (
     <div
       id="leftbox"
@@ -277,28 +324,45 @@ const LeftBox: React.FC<LeftBoxProps> = ({
         {!collapsed ? (
           <>
             {/* --- Action Toolbar --- */}
-            <div className="flex items-center justify-between p-2 border-b border-gray-200 bg-gray-50/50">
-              <div className="flex gap-2">
+            <div className="flex flex-col gap-2 p-2 border-b border-gray-200 bg-gray-50/50">
+              <div className="flex gap-2 w-full">
                 <button
                   onClick={handleOpenFileUploadModal}
                   disabled={isUploading}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-sm rounded-md bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-50"
+                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 text-sm rounded-md bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-50 flex-1"
                 >
                   {isUploading ? (
                     <div className="animate-spin h-4 w-4 border-2 border-blue-500 rounded-full border-t-transparent"></div>
                   ) : (
                     <Plus size={16} />
                   )}
-                  추가
+                  <span>추가</span>
                 </button>
                 <button
                   onClick={handleOpenModal}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-sm rounded-md bg-white border border-gray-300 hover:bg-gray-100"
+                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 text-sm rounded-md bg-white border border-gray-300 hover:bg-gray-100 flex-1"
                 >
                   <Search size={16} />
-                  탐색
+                  <span>탐색</span>
                 </button>
               </div>
+              <button
+                onClick={handleGenerateSummary}
+                disabled={isSummaryLoading}
+                className="flex items-center justify-center gap-2 px-2.5 py-2 text-sm rounded-md bg-blue-50 border border-blue-500 text-blue-500 hover:bg-blue-100 disabled:opacity-50 w-full"
+              >
+                {isSummaryLoading ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>요약 생성 중...</span>
+                  </>
+                ) : (
+                  <>
+                    <WandSparkles size={16} />
+                    <span>요약 생성하기</span>
+                  </>
+                )}
+              </button>
             </div>
 
             {isUploading && (
@@ -391,13 +455,20 @@ const LeftBox: React.FC<LeftBoxProps> = ({
             ) : (
               <div className="h-full flex flex-col">
                 <div className="flex-shrink-0 flex justify-between items-center p-2 border-b border-gray-200 bg-gray-50/50">
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      onChange={handleSelectAll}
-                      checked={sources.length > 0 && checked.length === sources.length}
-                      className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
+                  <div className="flex items-center gap-2 px-1">
+                    <label className="relative flex items-center justify-center h-5 w-5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        onChange={handleSelectAll}
+                        checked={sources.length > 0 && checked.length === sources.length}
+                        className="sr-only"
+                      />
+                      {sources.length > 0 && checked.length === sources.length ? (
+                        <CircleCheck className="h-5 w-5 text-blue-500" />
+                      ) : (
+                        <Circle className="h-5 w-5 text-gray-400" />
+                      )}
+                    </label>
                     <span className="text-sm font-medium text-gray-700">전체 선택</span>
                   </div>
                   <button
@@ -414,23 +485,29 @@ const LeftBox: React.FC<LeftBoxProps> = ({
                       <li
                         key={index}
                         onClick={() => handleSourceClick(source)}
-                        className="p-1 mb-2 rounded border border-gray-200 flex items-center justify-between hover:bg-gray-50 cursor-pointer"
+                        className="px-1 py-2 mb-2 flex items-center justify-between hover:bg-gray-50 cursor-pointe gap-2"
                       >
+                        <label className="relative flex items-center justify-center h-5 w-5 cursor-pointer" onClick={e => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            onChange={handleToggle(index)}
+                            checked={checked.indexOf(index) !== -1}
+                            className="sr-only"
+                          />
+                          {checked.indexOf(index) !== -1 ? (
+                            <CircleCheck className="h-5 w-5 text-blue-500" />
+                          ) : (
+                            <Circle className="h-5 w-5 text-gray-400" />
+                          )}
+                        </label>
                         <div className="flex items-center flex-grow min-w-0">
                           <div className="min-w-[40px] flex items-center justify-center">
                             {getFileIcon(source.title)}
                           </div>
-                          <div className="ml-2 truncate">
+                          <div className="truncate">
                             <span className="text-sm">{formatFileName(source.title)}</span>
                           </div>
                         </div>
-                        <input
-                          type="checkbox"
-                          onChange={handleToggle(index)}
-                          checked={checked.indexOf(index) !== -1}
-                          onClick={e => e.stopPropagation()}
-                          className="mr-1 h-4 w-4"
-                        />
                       </li>
                     ))}
                   </ul>
@@ -493,6 +570,62 @@ const LeftBox: React.FC<LeftBoxProps> = ({
         isOpen={fileUploadModalOpen}
         onClose={handleCloseFileUploadModal}
         onFilesAdd={handleFilesAdd}
+      />
+
+      {/* 삭제 확인 모달 */}
+      <AlertModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="정말 삭제하시겠습니까?"
+        content={`선택한 ${checkedFiles.length}개의 파일을 삭제합니다. 이 작업은 되돌릴 수 없습니다.`}
+        iconType="warning"
+        confirmButtonText="삭제"
+        cancelButtonText="취소"
+      />
+
+      {/* 삭제 성공 모달 */}
+      <AlertModal
+        isOpen={isDeleteSuccessModalOpen}
+        onClose={() => setIsDeleteSuccessModalOpen(false)}
+        title="삭제 완료"
+        content="파일이 성공적으로 삭제되었습니다."
+        iconType="success"
+        confirmButtonText={null}
+        cancelButtonText={null}
+      />
+
+      {/* 삭제 실패 모달 */}
+      <AlertModal
+        isOpen={isDeleteFailModalOpen}
+        onClose={() => setIsDeleteFailModalOpen(false)}
+        title="삭제 실패"
+        content={deleteErrorMessage}
+        iconType="error"
+        confirmButtonText={null}
+        cancelButtonText={null}
+      />
+
+      {/* 파일 선택 요청 모달 */}
+      <AlertModal
+        isOpen={isSelectFileModalOpen}
+        onClose={() => setIsSelectFileModalOpen(false)}
+        title="알림"
+        content="요약할 파일을 선택해주세요."
+        iconType="warning"
+        confirmButtonText={null}
+        cancelButtonText={null}
+      />
+
+      {/* 요약 불가 경고 모달 */}
+      <AlertModal
+        isOpen={isNotSupportSummaryModalOpen}
+        onClose={() => setIsNotSupportSummaryModalOpen(false)}
+        title="알림"
+        content="해당 파일은 요약 기능을 지원하지 않습니다."
+        iconType="warning"
+        confirmButtonText={null}
+        cancelButtonText={null}
       />
     </div>
   );

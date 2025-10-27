@@ -19,8 +19,8 @@ running_tasks = {}
 if "." not in sys.path:
     sys.path.insert(0, ".")
 
-# search_test 경로를 시스템 경로에 추가
-sys.path.append(os.path.join(os.path.dirname(__file__), 'search_test'))
+# skill 경로를 시스템 경로에 추가
+sys.path.append(os.path.join(os.path.dirname(__file__), 'skill'))
 
 # 설정 가져오기 - 절대 경로 사용
 import importlib.util

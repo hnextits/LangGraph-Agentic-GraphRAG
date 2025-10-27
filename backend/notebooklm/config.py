@@ -252,6 +252,36 @@ class RAGConfig:
         self.IMAGE_EMBEDDING_DEVICE = self.EMBEDDING_DEVICE
         
         #############################################
+        # 7-1. Search 시스템 설정
+        #############################################
+        # 경로 설정
+        self.SEARCH_DATA_DIR = self.PROJECT_ROOT / "backend" / "search_data"
+        self.CRAWLING_DATA_DIR = self.SEARCH_DATA_DIR / "crawling"
+        self.SEARCH_RESULTS_DIR = self.SEARCH_DATA_DIR / "results"
+        
+        # Google Search API 설정
+        self.ENABLE_GOOGLE_SEARCH = True
+        self.GOOGLE_API_KEY = "REMOVED_SECRET"
+        self.GOOGLE_CX_ID = "f00b2a2eaff4b4fbf"
+        
+        # 연결 관리 설정
+        self.SEARCH_CONNECTION_TIMEOUT = 10  # 연결 타임아웃 (초)
+        self.SEARCH_READ_TIMEOUT = 30  # 읽기 타임아웃 (초)
+        self.SEARCH_CLOSE_CONNECTION = True  # 요청 후 연결 즉시 종료
+        
+        # 요약 모델 설정 (md_summarizer 사용)
+        self.SUMMARIZER_MODEL = "Qwen/Qwen3-4B-Instruct-2507"
+        self.SUMMARIZER_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+        self.SEARCH_CHUNK_LENGTH = 3600  # 크롤링 데이터 나눠서 요약할 크기
+        
+        # 크롤링 설정
+        self.MAX_CRAWL_DEPTH = 2
+        self.CRAWL_DELAY = 1.0  # 크롤링 간 대기 시간 (초)
+        
+        # Search 디렉토리 생성
+        self._ensure_search_directories()
+        
+        #############################################
         # 8. 프롬프트 설정
         #############################################
         self.REFINER_SYSTEM_PROMPT = """
@@ -393,12 +423,24 @@ class RAGConfig:
         os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True,max_split_size_mb:512'
         
         # Hugging Face 모델 캐시 설정
-        os.environ['TRANSFORMERS_CACHE'] = '/tmp/transformers_cache'
+        # os.environ['TRANSFORMERS_CACHE'] = '/tmp/transformers_cache'
         
         # CUDA 커널 시작 시간 감소
         os.environ['CUDA_LAUNCH_BLOCKING'] = '0'
         
         logger.info("메모리 최적화 설정 완료")
+    
+    def _ensure_search_directories(self):
+        """Search 시스템 디렉토리 생성"""
+        directories = [
+            self.SEARCH_DATA_DIR,
+            self.CRAWLING_DATA_DIR,
+            self.SEARCH_RESULTS_DIR
+        ]
+        
+        for directory in directories:
+            os.makedirs(directory, exist_ok=True)
+            logger.debug(f"Search 디렉토리 확인: {directory}")
     
     @classmethod
     def load_embedding_model(cls, model_name=None, device=None, use_fp16=True, cache_dir=None):

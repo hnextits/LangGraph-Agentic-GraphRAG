@@ -18,35 +18,37 @@ import asyncio
 # --- 필요한 모듈 임포트 (프로젝트 구조에 맞게 설정) ---
 from api.pause_api import is_cancelled, cancel_task
 from services.rag_service import run_rag_in_background
-from search_test.crawler_pipeline import crawling_web, sanitize_filename
 
-# --- 로거 및 라우터 설정 ---
+# --- 로거 설정 (먼저 설정) ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1")
 
-# --- 모듈 동적 로드 ---
+# skill.search 모듈에서 필요한 함수 임포트
 try:
-    backend_dir = Path(__file__).resolve().parent.parent
-    search_test_dir = backend_dir / 'search_test'
-    sys.path.append(str(search_test_dir))
-    from crawler_pipeline import search as perform_search
-    logger.info("crawler_pipeline 모듈을 성공적으로 가져왔습니다.")
-except ImportError:
-    logger.error("crawler_pipeline 모듈 가져오기 실패", exc_info=True)
+    from skill.search.pipeline import search_google as perform_search
+    from skill.search.util import sanitize_filename, crawling_web
+    logger.info("skill.search 모듈을 성공적으로 가져왔습니다.")
+except ImportError as e:
+    logger.error(f"skill.search 모듈 가져오기 실패: {e}", exc_info=True)
     perform_search = None
+    sanitize_filename = lambda x: x  # 폴백 함수
+    crawling_web = None
+
+# 백엔드 디렉토리 설정
+backend_dir = Path(__file__).resolve().parent.parent
 
 # 경로 설정
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
 
-# crawler_summary_llm 모듈 임포트
+# summarizer 모듈 임포트
 try:
-    from crawler_summary_llm import AnswerGenerator
-    logger.info("AnswerGenerator 모듈 임포트 성공")
+    from skill.search.summarizer import AnswerGenerator
+    logger.info("AnswerGenerator 모듈 임포트 성공 (skill.search.summarizer)")
 except ImportError as e:
     logger.error(f"AnswerGenerator 모듈 임포트 실패: {e}")
-    raise
+    AnswerGenerator = None
 
 # --- 작업 상태 관리 ---
 # 작업 상태는 main.py의 app.state를 통해 중앙에서 관리됩니다.
@@ -109,7 +111,7 @@ DOC_DIR = NEXTITS_DATA_DIR / "doc"
 OCR_RESULTS_DIR = NEXTITS_DATA_DIR / "Results" / "3.OCR_results"
 STT_TEXT_DIR = NEXTITS_DATA_DIR / "Results" / "7.stt"
 SUMMARIZE_DIR = NEXTITS_DATA_DIR / "Results" / "6.summarize"
-CRAWLING_DIR = BASE_DIR / "search_test" / "Crawling_data"
+CRAWLING_DIR = BASE_DIR / "search_data" / "crawling"
 SNIPPET_DIR = CRAWLING_DIR / "4.snippet"
 CLEAN_MD_DIR = CRAWLING_DIR / "6.clean_md"
 
@@ -153,12 +155,12 @@ def run_document_pipeline(task_id: str, title: str, link: str):
             os.chdir(notebooklm_path)
             
             from notebooklm.qwen3_late_chunking import main as chunking_main
-            index_path = str(BASE_DIR / 'notebooklm' / 'faiss_test' / 'text_index.faiss')
-            sys.argv = ['qwen3_late_chunking.py', '--input-file', file_path, '--index-path', index_path]
-            chunking_main()
+            # API에서 호출할 때는 인자를 직접 전달
+            chunking_main(input_file=file_path, recreate_schema=False, search_mode=False)
             
-            from notebooklm.rag_text.text_search import TextSearcher
-            TextSearcher(index_path=str(Path(index_path).parent))
+            # TextSearcher는 Weaviate를 사용하므로 별도 index_path 불필요
+            # from notebooklm.rag_text.text_search import TextSearcher
+            # TextSearcher는 이미 chunking_main에서 Weaviate에 인덱싱됨
         finally:
             os.chdir(original_cwd)
             sys.path = original_sys_path
@@ -223,9 +225,8 @@ def run_text_indexing(task_id: str, file_path: str):
             os.chdir(notebooklm_path)
 
             from notebooklm.qwen3_late_chunking import main as chunking_main
-
-            sys.argv = ['qwen3_late_chunking.py', '--input-file', str(md_file_path)]
-            chunking_main()
+            # API에서 호출할 때는 인자를 직접 전달
+            chunking_main(input_file=str(md_file_path), recreate_schema=False, search_mode=False)
             
         finally:
             os.chdir(original_cwd)
@@ -285,10 +286,9 @@ async def process_summarize_files(task_id: str, filenames: List[str]):
     try:
         summaries, sources = [], []
         
-        try:
-            from search_test.crawler_summary_llm import AnswerGenerator
-        except ImportError:
-            tasks[task_id].update({"status": "failed", "error": "요약 모듈(first_summary_no_llm)을 찾을 수 없습니다."})
+        # AnswerGenerator는 이미 상단에서 import됨
+        if AnswerGenerator is None:
+            tasks[task_id].update({"status": "failed", "error": "요약 모듈을 찾을 수 없습니다."})
             return
 
         for i, filename in enumerate(filenames):
@@ -397,20 +397,19 @@ async def process_search_and_summarize(task_id: str, query: str):
         summaries = []
         sources = []
         
-        # 필요한 모듈 임포트
-        try:
-            from search_test.crawler_summary_llm import AnswerGenerator
-            logger.info("LLM 요약 모듈 임포트 성공")
-            generator = AnswerGenerator()
-        except ImportError as e:
-            logger.error(f"LLM 요약 모듈 임포트 실패: {e}")
+        # AnswerGenerator는 이미 상단에서 import됨
+        if AnswerGenerator is None:
+            logger.error("LLM 요약 모듈을 사용할 수 없습니다")
             tasks[task_id].update({
                 "status": "failed",
-                "message": f"LLM 요약 모듈 로드 실패: {str(e)}",
+                "message": "LLM 요약 모듈 로드 실패",
                 "progress": 100,
-                "error": str(e)
+                "error": "AnswerGenerator를 import할 수 없습니다"
             })
             return
+        
+        logger.info("LLM 요약 모듈 사용 준비 완료")
+        generator = AnswerGenerator()
             
         # 요약 작업 수행
         try:
@@ -599,22 +598,31 @@ async def summarize_files(request_data: SummarizeRequest) -> SummarizeResponse:
         # make_llm_input_data 호출하여 입력 데이터 생성
         processed_data = generator.make_llm_input_data(temp_dir, formatted_data)
         
+        # processed_data는 리스트이므로 문자열로 변환
+        combined_content = ""
+        for item in processed_data:
+            link = item.get('link', '')
+            data = item.get('data', '')
+            if data:
+                combined_content += f"\n\n## 출처: {link}\n\n{data}\n"
+        
         # generate_answer 호출하여 요약 생성
-        summary = generator.generate_answer(processed_data)
+        summary = generator.generate_answer(combined_content)
         
         # 요약 결과 저장 디렉토리 설정
         summary_dir = os.path.join(parent_dir, 'nextits_data', 'Results', '6.summarize')
         os.makedirs(summary_dir, exist_ok=True)
 
         # 타임스탬프 기반 파일명 생성
-        timestamp = generator.get_timestamp().replace(" ", "_").replace(":", "-")
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         summary_filename = f"summary_{file_name}.md"
         summary_path = os.path.join(summary_dir, summary_filename)
 
         # 요약 결과를 마크다운 파일로 저장
         with open(summary_path, "w", encoding="utf-8") as f:
             # 헤더 정보 추가
-            f.write(f"# 요약 결과 ({generator.get_timestamp()})\n\n")
+            f.write(f"# 요약 결과 ({timestamp})\n\n")
             f.write(f"## 요약 대상 파일\n")
             for file_name in file_names:
                 f.write(f"- {file_name}\n")
@@ -625,7 +633,7 @@ async def summarize_files(request_data: SummarizeRequest) -> SummarizeResponse:
         return {
             "summary": summary,
             "files": file_names,
-            "timestamp": generator.get_timestamp(),
+            "timestamp": timestamp,
             "summary_file": summary_path  # 저장된 파일 경로 추가
         }
         

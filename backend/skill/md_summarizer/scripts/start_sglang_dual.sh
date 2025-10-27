@@ -11,9 +11,15 @@ export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
 MODEL_PATH="Qwen/Qwen3-4B-Instruct-2507"
 MEM_FRACTION=0.15  # 0.5로 증가 (더 많은 입력 토큰 허용)
 
+# 로그 디렉토리 생성
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOG_DIR="$SCRIPT_DIR/../logs"
+mkdir -p "$LOG_DIR"
+
 echo "========================================="
 echo "SGLang Dual GPU Server Startup"
 echo "Model: $MODEL_PATH"
+echo "Log Directory: $LOG_DIR"
 echo "========================================="
 
 # GPU 0에서 첫 번째 서버 시작
@@ -27,7 +33,7 @@ CUDA_VISIBLE_DEVICES=0 python -m sglang.launch_server \
     --max-total-tokens 131072 \
     --tp 1 \
     --log-level info \
-    > logs/sglang_gpu0.log 2>&1 &
+    > "$LOG_DIR/sglang_gpu0.log" 2>&1 &
 
 GPU0_PID=$!
 echo "GPU 0 Server PID: $GPU0_PID"
@@ -46,14 +52,14 @@ CUDA_VISIBLE_DEVICES=1 python -m sglang.launch_server \
     --max-total-tokens 131072 \
     --tp 1 \
     --log-level info \
-    > logs/sglang_gpu1.log 2>&1 &
+    > "$LOG_DIR/sglang_gpu1.log" 2>&1 &
 
 GPU1_PID=$!
 echo "GPU 1 Server PID: $GPU1_PID"
 
 # PID 저장
-echo $GPU0_PID > logs/sglang_gpu0.pid
-echo $GPU1_PID > logs/sglang_gpu1.pid
+echo $GPU0_PID > "$LOG_DIR/sglang_gpu0.pid"
+echo $GPU1_PID > "$LOG_DIR/sglang_gpu1.pid"
 
 echo "========================================="
 echo "Both servers started successfully!"
@@ -61,7 +67,7 @@ echo "GPU 0: http://localhost:30000 (PID: $GPU0_PID)"
 echo "GPU 1: http://localhost:30001 (PID: $GPU1_PID)"
 echo "========================================="
 echo "Logs:"
-echo "  - GPU 0: logs/sglang_gpu0.log"
-echo "  - GPU 1: logs/sglang_gpu1.log"
+echo "  - GPU 0: $LOG_DIR/sglang_gpu0.log"
+echo "  - GPU 1: $LOG_DIR/sglang_gpu1.log"
 echo "========================================="
 echo "To stop servers, run: bash scripts/stop_sglang.sh"
