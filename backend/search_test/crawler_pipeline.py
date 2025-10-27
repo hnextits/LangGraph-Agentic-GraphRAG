@@ -166,13 +166,26 @@ def sanitize_filename(name: str, max_length: int = 100) -> str:
 
     - 파일명에 사용할 수 없는 특수문자를 제거하거나 '_'로 변경합니다.
     - 공백을 '_'로 변경합니다.
+    - 원본 확장자는 그대로 유지합니다.
     - 너무 긴 파일명을 적절한 길이로 자릅니다.
     """
-    # 파일명에 사용할 수 없는 문자 및 기타 특수문자를 공백으로 변경
-    name = re.sub(r'[\\/*?:"<>|.,…]', ' ', name)
-    # 여러 공백을 하나의 언더스코어(_)로 변경
-    name = re.sub(r'\s+', '_', name)
-    return name
+    path = Path(name)
+    suffix = ''.join(path.suffixes)  # 다중 확장자(.tar.gz 등) 지원
+    stem = path.name[:-len(suffix)] if suffix else path.name
+
+    sanitized_stem = re.sub(r'[\\/*?:"<>|.,…]', ' ', stem)
+    sanitized_stem = re.sub(r'\s+', '_', sanitized_stem).strip('_')
+
+    if not sanitized_stem:
+        sanitized_stem = 'file'
+
+    available_length = max_length - len(suffix)
+    if available_length <= 0:
+        available_length = max_length
+
+    sanitized_stem = sanitized_stem[:available_length]
+
+    return f"{sanitized_stem}{suffix}"
 
 def save_snippet(result, output_dir):
     """

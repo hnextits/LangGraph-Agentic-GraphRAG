@@ -1,13 +1,15 @@
 import os
-import sys
-import json
-import magic
 import subprocess
+import sys
+import time
 
+import magic
 from PIL import Image
 from pathlib import Path
 
 from dotenv import load_dotenv
+
+from pipeline_sound import run_sound_pipeline
 
 load_dotenv()
 
@@ -47,6 +49,24 @@ def is_image_file(file_path: str) -> bool:
         mime = magic.Magic(mime=True)
         mime_type = mime.from_file(file_path)
         return mime_type.startswith('image/')
+    except Exception:
+        # 오류 발생 시 확장자만으로 판단
+        return False
+
+def is_sound_file(file_path: str) -> bool:
+    """
+    파일이 음성, 영상인지 확인합니다.
+    """
+    # 이미지 확장자 확인
+    sound_extensions = ['.wav', '.mp3', '.ogg', '.flac', '.webm', '.mp4', '.mov', '.avi', '.wmv' ]
+    if any(file_path.lower().endswith(ext) for ext in sound_extensions):
+        return True
+        
+    # MIME 타입 확인
+    try:
+        mime = magic.Magic(mime=True)
+        mime_type = mime.from_file(file_path)
+        return mime_type.startswith('sound/')
     except Exception:
         # 오류 발생 시 확장자만으로 판단
         return False
@@ -111,6 +131,11 @@ def process_file(file_path: str, skip_existing: bool = True, resume: bool = True
         print(f"이미지 파일 감지: {file_path}")
         # 이미지 처리 알고리즘 실행 (UVDoc/demo.py)
         process_image_file(file_path, skip_existing=skip_existing, resume=resume)
+
+    elif is_sound_file(file_path):
+        file_type = "음성"
+        print(f"음성 파일 감지: {file_path}")
+        process_sound_file(file_path, skip_existing=skip_existing, resume=resume)
         
     else:
         print(f"지원되지 않는 파일 유형: {file_path}")
@@ -198,6 +223,36 @@ def process_image_file(file_path: str, skip_existing: bool = True, resume: bool 
             
     except Exception as e:
         print(f"이미지 처리 중 오류 발생: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def process_sound_file(file_path: str, skip_existing: bool = True, resume: bool = True):
+    """음성 또는 영상 파일을 STT 파이프라인에 전달하고 마크다운 결과를 저장합니다."""
+    try:
+        print(f"음성/영상 파일 처리 중: {file_path}")
+
+        markdown_dir = Path(__file__).parent.parent / 'doc'
+        markdown_dir.mkdir(parents=True, exist_ok=True)
+
+        markdown_path = markdown_dir / f"{Path(file_path).stem}.md"
+        if skip_existing and markdown_path.exists():
+            print(f"이미 처리된 음성/영상 결과가 존재하여 건너뜁니다: {markdown_path}")
+            return True
+
+        result = run_sound_pipeline(file_path, markdown_dir=str(markdown_dir))
+
+        if not result or not result.get("markdown_path"):
+            print("경고: STT 결과가 비어 있거나 마크다운 경로를 찾을 수 없습니다.")
+            if markdown_path.exists():
+                markdown_path.unlink(missing_ok=True)
+            return False
+
+        print(f"음성/영상 처리 완료: {result['markdown_path']}")
+        return True
+
+    except Exception as e:
+        print(f"음성/영상 처리 중 오류 발생: {str(e)}")
         import traceback
         traceback.print_exc()
         return False

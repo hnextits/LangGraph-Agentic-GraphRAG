@@ -63,6 +63,11 @@ const FileUploadBox: React.FC<FileUploadBoxProps> = ({ isOpen, onClose, onFilesA
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'image/jpeg': ['.jpg', '.jpeg'],
       'image/png': ['.png'],
+      'audio/mpeg': ['.mp3'],
+      'audio/wav': ['.wav'],
+      'audio/ogg': ['.ogg'],
+      'video/mp4': ['.mp4'],
+      'video/quicktime': ['.mov'],
     },
   });
 

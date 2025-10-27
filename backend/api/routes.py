@@ -54,6 +54,9 @@ except ImportError as e:
 # 캐시 유효 시간 (1시간)
 TASK_CACHE_TTL = 60 * 60
 
+# --- 작업 상태 저장소 ---
+tasks: Dict[str, Dict[str, Any]] = {}
+
 def cleanup_task_cache(request: Request):
     """오래된 작업 상태 캐시 정리"""
     current_time = time.time()
@@ -104,13 +107,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 NEXTITS_DATA_DIR = BASE_DIR / "nextits_data"
 DOC_DIR = NEXTITS_DATA_DIR / "doc"
 OCR_RESULTS_DIR = NEXTITS_DATA_DIR / "Results" / "3.OCR_results"
+STT_TEXT_DIR = NEXTITS_DATA_DIR / "Results" / "7.stt"
 SUMMARIZE_DIR = NEXTITS_DATA_DIR / "Results" / "6.summarize"
 CRAWLING_DIR = BASE_DIR / "search_test" / "Crawling_data"
 SNIPPET_DIR = CRAWLING_DIR / "4.snippet"
 CLEAN_MD_DIR = CRAWLING_DIR / "6.clean_md"
 
 # --- 디렉터리 생성 ---
-for dir_path in [DOC_DIR, OCR_RESULTS_DIR, SUMMARIZE_DIR, SNIPPET_DIR, CLEAN_MD_DIR]:
+for dir_path in [DOC_DIR, OCR_RESULTS_DIR, SUMMARIZE_DIR, SNIPPET_DIR, CLEAN_MD_DIR, STT_TEXT_DIR]:
     dir_path.mkdir(parents=True, exist_ok=True)
     
 # --- 유틸리티 함수 ---
@@ -198,10 +202,19 @@ def run_text_indexing(task_id: str, file_path: str):
     try:
         if check_and_handle_pause(task_id): return
         base_name = Path(file_path).stem
-        md_file_path = OCR_RESULTS_DIR / f"{base_name}.md"
-        
-        if not md_file_path.exists():
-            raise FileNotFoundError(f"OCR 결과 파일(.md)을 찾을 수 없습니다: {md_file_path}")
+        md_candidates = [
+            STT_TEXT_DIR / f"{base_name}.md",
+            OCR_RESULTS_DIR / f"{base_name}.md",
+            DOC_DIR / f"{base_name}.md",
+        ]
+
+        md_file_path = next((path for path in md_candidates if path.exists()), None)
+
+        if not md_file_path:
+            raise FileNotFoundError(
+                "OCR 결과 파일(.md)을 찾을 수 없습니다: "
+                f"{md_candidates[1]} 또는 {md_candidates[2]}"
+            )
 
         original_cwd, original_sys_path, original_argv = os.getcwd(), list(sys.path), sys.argv
         try:
@@ -210,12 +223,10 @@ def run_text_indexing(task_id: str, file_path: str):
             os.chdir(notebooklm_path)
 
             from notebooklm.qwen3_late_chunking import main as chunking_main
-            index_path = str(BASE_DIR / 'notebooklm' / 'faiss_test' / 'text_index.faiss')
-            sys.argv = ['qwen3_late_chunking.py', '--input-file', str(md_file_path), '--index-path', index_path]
+
+            sys.argv = ['qwen3_late_chunking.py', '--input-file', str(md_file_path)]
             chunking_main()
             
-            from notebooklm.rag_text.text_search import TextSearcher
-            TextSearcher(index_path=str(Path(index_path).parent))
         finally:
             os.chdir(original_cwd)
             sys.path = original_sys_path
