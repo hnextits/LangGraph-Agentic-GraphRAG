@@ -40,24 +40,21 @@ class SGLangGenerator:
         try:
             logger.info(f"SGLang Engine 초기화 중: {self.model_name}")
             
-            # PyTorch를 사용하여 GPU 메모리 사용량 제한
+            # PyTorch를 사용하여 GPU 메모리 정리
             import torch
             if torch.cuda.is_available():
-                # GPU 메모리의 50%만 사용하도록 설정
-                memory_fraction = 0.5
-                logger.info(f"GPU 메모리 사용량 제한: {memory_fraction * 100}%")
-                torch.cuda.set_per_process_memory_fraction(memory_fraction, 0)
                 # 미사용 캐시 메모리 해제
                 torch.cuda.empty_cache()
+                logger.info("GPU 캐시 메모리 정리 완료")
             
-            # test_QWEN.py 처럼 Engine API를 직접 사용하는 방식으로 변경
-            logger.info("SGLang Engine API 직접 사용 - HTTP 서버 없이 직접 추론")
+            logger.info("SGLang Engine API 직접 사용 - 모델 직접 로드")
             
             # Engine 클래스를 사용하여 모델 초기화
-            # 문서에서 찾은 파라미터 적용
+            # mem_fraction_static: SGLang이 사용할 GPU 메모리 비율
+            # Qwen3-8B 모델은 약 16GB 필요, 0.3 = 30% 정도 필요
             self.engine = sgl.Engine(
                 model_path=self.model_name,
-                mem_fraction_static=0.3,  # 메모리 할당량 제한 (30%)
+                mem_fraction_static=0.3,  # 메모리 할당량 제한 (30% - 약 24GB)
                 disable_cuda_graph=True,  # CUDA 그래프 비활성화로 안정성 향상
                 trust_remote_code=True,   # 원격 코드 신뢰
                 dtype="auto"              # 자동으로 적절한 dtype 선택

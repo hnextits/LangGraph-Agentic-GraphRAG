@@ -4,7 +4,6 @@ import api from '@/lib/api';
 import {
   ChevronLeft,
   ChevronRight,
-  RefreshCw,
   Loader2,
   FileText,
   AlertCircle,
@@ -13,6 +12,8 @@ import {
   Image as ImageIcon,
   Code,
   FileType,
+  Circle,
+  CircleCheck,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import SummaryModal from './SummaryModal';
@@ -45,29 +46,6 @@ const RightBox: React.FC<RightBoxProps> = ({
   const [modalFile, setModalFile] = useState<string>('');
 
   const [checkedSummarizes, setCheckedSummarizes] = useState<string[]>([]);
-
-  // 요약 생성 핸들러
-  const handleGenerateSummary = async () => {
-    if (selectedFiles.length === 0) {
-      setError('요약할 파일을 선택해주세요.');
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      await api.summarize({
-        filenames: selectedFiles,
-      });
-      queryClient.invalidateQueries({ queryKey: ['summaries'] });
-    } catch (error) {
-      console.error('요약 요청 실패:', error);
-      setError('서버 연결에 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleOpenModal = (filename: string) => {
     setSummaryModalOpen(true);
@@ -151,31 +129,44 @@ const RightBox: React.FC<RightBoxProps> = ({
   };
 
   // 파일 확장자에 따른 아이콘 선택 함수
-  const getFileIcon = (fileName: string, size: number = 20) => {
+  const getFileIcon = (fileName: string) => {
     const lowerFileName = fileName.toLowerCase();
-
-    if (lowerFileName.endsWith('.pdf') || lowerFileName.endsWith('_pdf')) {
-      return <FileType className="text-red-500" size={size} />;
-    } else if (lowerFileName.endsWith('.md')) {
-      return <FileText className="text-blue-500" size={size} />;
-    } else if (
+    if (lowerFileName.endsWith('.pdf') || lowerFileName.endsWith('_pdf'))
+      return (
+        <div className="bg-red-100 rounded-md p-1 items-center">
+          <FileType className="text-red-500" size={20} />
+        </div>
+      );
+    if (lowerFileName.endsWith('.md'))
+      return (
+        <div className="bg-blue-100 rounded-md p-1 items-center">
+          <FileText className="text-blue-500" size={20} />
+        </div>
+      );
+    if (
       lowerFileName.endsWith('.jpg') ||
       lowerFileName.endsWith('.png') ||
       lowerFileName.endsWith('.jpeg') ||
       lowerFileName.endsWith('.gif')
-    ) {
-      return <ImageIcon className="text-green-500" size={size} />;
-    } else if (
+    )
+      return (
+        <div className="bg-green-100 rounded-md p-1 items-center">
+          <ImageIcon className="text-green-500" size={20} />
+        </div>
+      );
+    if (
       lowerFileName.endsWith('.js') ||
       lowerFileName.endsWith('.py') ||
       lowerFileName.endsWith('.java') ||
       lowerFileName.endsWith('.html') ||
       lowerFileName.endsWith('.css')
-    ) {
-      return <Code className="text-purple-500" size={size} />;
-    }
-
-    return <File size={size} />;
+    )
+      return (
+        <div className="bg-purple-100 rounded-md p-1 items-center">
+          <Code className="text-purple-500" size={20} />
+        </div>
+      );
+    return <File size={20} />;
   };
 
   return (
@@ -200,29 +191,6 @@ const RightBox: React.FC<RightBoxProps> = ({
         {/* Content */}
         {collapsed ? (
           <div className="flex flex-col items-center w-full h-full">
-            {/* 요약 생성 버튼 (접힘) */}
-            <div className="w-full p-2 flex justify-center">
-              <button
-                onClick={handleGenerateSummary}
-                disabled={isLoading || selectedFiles.length === 0}
-                title="요약 생성하기"
-                className={`relative bg-gray-100 rounded-lg p-1.5 w-8 h-8 flex items-center justify-center transition-all hover:bg-gray-200 hover:scale-105 ${
-                  selectedFiles.length > 0 && !isLoading
-                    ? 'bg-blue-50 ring-2 ring-blue-500'
-                    : 'disabled:opacity-50 disabled:cursor-not-allowed'
-                }`}
-              >
-                {isLoading ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <RefreshCw size={16} />
-                )}
-              </button>
-            </div>
-
-            {/* 구분선 */}
-            <hr className="w-full border-t border-gray-200" />
-
             {/* 파일 목록 (접힘) */}
             <div className="flex-grow w-full flex flex-col items-center gap-2 py-2 overflow-y-auto no-scrollbar">
               {summarizedFiles.length > 0 ? (
@@ -233,7 +201,7 @@ const RightBox: React.FC<RightBoxProps> = ({
                     title={formatFileName(file)}
                     className="p-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 w-8 h-8 flex items-center justify-center mb-1 flex-shrink-0"
                   >
-                    {getFileIcon(file, 16)}
+                    {getFileIcon(file)}
                   </button>
                 ))
               ) : (
@@ -245,34 +213,6 @@ const RightBox: React.FC<RightBoxProps> = ({
           </div>
         ) : (
           <div className="flex-grow flex flex-col overflow-hidden">
-            {/* --- Action Toolbar --- */}
-            <div className="flex items-center justify-between p-2 border-b border-gray-200 bg-gray-50/50">
-              <button
-                onClick={handleGenerateSummary}
-                disabled={isLoading || selectedFiles.length === 0}
-                className="flex items-center gap-1.5 px-2.5 py-1 text-sm rounded-md bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-50 w-full justify-center"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    <span>요약 생성 중...</span>
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw size={16} />
-                    <span>요약 생성하기</span>
-                  </>
-                )}
-              </button>
-            </div>
-            <div className="p-2 border-b border-gray-200 text-xs text-gray-500">
-              {selectedFiles.length > 0 ? (
-                <span>선택된 파일: {selectedFiles.length}개</span>
-              ) : (
-                <span className="text-red-500">요약할 파일을 선택해주세요.</span>
-              )}
-            </div>
-
             {/* 에러 메시지 */}
             {error && (
               <div className="m-2 p-3 bg-red-50 border border-red-200 rounded-md flex items-start flex-shrink-0">
@@ -283,16 +223,23 @@ const RightBox: React.FC<RightBoxProps> = ({
 
             <div className="h-full flex flex-col flex-grow overflow-hidden">
               <div className="flex-shrink-0 flex justify-between items-center p-2 border-b border-gray-200 bg-gray-50/50">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    onChange={handleSelectAll}
-                    checked={
-                      summarizedFiles.length > 0 &&
-                      checkedSummarizes.length === summarizedFiles.length
-                    }
-                    className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
+                <div className="flex items-center gap-2 px-1">
+                  <label className="relative flex items-center justify-center h-5 w-5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      onChange={handleSelectAll}
+                      checked={
+                        summarizedFiles.length > 0 &&
+                        checkedSummarizes.length === summarizedFiles.length
+                      }
+                      className="sr-only"
+                    />
+                    {summarizedFiles.length > 0 && checkedSummarizes.length === summarizedFiles.length ? (
+                      <CircleCheck className="h-5 w-5 text-blue-500" />
+                    ) : (
+                      <Circle className="h-5 w-5 text-gray-400" />
+                    )}
+                  </label>
                   <span className="text-sm font-medium text-gray-700">전체 선택</span>
                 </div>
                 <button
@@ -323,7 +270,7 @@ const RightBox: React.FC<RightBoxProps> = ({
                         <li
                           key={index}
                           onClick={() => handleOpenModal(file)}
-                          className="p-1 mb-2 rounded border border-gray-200 flex items-center justify-between hover:bg-gray-50 cursor-pointer"
+                          className="px-1 py-2 mb-2 flex items-center justify-between hover:bg-gray-50 cursor-pointer gap-2"
                         >
                           <div className="flex items-center flex-grow min-w-0">
                             <div className="min-w-[40px] flex items-center justify-center">
@@ -333,13 +280,19 @@ const RightBox: React.FC<RightBoxProps> = ({
                               <span className="text-sm">{formatFileName(file)}</span>
                             </div>
                           </div>
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onClick={e => e.stopPropagation()}
-                            onChange={handleToggle(file)}
-                            className="mr-1 h-4 w-4"
-                          />
+                          <label className="relative flex items-center justify-center h-5 w-5 cursor-pointer mr-1" onClick={e => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={handleToggle(file)}
+                              className="sr-only"
+                            />
+                            {isChecked ? (
+                              <CircleCheck className="h-5 w-5 text-blue-500" />
+                            ) : (
+                              <Circle className="h-5 w-5 text-gray-400" />
+                            )}
+                          </label>
                         </li>
                       );
                     })}

@@ -134,6 +134,11 @@ const apiMethods = {
   getSummarizes: () => {
     return api.get('/summarizes');
   },
+  
+  // 요약 리스트 가져오기 (별칭)
+  getSummaries: () => {
+    return api.get('/summarizes');
+  },
 
   // 요약 상세보기
   getSummarizeContent: (filename: string) => {
@@ -175,6 +180,7 @@ type ApiInstance = typeof api & {
   deleteFileByName: (filename: string, documentUuid?: string) => Promise<AxiosResponse>;
   getTaskStatus: (taskId: string) => Promise<AxiosResponse>;
   getSummarizes: () => Promise<AxiosResponse>;
+  getSummaries: () => Promise<AxiosResponse>;
   getSummarizeContent: (name: string) => Promise<AxiosResponse>;
   deleteSummary: (filenames: string[]) => Promise<AxiosResponse>;
   postChat: (

@@ -6,20 +6,26 @@ import { useWindowSize } from '@/hooks/useWindowSize';
 // 컴포넌트 일반 임포트
 import { LeftBox, CenterBox, RightBox, Header } from '@/components/';
 
+import { useGetFiles } from '@/queries';
+
 export default function Home() {
+  const { data: files, isLoading: isLoadingFiles } = useGetFiles();
+
+  // 파일 있는지 확인
+  const isFiles = files?.length !== 0;
+
   const { width, height } = useWindowSize();
-  
+
   // 파일 선택 상태를 여기서 관리
   const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
 
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
-  
+
   // 파일 선택 상태 변경 핸들러
   const handleFilesSelected = (files: string[]) => {
     setSelectedFiles(files);
   };
-
 
   // 반응형 레이아웃 설정
   const isMobile = width < 768;
@@ -66,6 +72,8 @@ export default function Home() {
               collapsed={leftCollapsed}
               onToggleCollapse={() => setLeftCollapsed(!leftCollapsed)}
               onFilesSelected={handleFilesSelected}
+              files={files}
+              isLoadingFiles={isLoadingFiles}
             />
           </div>
 
@@ -76,7 +84,7 @@ export default function Home() {
               width: 'calc(100% - ' + leftWidth + ' - ' + rightWidth + ')',
             }}
           >
-            <CenterBox />
+            <CenterBox isFiles={isFiles} />
           </div>
 
           {/* 오른쪽 영역 */}

@@ -3,22 +3,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import api from '@/lib/api';
-
-// Material UI 컴포넌트
-import {
-  Box,
-  Typography,
-  Button,
-  Modal,
-  TextField,
-  CircularProgress,
-  List,
-  ListItem,
-  ListItemText,
-  Checkbox,
-  FormControlLabel,
-  Link as MuiLink,
-} from '@mui/material';
+import { Loader2, X } from 'lucide-react';
 
 // 타입 정의
 interface SearchResult {
@@ -33,24 +18,11 @@ interface SearchBoxProps {
   onProcessingStart: (tasks: any[]) => void;
 }
 
-// 모달 스타일 정의
-const modalStyle = {
-  position: 'absolute' as 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: 500,
-  bgcolor: 'background.paper',
-  border: '2px solid #000',
-  boxShadow: 24,
-  p: 4,
-};
-
 const SearchBox: React.FC<SearchBoxProps> = ({ open, onClose, onProcessingStart }) => {
   const queryClient = useQueryClient();
 
   // 상태 관리
-  const [searchTerm, setSearchTerm] = useState<string>('검색어를 입력하세요.');
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [checked, setChecked] = useState<number[]>([]);
@@ -164,139 +136,118 @@ const SearchBox: React.FC<SearchBoxProps> = ({ open, onClose, onProcessingStart 
     }
   };
 
+  if (!open) return null;
+
   // 모달 렌더링
   return (
-    <Modal open={open} onClose={onClose} aria-labelledby="search-modal-title">
-      <Box sx={modalStyle}>
-        <Typography id="search-modal-title" variant="h6" component="h2">
-          출처 탐색
-        </Typography>
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 space-y-4"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-bold">출처 탐색</h2>
+          <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200">
+            <X size={24} />
+          </button>
+        </div>
 
         {/* 검색어 입력 필드 */}
-        <TextField
-          fullWidth
-          label="검색어"
-          variant="outlined"
-          margin="normal"
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          autoFocus
-          onKeyPress={e => {
-            if (e.key === 'Enter') {
-              handleSearch();
-            }
-          }}
-        />
-
-        {/* 버튼 영역 */}
-        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-          <Button variant="outlined" onClick={onClose}>
-            취소
-          </Button>
-          <Button variant="contained" onClick={handleSearch} disabled={loading}>
-            검색
-          </Button>
-        </Box>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            className="flex-grow border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            autoFocus
+            placeholder="검색어를 입력하세요."
+            onKeyPress={e => {
+              if (e.key === 'Enter') handleSearch();
+            }}
+          />
+          <button
+            onClick={handleSearch}
+            disabled={loading}
+            className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-md hover:bg-blue-600 disabled:bg-gray-400 flex items-center justify-center"
+          >
+            {loading ? <Loader2 className="animate-spin" size={20} /> : '검색'}
+          </button>
+        </div>
 
         {/* 검색 결과 영역 */}
-        <Box sx={{ mt: 2 }}>
-          {/* 로딩 표시 */}
+        <div className="space-y-4">
           {loading && (
-            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-              <CircularProgress />
-              <Typography sx={{ ml: 2 }}>검색 중...</Typography>
-            </Box>
+            <div className="flex justify-center items-center space-x-2 text-gray-500">
+              <Loader2 className="animate-spin" size={20} />
+              <span>검색 중...</span>
+            </div>
           )}
 
-          {/* 검색 결과 목록 */}
           {results.length > 0 && (
-            <Box sx={{ mt: 2 }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                검색 결과 ({results.length}개)
-              </Typography>
-
-              {/* 전체 선택 및 확인 버튼 */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  mb: 2,
-                }}
-              >
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      onChange={handleSelectAll}
-                      checked={checked.length === results.length && results.length > 0}
-                      indeterminate={checked.length > 0 && checked.length < results.length}
-                    />
-                  }
-                  label="전체 선택"
-                />
-                <Button
-                  variant="contained"
+            <div className="space-y-4">
+              <div className="flex justify-between items-center border-b pb-2">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    onChange={handleSelectAll}
+                    checked={checked.length === results.length && results.length > 0}
+                    ref={input => {
+                      if (input)
+                        input.indeterminate = checked.length > 0 && checked.length < results.length;
+                    }}
+                    className="rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                  />
+                  <span className="font-medium">전체 선택</span>
+                </label>
+                <button
                   onClick={handleConfirm}
                   disabled={checked.length === 0 || loading}
-                  size="small"
+                  className="px-3 py-1.5 bg-blue-500 text-white text-sm font-semibold rounded-md hover:bg-blue-600 disabled:bg-gray-400 flex items-center"
                 >
-                  {loading ? <CircularProgress size={20} /> : `확인 (${checked.length})`}
-                </Button>
-              </Box>
+                  {loading ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
+                  <span>확인 ({checked.length})</span>
+                </button>
+              </div>
 
-              {/* 스크롤 가능한 결과 목록 */}
-              <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
-                <List>
-                  {results.map((result, index) => (
-                    <ListItem
-                      key={index}
-                      dense
-                      onClick={handleToggle(index)}
-                      sx={{
-                        border: '1px solid #e0e0e0',
-                        mb: 1,
-                        borderRadius: 1,
-                        cursor: 'pointer',
-                        '&:hover': {
-                          backgroundColor: '#f5f5f5',
-                        },
-                      }}
-                    >
-                      <Checkbox
-                        edge="start"
-                        checked={checked.indexOf(index) !== -1}
-                        tabIndex={-1}
-                        disableRipple
-                      />
-                      <ListItemText
-                        primary={
-                          <MuiLink
-                            href={result.link}
-                            target="_blank"
-                            rel="noopener"
-                            onClick={e => e.stopPropagation()}
-                            sx={{ fontWeight: 'bold', color: '#1976d2' }}
-                          >
-                            {result.title}
-                          </MuiLink>
-                        }
-                        secondary={
-                          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                            {result.snippet}
-                          </Typography>
-                        }
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              </Box>
-            </Box>
+              <ul className="space-y-2 max-h-80 overflow-y-auto pr-2">
+                {results.map((result, index) => (
+                  <li
+                    key={index}
+                    onClick={handleToggle(index)}
+                    className="p-3 border rounded-md cursor-pointer hover:bg-gray-50 flex items-start space-x-3"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked.indexOf(index) !== -1}
+                      onChange={handleToggle(index)}
+                      className="mt-1 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                      onClick={e => e.stopPropagation()}
+                    />
+                    <div className="flex-grow">
+                      <a
+                        href={result.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="font-bold text-blue-600 hover:underline"
+                      >
+                        {result.title}
+                      </a>
+                      <p className="text-sm text-gray-600 mt-1">{result.snippet}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
-        </Box>
-      </Box>
-    </Modal>
+        </div>
+      </div>
+    </div>
   );
 };
 

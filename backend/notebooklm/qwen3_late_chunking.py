@@ -447,12 +447,33 @@ def search_vectors(query: str, top_k: int = 5) -> List[Dict]:
 # Main 함수 (스키마 삭제 및 생성 순서 수정 완료)
 # =============================================================================
 
-def main():
-    parser = argparse.ArgumentParser(description="Qwen3 Late Chunking and Weaviate Indexing")
-    parser.add_argument('--input-file', type=str, help='Input markdown file path for processing.')
-    parser.add_argument('--recreate-schema', action='store_true', help='Recreate Weaviate schema.')
-    parser.add_argument('--search', action='store_true', help='Interactive search mode.')
-    args = parser.parse_args()
+def main(input_file=None, recreate_schema=False, search_mode=False):
+    """
+    Main function for chunking and indexing
+    
+    Args:
+        input_file: Input markdown file path for processing
+        recreate_schema: Whether to recreate Weaviate schema
+        search_mode: Whether to enter interactive search mode
+    """
+    # 명령줄에서 실행될 때만 argparse 사용
+    if input_file is None and not recreate_schema and not search_mode:
+        parser = argparse.ArgumentParser(description="Qwen3 Late Chunking and Weaviate Indexing")
+        parser.add_argument('--input-file', type=str, help='Input markdown file path for processing.')
+        parser.add_argument('--recreate-schema', action='store_true', help='Recreate Weaviate schema.')
+        parser.add_argument('--search', action='store_true', help='Interactive search mode.')
+        args = parser.parse_args()
+        input_file = args.input_file
+        recreate_schema = args.recreate_schema
+        search_mode = args.search
+    
+    # 간단한 객체로 변환 (기존 코드와 호환성 유지)
+    class Args:
+        pass
+    args = Args()
+    args.input_file = input_file
+    args.recreate_schema = recreate_schema
+    args.search = search_mode
 
     # [수정] config.py에서 RAGConfig를 가져오도록 수정
     try:
