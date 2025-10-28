@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import api from '@/lib/api';
 import FileContentBox from './FileContentBox';
 import Searchbox from './SearchBox';
 import FileUploadBox from './FileUploadBox';
-import { useGetFiles } from '@/queries';
+import { useGetFiles, FileListResponse } from '@/queries';
 import { useQueryClient } from '@tanstack/react-query';
 import Swal from 'sweetalert2';
 import {
@@ -48,6 +48,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isFileUploadModalOpen, setIsFileUploadModalOpen] = useState(false);
   const [checkedFiles, setCheckedFiles] = useState<string[]>([]);
+  const [documentUuidMap, setDocumentUuidMap] = useState<Record<string, string>>({});
   const [checked, setChecked] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSource, setSelectedSource] = useState<SourceItem | null>(null);
@@ -59,28 +60,38 @@ const LeftBox: React.FC<LeftBoxProps> = ({
 
   const queryClient = useQueryClient();
 
-  const { data: files, isLoading: isLoadingFiles } = useGetFiles({
+  const { data: fileList, isLoading: isLoadingFiles } = useGetFiles({
     onError: (error: Error) => {
       console.error('파일 목록을 불러오는 데 실패했습니다:', error);
       Swal.fire('오류', '파일 목록을 불러오는 데 실패했습니다. 서버 상태를 확인해주세요.', 'error');
     },
   });
 
+  const files = useMemo<string[]>(() => fileList?.files ?? [], [fileList]);
+
   useEffect(() => {
-    if (files) {
-      const newSources = files.map(fileName => ({
+    if (fileList) {
+      const { files: fileNames, document_uuid_map } = fileList;
+
+      if (document_uuid_map) {
+        setDocumentUuidMap(document_uuid_map);
+      } else {
+        setDocumentUuidMap({});
+      }
+
+      const newSources = fileNames.map((fileName: string) => ({
         id: fileName,
         title: fileName,
         status: 'completed' as const,
       }));
       setSources(prevSources => {
         const processingSources = prevSources.filter(source => source.status === 'processing');
-        const existingFiles = new Set(prevSources.map(s => s.title));
-        const uniqueNewSources = newSources.filter(s => !existingFiles.has(s.title));
+        const existingFiles = new Set(prevSources.map((s: SourceItem) => s.title));
+        const uniqueNewSources = newSources.filter((s: SourceItem) => !existingFiles.has(s.title));
         return [...uniqueNewSources, ...processingSources];
       });
     }
-  }, [files]);
+  }, [fileList]);
 
   const handleProcessingStart = (tasks: any[]) => {
     const newSources = tasks.map(task => ({
@@ -139,21 +150,20 @@ const LeftBox: React.FC<LeftBoxProps> = ({
     });
     if (result.isConfirmed) {
       try {
-        const response = await api.deleteFile(checkedFiles);
-        if (response.data?.deleted_files?.length > 0) {
-          setChecked([]);
-          setCheckedFiles([]);
-          Swal.fire('삭제 완료!', '파일이 삭제되었습니다.', 'success');
-          queryClient.invalidateQueries({ queryKey: ['files'] });
-        } else {
-          const errorMessage =
-            response.data?.failed_files?.length > 0
-              ? `파일 삭제 실패: ${response.data.failed_files
-                  .map((f: { filename: string; reason: string }) => f.filename)
-                  .join(', ')}`
-              : '파일 삭제에 실패했습니다.';
-          Swal.fire('파일 삭제에 실패했습니다.', errorMessage, 'error');
-        }
+        const uuidPayload: Record<string, string> = {};
+        checkedFiles.forEach(filename => {
+          const uuid = documentUuidMap[filename];
+          if (uuid) {
+            uuidPayload[filename] = uuid;
+          }
+        });
+
+        await api.deleteFile(checkedFiles, uuidPayload);
+
+        setChecked([]);
+        setCheckedFiles([]);
+        Swal.fire('삭제 완료!', '파일이 삭제되었습니다.', 'success');
+        queryClient.invalidateQueries({ queryKey: ['files'] });
       } catch (error) {
         console.error('파일 삭제 오류 발생:', error);
         Swal.fire('오류가 발생했습니다.', '파일 삭제 중 오류가 발생했습니다.', 'error');

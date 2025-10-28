@@ -107,8 +107,22 @@ const apiMethods = {
   },
 
   // 파일 삭제
-  deleteFile: (filenames: string[]) => {
-    return api.delete('/files', { data: { filenames } });
+  deleteFile: (filenames: string[], documentUuidMap?: Record<string, string>) => {
+    const payload: { filenames: string[]; document_uuid_map?: Record<string, string> } = {
+      filenames,
+    };
+
+    if (documentUuidMap !== undefined) {
+      payload.document_uuid_map = documentUuidMap;
+    }
+
+    return api.delete('/files', { data: payload });
+  },
+
+  // 단일 파일 삭제 (UUID 옵션)
+  deleteFileByName: (filename: string, documentUuid?: string) => {
+    const params = documentUuid ? { document_uuid: documentUuid } : undefined;
+    return api.delete(`/files/${encodeURIComponent(filename)}`, { params });
   },
 
   // 요약본 삭제
@@ -157,7 +171,8 @@ type ApiInstance = typeof api & {
   getFiles: () => Promise<AxiosResponse>;
   getFileContent: (fileName: string) => Promise<AxiosResponse>;
   summarize: (data: SummarizeRequest) => Promise<AxiosResponse>;
-  deleteFile: (filesnames: string[]) => Promise<AxiosResponse>;
+  deleteFile: (filesnames: string[], documentUuidMap?: Record<string, string>) => Promise<AxiosResponse>;
+  deleteFileByName: (filename: string, documentUuid?: string) => Promise<AxiosResponse>;
   getTaskStatus: (taskId: string) => Promise<AxiosResponse>;
   getSummarizes: () => Promise<AxiosResponse>;
   getSummarizeContent: (name: string) => Promise<AxiosResponse>;

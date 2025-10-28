@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, File, UploadFile, BackgroundTasks, Request, Body
+from fastapi import APIRouter, HTTPException, File, UploadFile, BackgroundTasks, Request, Body, Query
 from typing import List, Dict, Any, Optional
 import os
 import shutil
@@ -85,10 +85,14 @@ class SearchResponse(BaseModel): results: List[Dict[str, Any]]
 class AddDocumentRequest(BaseModel): title: str; link: str
 class TaskCreationResponse(BaseModel): task_id: str; status: str
 class UploadResponse(BaseModel): message: str; files: List[Dict[str, Any]]
-class FileListResponse(BaseModel): files: List[str]
+class FileListResponse(BaseModel):
+    files: List[str]
+    document_uuid_map: Optional[Dict[str, str]] = None
 class FileContentResponse(BaseModel): filename: str; content: str
 class DeleteResponse(BaseModel): message: str; filename: str; deleted: Optional[bool] = None
-class DeleteFilesRequest(BaseModel): filenames: List[str]
+class DeleteFilesRequest(BaseModel):
+    filenames: List[str]
+    document_uuid_map: Optional[Dict[str, str]] = None
 class DeleteFilesResponse(BaseModel): message: str; deleted_files: List[str]; failed_files: List[Dict[str, str]]
 class ChatQuery(BaseModel): query: str; sources: List[str] = []
 class ChatResponse(BaseModel):
@@ -107,6 +111,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 NEXTITS_DATA_DIR = BASE_DIR / "nextits_data"
 DOC_DIR = NEXTITS_DATA_DIR / "doc"
 OCR_RESULTS_DIR = NEXTITS_DATA_DIR / "Results" / "3.OCR_results"
+OCR_DIR = NEXTITS_DATA_DIR / "Results" / "2.OCR"  # 원본 텍스트 저장 경로
+PROCESSED_DIR = NEXTITS_DATA_DIR / "Results" / "4.processed"  # 처리 결과 저장 경로
 STT_TEXT_DIR = NEXTITS_DATA_DIR / "Results" / "7.stt"
 SUMMARIZE_DIR = NEXTITS_DATA_DIR / "Results" / "6.summarize"
 CRAWLING_DIR = BASE_DIR / "search_test" / "Crawling_data"
@@ -114,7 +120,16 @@ SNIPPET_DIR = CRAWLING_DIR / "4.snippet"
 CLEAN_MD_DIR = CRAWLING_DIR / "6.clean_md"
 
 # --- 디렉터리 생성 ---
-for dir_path in [DOC_DIR, OCR_RESULTS_DIR, SUMMARIZE_DIR, SNIPPET_DIR, CLEAN_MD_DIR, STT_TEXT_DIR]:
+for dir_path in [
+    DOC_DIR,
+    OCR_RESULTS_DIR,
+    OCR_DIR,
+    PROCESSED_DIR,
+    SUMMARIZE_DIR,
+    SNIPPET_DIR,
+    CLEAN_MD_DIR,
+    STT_TEXT_DIR,
+]:
     dir_path.mkdir(parents=True, exist_ok=True)
     
 # --- 유틸리티 함수 ---
@@ -203,9 +218,9 @@ def run_text_indexing(task_id: str, file_path: str):
         if check_and_handle_pause(task_id): return
         base_name = Path(file_path).stem
         md_candidates = [
+            DOC_DIR / f"{base_name}.md",
             STT_TEXT_DIR / f"{base_name}.md",
             OCR_RESULTS_DIR / f"{base_name}.md",
-            DOC_DIR / f"{base_name}.md",
         ]
 
         md_file_path = next((path for path in md_candidates if path.exists()), None)
@@ -671,6 +686,88 @@ async def delete_summary_files(req: DeleteFilesRequest) -> DeleteFilesResponse:
     }
 
 # -- 문서 관리 관련 API --
+
+def _delete_document_resources(filename: str, document_uuid: Optional[str] = None) -> Dict[str, Any]:
+    """원본 파일 및 연관 자원 삭제 후 결과 반환"""
+    result = {
+        "local_deleted": False,
+        "weaviate_deleted": False,
+        "error": None,
+        "not_found": False,
+        "weaviate_error": None,
+    }
+
+    try:
+        file_path = DOC_DIR / filename
+
+        if file_path.exists():
+            try:
+                os.remove(file_path)
+                result["local_deleted"] = True
+            except Exception as file_err:
+                logger.warning("원본 파일 삭제 중 오류 발생 (%s): %s", file_path, file_err)
+                result["error"] = f"원본 파일 삭제 실패: {file_err}"
+        else:
+            result["not_found"] = True
+            logger.info("DOC_DIR에서 원본 파일을 찾지 못했습니다. Weaviate 정리만 진행합니다: %s", file_path)
+
+        extra_files = [
+            OCR_DIR / f"{filename}.txt",
+            STT_TEXT_DIR / f"{Path(filename).stem}.md",
+            OCR_RESULTS_DIR / f"{Path(filename).stem}.md",
+        ]
+
+        for extra_file in extra_files:
+            if extra_file.exists():
+                try:
+                    extra_file.unlink()
+                except Exception as e:
+                    logger.warning("추가 파일 삭제 중 오류 발생 (%s): %s", extra_file, e)
+
+        try:
+            from notebooklm.config import RAGConfig
+            from notebooklm.weaviate_utils import delete_document, delete_document_by_filename
+
+            config = RAGConfig()
+            client = config.get_weaviate_client()
+
+            if client:
+                if document_uuid:
+                    logger.info("Weaviate 삭제 요청 (UUID 기준): filename=%s, uuid=%s", filename, document_uuid)
+                    weaviate_deleted = delete_document(client, document_uuid)
+                    result["weaviate_deleted"] = weaviate_deleted
+                    if weaviate_deleted:
+                        logger.info("Weaviate에서 문서 UUID '%s' 관련 데이터 삭제 완료", document_uuid)
+                    else:
+                        logger.warning("Weaviate에서 문서 UUID '%s' 관련 데이터를 찾을 수 없습니다. 파일명으로 재시도", document_uuid)
+                        fallback_deleted = delete_document_by_filename(client, filename)
+                        result["weaviate_deleted"] = fallback_deleted
+                        if fallback_deleted:
+                            logger.info("파일명 기반 Weaviate 삭제 성공: %s", filename)
+                        else:
+                            logger.warning("파일명 기반 Weaviate 삭제 실패: %s", filename)
+                else:
+                    logger.info("Weaviate 삭제 요청 (파일명 기준): filename=%s", filename)
+                    weaviate_deleted = delete_document_by_filename(client, filename)
+                    result["weaviate_deleted"] = weaviate_deleted
+                    if weaviate_deleted:
+                        logger.info("Weaviate에서 문서 '%s' 관련 데이터 삭제 완료", filename)
+                    else:
+                        logger.warning("Weaviate에서 문서 '%s' 관련 데이터를 찾을 수 없습니다.", filename)
+        except Exception as e:
+            logger.error(f"Weaviate 데이터 삭제 오류: {str(e)}")
+            result["weaviate_error"] = str(e)
+
+        if result["weaviate_deleted"]:
+            result["error"] = None
+
+    except Exception as e:
+        logger.error(f"파일 삭제 오류: {str(e)}")
+        result["error"] = str(e)
+
+    return result
+
+
 # 검색 결과(URL) 기반으로 문서를 저장하고 처리하는 작업을 시작시키는 API
 @router.post("/upload/docs", response_model=TaskCreationResponse, tags=["Document Management"])
 def add_document_from_search(req: AddDocumentRequest, background_tasks: BackgroundTasks) -> TaskCreationResponse:
@@ -708,61 +805,100 @@ async def upload_files(background_tasks: BackgroundTasks, files: List[UploadFile
 @router.get("/files", response_model=FileListResponse, tags=["Document Management"])
 async def list_doc_files() -> FileListResponse:
     files = [f.name for f in DOC_DIR.iterdir() if f.is_file()]
-    return {"files": files}
+
+    document_uuid_map: Dict[str, str] = {}
+    file_set = set(files)
+
+    if file_set:
+        try:
+            from notebooklm.config import RAGConfig
+            from notebooklm.weaviate_utils import get_document_uuid_map
+
+            config = RAGConfig()
+            client = config.get_weaviate_client()
+
+            if client:
+                try:
+                    uuid_map = get_document_uuid_map(client, list(file_set))
+                    document_uuid_map.update(uuid_map)
+                except Exception as query_error:
+                    logger.warning(f"Weaviate 문서 UUID 조회 중 오류 발생: {query_error}")
+        except Exception as e:
+            logger.warning(f"Weaviate 클라이언트 초기화 실패: {e}")
+
+    response: Dict[str, Any] = {"files": files}
+    if document_uuid_map:
+        response["document_uuid_map"] = document_uuid_map
+
+    return response
 
 # 원본 파일이 처리된 후의 텍스트(OCR) 내용을 조회하는 API
 @router.get("/files/{filename}", response_model=FileContentResponse, tags=["Document Management"])
 async def get_ocr_file_content(filename: str) -> FileContentResponse:
     base_name = Path(filename).stem
-    file_path = OCR_RESULTS_DIR / f"{base_name}.md"
-    if not file_path.is_file():
-        raise HTTPException(status_code=404, detail=f"처리된 파일을 찾을 수 없습니다: {file_path.name}")
-    content = file_path.read_text(encoding="utf-8")
-    return {"filename": file_path.name, "content": content}
+    candidate_names = {filename, f"{base_name}.md"}
+    candidate_paths = []
+
+    for name in candidate_names:
+        candidate_paths.extend(
+            [
+                DOC_DIR / name,
+                STT_TEXT_DIR / name,
+                OCR_RESULTS_DIR / name,
+            ]
+        )
+
+    existing_path = next((path for path in candidate_paths if path.is_file()), None)
+
+    if existing_path is None:
+        detail = f"처리된 파일을 찾을 수 없습니다: {filename}"
+        raise HTTPException(status_code=404, detail=detail)
+
+    content = existing_path.read_text(encoding="utf-8")
+    return {"filename": existing_path.name, "content": content}
+
+# 업로드된 파일을 다중 삭제하는 API
+@router.delete("/files", response_model=DeleteFilesResponse, tags=["Document Management"])
+async def delete_files(req: DeleteFilesRequest) -> DeleteFilesResponse:
+    deleted, failed = [], []
+    uuid_map = req.document_uuid_map or {}
+
+    logger.info("파일 삭제 요청 수신: files=%s, document_uuid_map_keys=%s", req.filenames, list(uuid_map.keys()))
+
+    for filename in req.filenames:
+        document_uuid = uuid_map.get(filename)
+        result = _delete_document_resources(filename, document_uuid)
+
+        if result["local_deleted"]:
+            deleted.append(filename)
+            if result.get("weaviate_error"):
+                logger.warning(f"Weaviate 삭제 도중 경고 (파일: {filename}): {result['weaviate_error']}")
+        else:
+            reason = result["error"] or (
+                "파일을 찾을 수 없습니다." if result.get("not_found") else "삭제 실패"
+            )
+            failed.append({"filename": filename, "reason": reason, "weaviate_error": result.get("weaviate_error")})
+
+    message = f"파일 {len(deleted)}개 삭제 성공, {len(failed)}개 실패."
+    return DeleteFilesResponse(message=message, deleted_files=deleted, failed_files=failed)
+
 
 # 업로드된 파일을 삭제하는 API
 @router.delete("/files/{filename}", response_model=DeleteResponse, tags=["Document Management"])
-async def delete_file(filename: str) -> DeleteResponse:
-    try:
-        file_path = DOC_DIR / filename
-        if file_path.exists():
-            os.remove(file_path)
-            
-            # 관련 파일도 삭제
-            ocr_file = OCR_DIR / f"{filename}.txt"
-            if ocr_file.exists():
-                os.remove(ocr_file)
-                
-            # 처리된 파일도 삭제
-            processed_file = PROCESSED_DIR / f"{filename}.json"
-            if processed_file.exists():
-                os.remove(processed_file)
-            
-            # Weaviate에서 관련 데이터 삭제
-            delete_result = False
-            try:
-                from notebooklm.config import RAGConfig
-                from notebooklm.weaviate_utils import delete_document_by_filename
-                
-                config = RAGConfig()
-                client = config.get_weaviate_client()
-                
-                if client:
-                    # 파일명으로 문서 삭제
-                    delete_result = delete_document_by_filename(client, filename)
-                    if delete_result:
-                        logger.info(f"Weaviate에서 문서 '{filename}' 관련 데이터 삭제 완료")
-                    else:
-                        logger.warning(f"Weaviate에서 문서 '{filename}' 관련 데이터를 찾을 수 없습니다.")
-            except Exception as e:
-                logger.error(f"Weaviate 데이터 삭제 오류: {str(e)}")
-                
-            return DeleteResponse(message=f"파일이 성공적으로 삭제되었습니다.", filename=filename, deleted=delete_result)
-        else:
-            raise HTTPException(status_code=404, detail=f"파일을 찾을 수 없습니다: {filename}")
-    except Exception as e:
-        logger.error(f"파일 삭제 오류: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"파일 삭제 중 오류 발생: {str(e)}")
+async def delete_file(filename: str, document_uuid: Optional[str] = Query(default=None)) -> DeleteResponse:
+    result = _delete_document_resources(filename, document_uuid)
+
+    if result["not_found"]:
+        raise HTTPException(status_code=404, detail=f"파일을 찾을 수 없습니다: {filename}")
+
+    if not result["local_deleted"]:
+        detail = result["error"] or f"파일 삭제 중 오류 발생: {filename}"
+        raise HTTPException(status_code=500, detail=detail)
+
+    if result.get("weaviate_error"):
+        logger.warning(f"Weaviate 삭제 도중 경고 (파일: {filename}): {result['weaviate_error']}")
+
+    return DeleteResponse(message=f"파일이 성공적으로 삭제되었습니다.", filename=filename, deleted=result["weaviate_deleted"])
 
 # -- 기타 API --
 # RAG 채팅봇에 질문하고 답변을 받는 API
