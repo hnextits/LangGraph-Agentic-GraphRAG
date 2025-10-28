@@ -12,7 +12,7 @@ import numpy as np
 import torch
 import markdown
 from bs4 import BeautifulSoup
-import argparse
+import argparse  # <--- [수정] 이 줄이 추가되었습니다!
 from tqdm import tqdm
 from datetime import datetime
 import hashlib
@@ -22,6 +22,7 @@ import uuid
 from shared_embedding import shared_embedding
 import weaviate
 from weaviate.util import generate_uuid5
+from weaviate.exceptions import UnexpectedStatusCodeException
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO)
@@ -36,7 +37,7 @@ class RAGConfig:
     def __init__(self):
         self.WEAVIATE_URL = "http://127.0.0.1:8080"
         self.WEAVIATE_TEXT_CLASS = "TextDocument"
-        self.WEAVIATE_DOCUMENT_CLASS = "Document" 
+        # 💡 참고: 이 파일에서 WEAVIATE_DOCUMENT_CLASS는 사용되지 않으므로 제거해도 무방합니다.
 
     def get_weaviate_client(self) -> weaviate.Client | None:
         """Weaviate 클라이언트를 초기화하고 반환합니다."""
@@ -69,38 +70,32 @@ def create_schema(client: weaviate.Client):
             {"name": "source", "dataType": ["text"]},
             {"name": "page_num", "dataType": ["int"]},
             {"name": "chunk_id", "dataType": ["text"]},
+            
+            # vvvv [수정] 이 줄을 추가해야 합니다 vvvv
+            {"name": "document_uuid", "dataType": ["text"]},
+            # ^^^^ [수정] 이 줄을 추가해야 합니다 ^^^^
+
             {"name": "metadata", "dataType": ["object"], "nestedProperties": [
                 {"name": "document_id", "dataType": ["text"]},
                 {"name": "content_type", "dataType": ["text"]},
                 {"name": "file_path", "dataType": ["text"]}
             ]},
-            # 💡 Document 클래스를 참조
-            {"name": "hasDocument", "dataType": [config.WEAVIATE_DOCUMENT_CLASS]}
+            # 💡 참고: 다른 파일(weaviate_utils.py)의 스키마와 일치하지 않으므로 
+            # 'belongsTo' 속성은 이 파일의 삽입 로직(add_vectors)에서 사용되지 않습니다.
+            # 만약 'Document' 클래스와의 관계가 필요하다면, 
+            # 'weaviate_utils.py'의 스키마와 'qwen3_late_chunking.py'의 스키마 및 삽입 로직을
+            # 완전히 동일하게 맞춰야 합니다.
+            # {"name": "belongsTo", "dataType": [config.WEAVIATE_DOCUMENT_CLASS]}
         ]
     }
-    document_class = {
-        "class": config.WEAVIATE_DOCUMENT_CLASS,
-        "description": "Original document metadata.",
-        "vectorizer": "none",
-        "moduleConfig": {
-            "text2vec-contextionary": {
-                "skip": True
-            }
-        },
-        "properties": [
-            {"name": "filename", "dataType": ["text"]},
-            {"name": "file_path", "dataType": ["text"]},
-            {"name": "file_type", "dataType": ["text"]},
-        ]
-    }
+    
+    # 💡 참고: 이 파일은 'Document' 클래스를 실제로 생성하거나 참조하지 않습니다.
+    # 'weaviate_utils.py'에서는 'Document' 클래스가 정의되어 있지만,
+    # 실제 인덱싱은 이 파일('qwen3_late_chunking.py')이 담당하므로
+    # 'Document' 클래스 관련 로직은 여기서는 생략합니다.
 
     try:
-        # 💡 수정: Document 클래스를 먼저 생성 (참조되는 클래스)
-        if not client.schema.exists(document_class['class']):
-            client.schema.create_class(document_class)
-            logger.info(f"Created schema class: {document_class['class']}")
-            
-        # 💡 수정: TextDocument 클래스를 나중에 생성 (참조하는 클래스)
+        # 'TextDocument' 클래스 생성
         if not client.schema.exists(text_class['class']):
             client.schema.create_class(text_class)
             logger.info(f"Created schema class: {text_class['class']}")
@@ -225,37 +220,29 @@ class WeaviateVectorStore:
             logger.warning("Weaviate 클라이언트가 초기화되지 않았거나 벡터가 없습니다. 데이터베이스 저장을 건너뜁니다.")
             return
         
-        # 1. 문서 메타데이터 저장 및 UUID 생성
+        # 1. 배치 API를 사용하여 청크 데이터 저장
         first_vec = vectors[0]
         metadata = first_vec.metadata
         file_path = metadata.get('file_path', '')
         filename = os.path.basename(file_path) if file_path else f"doc_{first_vec.document_id[:8]}"
         
-        document_object = {
-            "filename": filename,
-            "file_path": file_path,
-            "file_type": os.path.splitext(filename)[1][1:] if os.path.splitext(filename)[1] else "",
-        }
+        # document_uuid는 L368에서 객체에 직접 삽입되므로 여기서는 생성만 합니다.
         document_uuid = generate_uuid5(first_vec.document_id)
-        
-        try:
-            # Weaviate에 문서 객체 저장
-            self.client.data_object.create(
-                data_object=document_object,
-                class_name=self.config.WEAVIATE_DOCUMENT_CLASS,
-                uuid=document_uuid
-            )
-            logger.info(f"Added Document object: {document_uuid}")
-        except Exception as e:
-            # UUID 충돌 시 여기서 오류 발생 (이미 문서 객체가 존재하는 경우)
-            logger.error(f"Weaviate에 문서 객체 저장 중 오류 발생 (UUID: {document_uuid}): {str(e)}")
-            # 충돌이 발생하더라도 청크 저장을 계속 진행하도록 하려면 return을 제거할 수 있지만,
-            # 현재는 충돌을 명확히 확인하는 것이 중요하므로 유지합니다.
-            return 
-            
-        # 2. 배치 API를 사용하여 청크 데이터 저장
+
+        document_metadata = {
+            "document_id": first_vec.document_id,
+            # "document_uuid": document_uuid, # metadata 안이 아니라 최상위 레벨로 이동
+        }
+        if file_path:
+            document_metadata["file_path"] = file_path
+        content_type = getattr(first_vec, "content_type", None) or metadata.get("content_type")
+        if content_type:
+            document_metadata["content_type"] = content_type
+
         text_class_name = self.config.WEAVIATE_TEXT_CLASS
         
+        chunk_uuid_map = {}
+
         with self.client.batch as batch:
             batch.configure(
                 batch_size=100,
@@ -263,36 +250,41 @@ class WeaviateVectorStore:
             )
             
             for vec in tqdm(vectors, desc="Adding chunks to Weaviate batch"):
+                chunk_uuid = generate_uuid5(vec.chunk_id)
+                chunk_uuid_map[vec.chunk_id] = chunk_uuid
+                chunk_metadata = {
+                    "document_id": vec.document_id,
+                    # "document_uuid": document_uuid, # metadata 안이 아니라 최상위 레벨로 이동
+                }
+                if vec.content_type:
+                    chunk_metadata["content_type"] = vec.content_type
+
                 text_chunk_object = {
                     "text": vec.text,
                     "title": metadata.get('title', ''),
                     "source": file_path,
                     "page_num": metadata.get('page_num', 0),
                     "chunk_id": vec.chunk_id,
+                    "document_uuid": document_uuid, # [수정] 스키마에 맞게 최상위 레벨로 설정
                     "metadata": {
-                        "document_id": vec.document_id,
-                        "content_type": vec.content_type,
-                        **metadata
+                        **document_metadata,
+                        **chunk_metadata,
                     },
                 }
-                
-                reference = {
-                    "hasDocument": [
-                        {
-                            "beacon": f"weaviate://localhost/{self.config.WEAVIATE_DOCUMENT_CLASS}/{document_uuid}"
-                        }
-                    ]
-                }
-                text_chunk_object.update(reference)
                 
                 batch.add_data_object(
                     data_object=text_chunk_object,
                     class_name=text_class_name,
-                    uuid=generate_uuid5(vec.chunk_id),
+                    uuid=chunk_uuid,
                     vector=vec.embedding.tolist()
                 )
-        
-        logger.info(f"Successfully added {len(vectors)} chunk vectors to Weaviate for document {document_uuid}.")
+
+        logger.info(
+            "Successfully added %d chunk vectors to Weaviate for document %s (%s)",
+            len(vectors),
+            filename,
+            document_uuid,
+        )
 
 # =============================================================================
 # Qwen3LateChunker 클래스
@@ -366,8 +358,8 @@ class Qwen3LateChunker:
     def _perform_late_chunking(self, chunk_infos: List[ChunkInfo]) -> List[VectorEntry]:
         vector_entries = []
         if self.embedding_model._model is None:
-             logger.error("Shared embedding model is not loaded.")
-             return []
+                logger.error("Shared embedding model is not loaded.")
+                return []
 
         for info in tqdm(chunk_infos, desc="Embedding chunks"):
             try:
@@ -376,7 +368,7 @@ class Qwen3LateChunker:
             except Exception as e:
                 logger.error(f"Error generating embedding for chunk {info.chunk_id}: {str(e)}")
                 if self.embedding_model.vector_dimension:
-                     embedding = np.ones(self.embedding_model.vector_dimension) 
+                        embedding = np.ones(self.embedding_model.vector_dimension) 
                 else:
                     logger.error("Embedding dimension unknown, skipping chunk.")
                     continue
@@ -424,7 +416,7 @@ def search_vectors(query: str, top_k: int = 5) -> List[Dict]:
     
     vector_search_results = (
         client.query
-        .get(config.WEAVIATE_TEXT_CLASS, ["text", "metadata"])
+        .get(config.WEAVIATE_TEXT_CLASS, ["text", "metadata", "document_uuid"]) # document_uuid 가져오기
         .with_near_vector({"vector": query_embedding.tolist()})
         .with_limit(top_k)
         .with_additional(["distance"])
@@ -445,6 +437,7 @@ def search_vectors(query: str, top_k: int = 5) -> List[Dict]:
             results.append({
                 'score': similarity_score,
                 'document_id': metadata.get('document_id', ''),
+                'document_uuid': item.get('document_uuid', ''), # document_uuid 반환
                 'text': item.get('text', ''),
                 'content_type': metadata.get('content_type', 'text'),
             })
@@ -482,27 +475,44 @@ def main(input_file=None, recreate_schema=False, search_mode=False):
     args.recreate_schema = recreate_schema
     args.search = search_mode
 
+    # [수정] config.py에서 RAGConfig를 가져오도록 수정
+    try:
+        from config import RAGConfig
+        logger.info("config.py에서 RAGConfig 로드 성공.")
+    except ImportError:
+        logger.error("config.py를 찾을 수 없습니다. qwen3_late_chunking.py의 로컬 RAGConfig를 사용합니다.")
+        # config.py가 없으면 이 파일의 로컬 RAGConfig를 사용 (기존 방식)
+        pass
+
     config = RAGConfig()
     client = config.get_weaviate_client()
     
     if args.recreate_schema:
         if client:
-            logger.warning(f"'{config.WEAVIATE_TEXT_CLASS}'와 '{config.WEAVIATE_DOCUMENT_CLASS}' 클래스를 재생성합니다.")
-            # 참조하는 클래스(TextDocument)를 먼저 삭제
-            if client.schema.exists(config.WEAVIATE_TEXT_CLASS):
-                client.schema.delete_class(config.WEAVIATE_TEXT_CLASS)
-                logger.info(f"클래스 삭제 완료: {config.WEAVIATE_TEXT_CLASS}")
-            # 참조되는 클래스(Document)를 나중에 삭제
-            if client.schema.exists(config.WEAVIATE_DOCUMENT_CLASS):
-                client.schema.delete_class(config.WEAVIATE_DOCUMENT_CLASS)
-                logger.info(f"클래스 삭제 완료: {config.WEAVIATE_DOCUMENT_CLASS}")
+            logger.warning("Weaviate 스키마 재생성을 시작합니다 (모든 데이터 삭제).")
             
-            # 스키마 재생성
-            create_schema(client)
-            logger.info("스키마 재생성이 완료되었습니다.")
+            # vvvv [수정] vvvv
+            # weaviate_utils.py에 정의된 (recreate=True를 지원하는) 
+            # create_schema 함수를 임포트하여 강제 재생성
+            try:
+                from weaviate_utils import create_schema as create_utils_schema
+                
+                # recreate=True로 호출하여 delete_all() 실행
+                success = create_utils_schema(client, recreate=True) 
+                
+                if success:
+                    logger.info("스키마 재생성이 완료되었습니다.")
+                else:
+                    logger.error("스키마 재생성 중 오류가 발생했습니다.")
+
+            except ImportError:
+                logger.error("weaviate_utils.py를 임포트할 수 없습니다. 스키마 재생성 실패.")
+            except Exception as e:
+                logger.error(f"스키마 재생성 중 예외 발생: {e}")
+            # ^^^^ [수정] ^^^^
         else:
             logger.error("Weaviate 클라이언트가 없어 스키마를 재생성할 수 없습니다.")
-        return
+        return # 스키마 재생성 후 종료
 
     if args.search:
         while True:
@@ -522,6 +532,17 @@ def main(input_file=None, recreate_schema=False, search_mode=False):
 
     try:
         if client:
+            # [수정] weaviate_utils에서 스키마 생성 함수를 임포트하여
+            # TextDocument와 ImageDocument 스키마가 모두 존재하는지 확인
+            try:
+                from weaviate_utils import create_schema as ensure_all_schema
+                ensure_all_schema(client, recreate=False) # recreate=False로 존재 여부만 확인
+            except ImportError:
+                logger.warning("weaviate_utils.py를 찾을 수 없어 로컬 create_schema만 사용합니다.")
+                # 임포트 실패 시 로컬 create_schema 사용 (기존 방식)
+                if 'create_schema' in locals():
+                    create_schema(client)
+
             logger.info(f"Weaviate client ready at {config.WEAVIATE_URL}")
         else:
             logger.warning("Weaviate client not ready. Indexing will fail.")

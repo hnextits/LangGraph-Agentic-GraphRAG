@@ -21,7 +21,7 @@ import json
 import logging
 import argparse
 import threading
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 
 # 컴포넌트 임포트
 from image_processor import image_processor 
@@ -107,7 +107,13 @@ class RAGPipeline:
         else:
             logger.warning(f"이미지 문서에 file_path가 없음: {img_doc.get('id', 'unknown')}")
     
-    def process_query(self, query: str, top_k: int = 5, cancellation_event: Optional[threading.Event] = None) -> Dict[str, Any]:
+    def process_query(
+        self,
+        query: str,
+        top_k: int = 5,
+        cancellation_event: Optional[threading.Event] = None,
+        allowed_document_uuids: Optional[Set[str]] = None,
+    ) -> Dict[str, Any]:
         """
         질문 처리 및 답변 생성 (수정된 메서드)
         
@@ -128,7 +134,12 @@ class RAGPipeline:
         # 취소 확인
         if cancellation_event and cancellation_event.is_set():
             raise InterruptedError("Operation cancelled before search")
-        search_results = self.router.search(query, top_k=top_k, cancellation_event=cancellation_event)
+        search_results = self.router.search(
+            query,
+            top_k=top_k,
+            cancellation_event=cancellation_event,
+            allowed_document_uuids=allowed_document_uuids,
+        )
         
         # 검색 결과 로깅
         for searcher_name, results_data in search_results.items():
@@ -150,7 +161,12 @@ class RAGPipeline:
         # 취소 확인
         if cancellation_event and cancellation_event.is_set():
             raise InterruptedError("Operation cancelled before generation")
-        results = self.generator.generate_response(query, search_results, cancellation_event=cancellation_event)
+        results = self.generator.generate_response(
+            query,
+            search_results,
+            cancellation_event=cancellation_event,
+            allowed_document_uuids=allowed_document_uuids,
+        )
         
         # 4. 피드백 루프 (필요시)
         if self.config.use_feedback_loop:

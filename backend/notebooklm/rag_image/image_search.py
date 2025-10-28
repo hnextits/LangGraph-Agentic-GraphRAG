@@ -15,7 +15,7 @@ import threading
 import logging
 import time
 import base64
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Set
 from PIL import Image
 import weaviate
 
@@ -110,7 +110,42 @@ class ImageSearcher:
             logger.error(traceback.format_exc())
             return np.random.rand(self.dimension).astype('float32')  # 오류 발생 시 랜덤 벡터로 대체
 
-    def search(self, query: str, top_k: int = 10, rerank: bool = True, cancellation_event: Optional[threading.Event] = None) -> List[Dict[str, Any]]:
+    def _build_uuid_where_filter(self, allowed_document_uuids: Set[str]) -> Optional[Dict[str, Any]]:
+        """Weaviate where 필터를 구성하여 document_uuid로 제한합니다."""
+        if not allowed_document_uuids:
+            return None
+
+        uuids = [uuid for uuid in allowed_document_uuids if uuid]
+        if not uuids:
+            return None
+
+        if len(uuids) == 1:
+            return {
+                "path": ["document_uuid"],
+                "operator": "Equal",
+                "valueString": uuids[0],
+            }
+
+        return {
+            "operator": "Or",
+            "operands": [
+                {
+                    "path": ["document_uuid"],
+                    "operator": "Equal",
+                    "valueString": uuid,
+                }
+                for uuid in uuids
+            ],
+        }
+
+    def search(
+        self,
+        query: str,
+        top_k: int = 10,
+        rerank: bool = True,
+        cancellation_event: Optional[threading.Event] = None,
+        allowed_document_uuids: Optional[Set[str]] = None,
+    ) -> List[Dict[str, Any]]:
         """이미지 쿼리로 검색을 수행합니다."""
         # 설정에서 기본값 가져오기
         config = RAGConfig()
@@ -160,15 +195,20 @@ class ImageSearcher:
             
             try:
                 # metadata 필드에 대한 서브 셀렉션 문제 해결
-                vector_search_results = (
+                query_builder = (
                     self.client.query
-                    .get(self.class_name, ["caption", "title", "image_path", "con_type", "tags", "text"])
+                    .get(self.class_name, ["caption", "title", "image_path", "con_type", "tags", "text", "document_uuid"])
                     .with_near_vector({
                         "vector": query_embedding.tolist()
                     })
                     .with_limit(search_top_k)
-                    .do()
                 )
+
+                uuid_filter = self._build_uuid_where_filter(allowed_document_uuids or set())
+                if uuid_filter:
+                    query_builder = query_builder.with_where(uuid_filter)
+
+                vector_search_results = query_builder.do()
                 
                 # 검색 결과 로깅
                 logger.debug(f"Weaviate 이미지 검색 결과: {vector_search_results}")
@@ -207,6 +247,7 @@ class ImageSearcher:
                         'tags': item.get("tags", []),
                         'page_num': 1,  # 기본값 사용
                         'text': doc_text,  # OCR 텍스트 우선 사용
+                        'document_uuid': item.get("document_uuid"),
                     }
                     results.append(result)
             
@@ -246,6 +287,16 @@ class ImageSearcher:
                     content_types_filtered[ct] = 1
             logger.info(f"필터링 후 content_type 분포: {content_types_filtered}")
             
+            if allowed_document_uuids:
+                before_filter_count = len(filtered_results)
+                filtered_results = [res for res in filtered_results if res.get('document_uuid') in allowed_document_uuids]
+                if before_filter_count != len(filtered_results):
+                    logger.info(
+                        "이미지 검색 결과 UUID 필터링 적용: %d -> %d",
+                        before_filter_count,
+                        len(filtered_results),
+                    )
+
             # 리랭커 적용 전 결과를 저장
             original_results = filtered_results.copy()
             

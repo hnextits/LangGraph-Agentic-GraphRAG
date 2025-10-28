@@ -1,4 +1,4 @@
-<!--METADATA:{"source_type": "stt_transcript", "content_origin": "audio", "audio_filename": "test_me.mp3", "audio_path": "/home/jeonghs/workspace/nextitslm/backend/nextits_data/doc/test_me.mp3", "duration_seconds": 193.85, "generated_at": "2025-10-24 17:28:19"}-->
+<!--METADATA:{"source_type": "stt_transcript", "content_origin": "audio", "audio_filename": "test_me.mp3", "audio_path": "/home/jeonghs/workspace/nextitslm/backend/nextits_data/doc/test_me.mp3", "duration_seconds": 193.85, "generated_at": "2025-10-28 12:01:27"}-->
 
 What the fuck?
 Handicap through the South Park 왼손에 진 펄 이건 오래 이겐 끊어야겠다 했지만 Still smoke 멀어 계획 세우는 그런 타일 간 떡에 식된 족 아빠 몰래 학교를 dropped out 대지발매 N에 대해 재단 회사의 VE part 내발된 토기 건너

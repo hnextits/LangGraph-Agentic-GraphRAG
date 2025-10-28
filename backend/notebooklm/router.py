@@ -9,7 +9,7 @@ import logging
 import os
 import concurrent.futures
 import threading
-from typing import Dict, List, Any, Optional, Tuple
+from typing import Dict, List, Any, Optional, Tuple, Set
 
 from config import RAGConfig
 
@@ -142,7 +142,13 @@ class RAGRouter:
         
         return selected_searchers
     
-    def search(self, query: str, top_k: int = 15, cancellation_event: Optional[threading.Event] = None) -> Dict[str, Any]:
+    def search(
+        self,
+        query: str,
+        top_k: int = 15,
+        cancellation_event: Optional[threading.Event] = None,
+        allowed_document_uuids: Optional[Set[str]] = None,
+    ) -> Dict[str, Any]:
         """
         쿼리를 ParallelSearcher에 위임하여 최종 결과를 반환합니다.
         항상 RAG 검색을 사용하도록 수정되었습니다.
@@ -163,7 +169,13 @@ class RAGRouter:
             raise InterruptedError("Operation cancelled before parallel search")
 
         # 2. ParallelSearcher에 검색 위임
-        search_results = self.parallel_searcher.search(query, selected_searchers, top_k, cancellation_event=cancellation_event)
+        search_results = self.parallel_searcher.search(
+            query,
+            selected_searchers,
+            top_k,
+            cancellation_event=cancellation_event,
+            allowed_document_uuids=allowed_document_uuids,
+        )
         
         # 3. 메타데이터 보강 및 결과 반환
         search_results["metadata"]["search_mode"] = "RAG"  # 항상 RAG 모드 사용

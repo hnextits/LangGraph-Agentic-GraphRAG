@@ -1,12 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
 
+export interface FileListResponse {
+  files: string[];
+  document_uuid_map?: Record<string, string>;
+}
+
 const useGetFiles = (options?: { onError?: (err: Error) => void }) => {
-  return useQuery<string[], Error, string[], readonly ['files']>({
+  return useQuery<FileListResponse, Error, FileListResponse, readonly ['files']>({
     queryKey: ['files'],
     queryFn: async () => {
       const response = await api.getFiles();
-      return response.data.files;
+      return response.data as FileListResponse;
     },
     ...options,
   });
@@ -16,7 +21,7 @@ const useGetSummaries = () => {
   return useQuery<string[]>({
     queryKey: ['summaries'],
     queryFn: async () => {
-      const response = await api.getSummaries();
+      const response = await api.getSummarizes();
       return response.data.files;
     },
   });

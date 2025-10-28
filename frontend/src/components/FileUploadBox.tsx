@@ -17,18 +17,35 @@ interface UploadingFile {
   error?: string;
 }
 
+const SUPPORTED_FORMAT_MESSAGE = '지원 형식: TXT, PDF, DOC, DOCX, MD, JPG, PNG, MP4, MOV, AVI, MKV, WEBM, MP3, WAV, M4A, FLAC';
+
+const formatFileSize = (size: number) => {
+  if (size >= 1024 * 1024) {
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  }
+  return `${(size / 1024).toFixed(1)} KB`;
+};
+
 const FileUploadBox: React.FC<FileUploadBoxProps> = ({ isOpen, onClose, onFilesAdd }) => {
   const queryClient = useQueryClient();
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const newFiles = acceptedFiles.map(file => ({
+  const onDrop = useCallback((acceptedFiles: File[], fileRejections: any[]) => {
+    const validFiles = acceptedFiles.map(file => ({
       file,
       progress: 0,
       status: 'pending' as const,
     }));
-    setUploadingFiles(prev => [...prev, ...newFiles]);
+
+    const rejectedFiles = fileRejections.map((rejection: any) => ({
+      file: rejection.file,
+      progress: 0,
+      status: 'error' as const,
+      error: rejection.errors?.[0]?.message || '지원하지 않는 파일 형식이거나 용량 초과입니다.',
+    }));
+
+    setUploadingFiles(prev => [...prev, ...validFiles, ...rejectedFiles]);
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -41,7 +58,17 @@ const FileUploadBox: React.FC<FileUploadBoxProps> = ({ isOpen, onClose, onFilesA
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'image/jpeg': ['.jpg', '.jpeg'],
       'image/png': ['.png'],
+      'video/mp4': ['.mp4'],
+      'video/quicktime': ['.mov'],
+      'video/x-msvideo': ['.avi'],
+      'video/x-matroska': ['.mkv'],
+      'video/webm': ['.webm'],
+      'audio/mpeg': ['.mp3'],
+      'audio/wav': ['.wav'],
+      'audio/mp4': ['.m4a'],
+      'audio/flac': ['.flac'],
     },
+    maxSize: 200 * 1024 * 1024, // 200MB
   });
 
   const handleRemoveFile = (index: number) => {
@@ -133,8 +160,8 @@ const FileUploadBox: React.FC<FileUploadBoxProps> = ({ isOpen, onClose, onFilesA
             </div>
           </div>
           <div className="flex flex-col gap-2 text-gray-500 bg-gray-200/70 rounded-lg py-8 px-10 ">
-            <p className="text-xs text-gray-600">지원 형식: TXT, PDF, DOC, DOCX, MD, JPG, PNG</p>
-            <p className="text-xs text-gray-600">파일 크기: 2MB</p>
+            <p className="text-xs text-gray-600">{SUPPORTED_FORMAT_MESSAGE}</p>
+            <p className="text-xs text-gray-600">파일 크기: 최대 200MB</p>
           </div>
 
           {/* File List */}
@@ -150,9 +177,7 @@ const FileUploadBox: React.FC<FileUploadBoxProps> = ({ isOpen, onClose, onFilesA
                     <FileIcon className="text-gray-500 flex-shrink-0" size={24} />
                     <div className="flex-grow min-w-0">
                       <p className="text-sm font-medium truncate">{item.file.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {(item.file.size / 1024).toFixed(1)} KB
-                      </p>
+                      <p className="text-xs text-gray-500">{formatFileSize(item.file.size)}</p>
                     </div>
                     <div className="flex-shrink-0">
                       {item.status === 'pending' && (

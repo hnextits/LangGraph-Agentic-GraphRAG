@@ -2,14 +2,22 @@ import React, { createContext, useContext, useState } from 'react';
 
 // 전역 상태 인터페이스 정의
 interface FileContextState {
-  checkedFiles: string[];
-  setCheckedFiles: (files: string[]) => void;
+  checkedFilenames: string[];
+  setCheckedFilenames: (files: string[]) => void;
+  checkedFileUuids: string[];
+  setCheckedFileUuids: (uuids: string[]) => void;
+  documentUuidMap: Record<string, string>;
+  setDocumentUuidMap: (map: Record<string, string>) => void;
 }
 
 // 기본값 생성
 const defaultState: FileContextState = {
-  checkedFiles: [],
-  setCheckedFiles: () => {}
+  checkedFilenames: [],
+  setCheckedFilenames: () => {},
+  checkedFileUuids: [],
+  setCheckedFileUuids: () => {},
+  documentUuidMap: {},
+  setDocumentUuidMap: () => {},
 };
 
 // Context 생성
@@ -26,12 +34,18 @@ export function useFileContext() {
 
 // Provider 컴포넌트
 export function FileProvider({ children }: { children: React.ReactNode }) {
-  const [checkedFiles, setCheckedFiles] = useState<string[]>([]);
-  
+  const [checkedFilenames, setCheckedFilenames] = useState<string[]>([]);
+  const [checkedFileUuids, setCheckedFileUuids] = useState<string[]>([]);
+  const [documentUuidMap, setDocumentUuidMap] = useState<Record<string, string>>({});
+
   // 실제 값 제공
-  const value = {
-    checkedFiles,
-    setCheckedFiles
+  const value: FileContextState = {
+    checkedFilenames,
+    setCheckedFilenames,
+    checkedFileUuids,
+    setCheckedFileUuids,
+    documentUuidMap,
+    setDocumentUuidMap,
   };
 
   return (
@@ -40,4 +54,3 @@ export function FileProvider({ children }: { children: React.ReactNode }) {
     </FileContext.Provider>
   );
 }
-

@@ -31,7 +31,7 @@ interface CenterBoxProps {
 }
 
 const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
-  const { checkedFiles } = useContext(FileContext);
+  const { checkedFilenames, checkedFileUuids } = useContext(FileContext);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -80,7 +80,9 @@ const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
       setIsStreaming(true);
 
       try {
-        const response = await api.postChat(input, checkedFiles);
+        const effectiveSources = checkedFileUuids.length > 0 ? checkedFileUuids : checkedFilenames;
+
+        const response = await api.postChat(input, effectiveSources);
         if (response.data.task_id) {
           setCurrentTaskId(response.data.task_id);
         } else {
@@ -436,11 +438,11 @@ const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
         </div>
 
         {/* 선택된 파일 표시 */}
-        {checkedFiles.length > 0 && (
+        {checkedFilenames.length > 0 && (
           <div className="mt-2 text-xs text-gray-500">
-            <span>선택된 파일: {checkedFiles.length}개</span>
+            <span>선택된 파일: {checkedFilenames.length}개</span>
             <div className="flex flex-wrap gap-1 mt-1">
-              {checkedFiles.map((file, index) => (
+              {checkedFilenames.map((file, index) => (
                 <span
                   key={index}
                   className="bg-gray-100 px-2 py-0.5 rounded-full truncate max-w-[150px]"

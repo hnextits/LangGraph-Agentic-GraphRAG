@@ -1,9 +1,10 @@
 import weaviate
 import logging
+import datetime 
 
 # Weaviate 클라이언트 정보 (코드에서 사용한 정보와 동일)
 WEAVIATE_URL = "http://127.0.0.1:8080"
-TEXT_CLASS_NAME = "ImageDocument"
+TEXT_CLASS_NAME = "TextDocument"
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -26,6 +27,7 @@ try:
     
     # 이전에 132개의 청크를 만들었으므로, 최소 132개 이상이어야 합니다.
     print(f"\n✅ Weaviate 클래스 '{TEXT_CLASS_NAME}'의 총 객체 수: {object_count}개")
+    print(datetime.datetime.now())
 
     if object_count > 0:
         print("데이터베이스에 데이터가 성공적으로 저장된 것으로 보입니다.")

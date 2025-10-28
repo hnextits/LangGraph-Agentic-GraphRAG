@@ -1,7 +1,7 @@
 import concurrent.futures
 import logging
 import threading
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 
 # 환경 문제로 인해 임포트 우회
 try:
@@ -26,7 +26,14 @@ class ParallelSearcher:
         self.use_query_rewrite = getattr(self.config, 'ENABLE_QUERY_REWRITE', True)
         self.query_rewriter = query_rewriter
 
-    def search(self, query: str, selected_searchers: List[str], top_k: int = 3, cancellation_event: Optional[threading.Event] = None) -> Dict[str, Any]:
+    def search(
+        self,
+        query: str,
+        selected_searchers: List[str],
+        top_k: int = 3,
+        cancellation_event: Optional[threading.Event] = None,
+        allowed_document_uuids: Optional[Set[str]] = None,
+    ) -> Dict[str, Any]:
         """
         쿼리 재작성부터 병렬 검색, 재정렬까지 전체 검색 파이프라인을 실행합니다.
         """
@@ -101,7 +108,16 @@ class ParallelSearcher:
                             logger.info(f"Search for '{rewritten_query}' on '{searcher_name}' cancelled before execution.")
                             continue # 다음 작업으로 넘어감
 
-                        futures.append(executor.submit(searcher.search, rewritten_query, top_k=top_k, rerank=rerank_needed, cancellation_event=cancellation_event))
+                        futures.append(
+                            executor.submit(
+                                searcher.search,
+                                rewritten_query,
+                                top_k=top_k,
+                                rerank=rerank_needed,
+                                cancellation_event=cancellation_event,
+                                allowed_document_uuids=allowed_document_uuids,
+                            )
+                        )
             
             # 결과 취합 - 이미지와 텍스트 분리
             for i, future in enumerate(futures):
@@ -179,6 +195,26 @@ class ParallelSearcher:
                 except Exception as e:
                     searcher_name = selected_searchers[i // len(rewritten_queries)] if i // len(rewritten_queries) < len(selected_searchers) else "unknown"
                     logger.error(f"검색기 {searcher_name} 결과 처리 중 오류: {e}")
+
+        # allowed_document_uuids 필터링 적용 (검색기에서 필터링되지 못한 항목 대비)
+        if allowed_document_uuids:
+            before_text = len(text_results)
+            text_results = [r for r in text_results if r.get("document_uuid") in allowed_document_uuids]
+            if before_text != len(text_results):
+                logger.info(
+                    "텍스트 결과 UUID 필터링 적용: %d -> %d",
+                    before_text,
+                    len(text_results),
+                )
+
+            before_image = len(image_results)
+            image_results = [r for r in image_results if r.get("document_uuid") in allowed_document_uuids]
+            if before_image != len(image_results):
+                logger.info(
+                    "이미지 결과 UUID 필터링 적용: %d -> %d",
+                    before_image,
+                    len(image_results),
+                )
 
         # 결과가 없는 경우 처리
         if not text_results and not image_results:
