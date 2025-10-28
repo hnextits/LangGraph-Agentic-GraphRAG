@@ -7,6 +7,7 @@ import FileContentBox from './FileContentBox';
 import FileUploadBox from './FileUploadBox';
 import Header from './Header';
 import LeftBox from './LeftBox';
+import MindmapBox from './MindmapBox';
 import RightBox from './RightBox';
 import Searchbox from './SearchBox';
 import SummaryModal from './SummaryModal';
@@ -19,6 +20,7 @@ export {
   FileUploadBox,
   Header,
   LeftBox,
+  MindmapBox,
   RightBox,
   Searchbox,
   SummaryModal,

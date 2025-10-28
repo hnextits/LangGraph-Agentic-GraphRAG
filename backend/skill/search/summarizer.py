@@ -46,16 +46,37 @@ class AnswerGenerator:
             
             logger.info("SGLang Engine API 직접 사용 - 모델 직접 로드")
             
+            # Config에서 디바이스 설정 가져오기 (TEST_MODE 지원)
+            from notebooklm.config import RAGConfig
+            import os
+            config = RAGConfig()
+            device = config.TEXT_GENERATOR_DEVICE
+            logger.info(f"SGLang Engine 디바이스 설정: {device}")
+            
+            # device가 "cuda:N" 형식이면 환경 변수로 설정
+            original_cuda_visible = os.environ.get('CUDA_VISIBLE_DEVICES')
+            if device != "auto" and device.startswith("cuda:"):
+                gpu_id = device.split(":")[1]
+                os.environ['CUDA_VISIBLE_DEVICES'] = gpu_id
+                logger.info(f"CUDA_VISIBLE_DEVICES 설정: {gpu_id}")
+            
             # Engine 클래스를 사용하여 모델 초기화
             # mem_fraction_static: SGLang이 사용할 GPU 메모리 비율
             # Qwen3-4B 모델은 약 8GB 필요, 0.2 = 20% 정도면 충분
-            self.engine = sgl.Engine(
-                model_path=self.model_name,
-                mem_fraction_static=0.2,  # 메모리 할당량 제한 (20% - 약 16GB)
-                disable_cuda_graph=True,  # CUDA 그래프 비활성화로 안정성 향상
-                trust_remote_code=True,   # 원격 코드 신뢰
-                dtype="auto"              # 자동으로 적절한 dtype 선택
-            )
+            try:
+                self.engine = sgl.Engine(
+                    model_path=self.model_name,
+                    mem_fraction_static=0.2,  # 메모리 할당량 제한 (20% - 약 16GB)
+                    disable_cuda_graph=True,  # CUDA 그래프 비활성화로 안정성 향상
+                    trust_remote_code=True,   # 원격 코드 신뢰
+                    dtype="auto"              # 자동으로 적절한 dtype 선택
+                )
+            finally:
+                # 환경 변수 복원
+                if original_cuda_visible is not None:
+                    os.environ['CUDA_VISIBLE_DEVICES'] = original_cuda_visible
+                elif 'CUDA_VISIBLE_DEVICES' in os.environ:
+                    del os.environ['CUDA_VISIBLE_DEVICES']
             
             self.model_loaded = True
             logger.info("SGLang Engine 초기화 완료")

@@ -41,6 +41,7 @@ from api.routes import router as api_router
 # from api.summary_routes import router as summary_router
 from api.pause_api import router as pause_router
 # from api.chat import router as chat_router
+from api.mindmap_routes import router as mindmap_router
 from services.rag_service import initialize_rag_pipeline
 
 # FastAPI 앱 초기화
@@ -78,6 +79,20 @@ def startup_event():
         logger.info("RAG 파이프라인이 성공적으로 초기화되어 app.state.rag_pipeline에 할당되었습니다.")
     else:
         logger.error("RAG 파이프라인 초기화에 실패했습니다.")
+    
+    # AnswerGenerator를 메인 스레드에서 미리 초기화하고 모델 로드 (마인드맵 생성을 위해)
+    logger.info("AnswerGenerator 초기화를 시작합니다...")
+    try:
+        from api.routes import get_answer_generator
+        app.state.answer_generator = get_answer_generator()
+        # 모델을 메인 스레드에서 미리 로드
+        if app.state.answer_generator.load_model():
+            logger.info("AnswerGenerator 모델이 성공적으로 로드되었습니다.")
+        else:
+            logger.error("AnswerGenerator 모델 로드 실패")
+    except Exception as e:
+        logger.error(f"AnswerGenerator 초기화 실패: {e}")
+        app.state.answer_generator = None
 
 # CORS 미들웨어 설정
 app.add_middleware(
@@ -93,6 +108,7 @@ app.include_router(api_router)
 # app.include_router(summary_router)
 app.include_router(pause_router, prefix="/api")
 # app.include_router(chat_router)
+app.include_router(mindmap_router)
 
 # 서버 실행 설정
 if __name__ == "__main__":

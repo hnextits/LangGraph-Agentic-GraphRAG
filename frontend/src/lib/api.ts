@@ -150,6 +150,31 @@ const apiMethods = {
   postCancel: (task_ids: string[]) => {
     return api.post('/cancel', { task_ids });
   },
+
+  // 마인드맵 생성
+  generateMindmap: (data: { filename: string; max_topics?: number }) => {
+    return api.post('/mindmap/generate', data);
+  },
+
+  // 마인드맵 상태 확인
+  getMindmapStatus: (taskId: string) => {
+    return api.get(`/mindmap/status/${taskId}`);
+  },
+
+  // 마인드맵 목록
+  getMindmaps: () => {
+    return api.get('/mindmap/list');
+  },
+
+  // 마인드맵 내용 조회
+  getMindmapContent: (filename: string, format: string = 'html') => {
+    return api.get(`/mindmap/content/${filename}`, { params: { format } });
+  },
+
+  // 마인드맵 삭제
+  deleteMindmap: (filename: string) => {
+    return api.delete(`/mindmap/${filename}`);
+  },
 };
 
 // API 객체에 메서드 추가
@@ -175,6 +200,11 @@ type ApiInstance = typeof api & {
   ) => Promise<AxiosResponse>;
   postCancel: (task_ids: string[]) => Promise<AxiosResponse>;
   uploadDocuments: (title: string, link: string) => Promise<AxiosResponse>;
+  generateMindmap: (data: { filename: string; max_topics?: number }) => Promise<AxiosResponse>;
+  getMindmapStatus: (taskId: string) => Promise<AxiosResponse>;
+  getMindmaps: () => Promise<AxiosResponse>;
+  getMindmapContent: (filename: string, format?: string) => Promise<AxiosResponse>;
+  deleteMindmap: (filename: string) => Promise<AxiosResponse>;
 };
 
 export { API_URL };

@@ -24,6 +24,8 @@ import {
   Loader2,
   Circle,
   CircleCheck,
+  Network,
+  FileBarChart,
 } from 'lucide-react';
 
 // 타입 정의
@@ -73,6 +75,16 @@ const LeftBox: React.FC<LeftBoxProps> = ({
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [isSelectFileModalOpen, setIsSelectFileModalOpen] = useState(false);
   const [isNotSupportSummaryModalOpen, setIsNotSupportSummaryModalOpen] = useState(false); // 요약을 지원하지 않는 팡리 경고 모달
+
+  // 마인드맵 관련 상태
+  const [isMindmapLoading, setIsMindmapLoading] = useState<boolean>(false);
+  const [isSelectFileForMindmapModalOpen, setIsSelectFileForMindmapModalOpen] = useState(false);
+  const [isMindmapSuccessModalOpen, setIsMindmapSuccessModalOpen] = useState(false);
+  const [isMindmapErrorModalOpen, setIsMindmapErrorModalOpen] = useState(false);
+  const [mindmapErrorMessage, setMindmapErrorMessage] = useState('');
+
+  // 보고서 관련 상태
+  const [isReportLoading, setIsReportLoading] = useState<boolean>(false);
 
   const queryClient = useQueryClient();
 
@@ -301,6 +313,51 @@ const LeftBox: React.FC<LeftBoxProps> = ({
     }
   };
 
+  // 마인드맵 생성 핸들러
+  const handleGenerateMindmap = async () => {
+    if (checkedFiles.length === 0) {
+      setIsSelectFileForMindmapModalOpen(true);
+      return;
+    }
+
+    if (checkedFiles.length > 1) {
+      setMindmapErrorMessage('마인드맵은 한 번에 하나의 파일만 생성할 수 있습니다.');
+      setIsMindmapErrorModalOpen(true);
+      return;
+    }
+
+    setIsMindmapLoading(true);
+
+    try {
+      const response = await api.generateMindmap({
+        filename: checkedFiles[0],
+        max_topics: 8,
+      });
+      
+      if (response.data?.task_id) {
+        setIsMindmapSuccessModalOpen(true);
+        // RightBox의 마인드맵 탭으로 전환하도록 이벤트 발생 (선택사항)
+      }
+    } catch (error) {
+      console.error('마인드맵 생성 실패:', error);
+      setMindmapErrorMessage('마인드맵 생성 중 오류가 발생했습니다.');
+      setIsMindmapErrorModalOpen(true);
+    } finally {
+      setIsMindmapLoading(false);
+    }
+  };
+
+  // 보고서 생성 핸들러 (추후 구현)
+  const handleGenerateReport = async () => {
+    if (checkedFiles.length === 0) {
+      alert('보고서를 생성할 파일을 선택해주세요.');
+      return;
+    }
+    
+    // TODO: 보고서 생성 API 구현
+    alert('보고서 생성 기능은 준비 중입니다.');
+  };
+
   return (
     <div
       id="leftbox"
@@ -329,40 +386,77 @@ const LeftBox: React.FC<LeftBoxProps> = ({
                 <button
                   onClick={handleOpenFileUploadModal}
                   disabled={isUploading}
-                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 text-sm rounded-md bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-50 flex-1"
+                  className="flex items-center justify-center gap-1.5 px-2 py-2 text-sm rounded-md bg-white border border-gray-300 hover:bg-gray-100 disabled:opacity-50 flex-1 h-[36px]"
                 >
                   {isUploading ? (
                     <div className="animate-spin h-4 w-4 border-2 border-blue-500 rounded-full border-t-transparent"></div>
                   ) : (
                     <Plus size={16} />
                   )}
-                  <span>추가</span>
+                  <span className="text-xs">추가</span>
                 </button>
                 <button
                   onClick={handleOpenModal}
-                  className="flex items-center justify-center gap-1.5 px-2.5 py-2 text-sm rounded-md bg-white border border-gray-300 hover:bg-gray-100 flex-1"
+                  className="flex items-center justify-center gap-1.5 px-2 py-2 text-sm rounded-md bg-white border border-gray-300 hover:bg-gray-100 flex-1 h-[36px]"
                 >
                   <Search size={16} />
-                  <span>탐색</span>
+                  <span className="text-xs">탐색</span>
                 </button>
               </div>
-              <button
-                onClick={handleGenerateSummary}
-                disabled={isSummaryLoading}
-                className="flex items-center justify-center gap-2 px-2.5 py-2 text-sm rounded-md bg-blue-50 border border-blue-500 text-blue-500 hover:bg-blue-100 disabled:opacity-50 w-full"
-              >
-                {isSummaryLoading ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    <span>요약 생성 중...</span>
-                  </>
-                ) : (
-                  <>
-                    <WandSparkles size={16} />
-                    <span>요약 생성하기</span>
-                  </>
-                )}
-              </button>
+              {/* 요약/마인드맵/보고서 버튼 */}
+              <div className="flex gap-2 w-full">
+                <button
+                  onClick={handleGenerateSummary}
+                  disabled={isSummaryLoading}
+                  className="flex items-center justify-center gap-1.5 px-2 py-2 text-sm rounded-md bg-blue-50 border border-blue-500 text-blue-500 hover:bg-blue-100 disabled:opacity-50 flex-1"
+                >
+                  {isSummaryLoading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span className="text-xs">생성중...</span>
+                    </>
+                  ) : (
+                    <>
+                      <WandSparkles size={16} />
+                      <span className="text-xs">요약</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={handleGenerateMindmap}
+                  disabled={isMindmapLoading}
+                  className="flex items-center justify-center gap-1.5 px-2 py-2 text-sm rounded-md bg-purple-50 border border-purple-500 text-purple-500 hover:bg-purple-100 disabled:opacity-50 flex-1"
+                >
+                  {isMindmapLoading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span className="text-xs">생성중...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Network size={16} />
+                      <span className="text-xs">마인드맵</span>
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={handleGenerateReport}
+                  disabled={isReportLoading}
+                  className="flex items-center justify-center gap-1.5 px-2 py-2 text-sm rounded-md bg-green-50 border border-green-500 text-green-500 hover:bg-green-100 disabled:opacity-50 flex-1"
+                >
+                  {isReportLoading ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span className="text-xs">생성중...</span>
+                    </>
+                  ) : (
+                    <>
+                      <FileBarChart size={16} />
+                      <span className="text-xs">보고서</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
 
             {isUploading && (
@@ -391,16 +485,16 @@ const LeftBox: React.FC<LeftBoxProps> = ({
             <button
               onClick={handleOpenFileUploadModal}
               title="파일 추가"
-              className="p-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 w-8 h-8 flex items-center justify-center"
+              className="p-1 bg-gray-100 rounded-md hover:bg-gray-200 w-8 h-8 flex items-center justify-center"
             >
-              <Plus size={16} />
+              <Plus size={18} />
             </button>
             <button
               onClick={handleOpenModal}
               title="파일 탐색"
-              className="p-1.5 bg-gray-100 rounded-lg hover:bg-gray-200 w-8 h-8 flex items-center justify-center"
+              className="p-1 bg-gray-100 rounded-md hover:bg-gray-200 w-8 h-8 flex items-center justify-center"
             >
-              <Search size={16} />
+              <Search size={18} />
             </button>
           </div>
         )}
@@ -414,11 +508,13 @@ const LeftBox: React.FC<LeftBoxProps> = ({
                   key={index}
                   onClick={() => handleSourceClick(source)}
                   title={formatFileName(source.title)}
-                  className={`relative bg-gray-100 rounded-lg p-1.5 m-1 w-8 h-8 transition-all hover:bg-gray-200 hover:scale-105 ${
+                  className={`flex items-center justify-center bg-gray-100 rounded-md p-1 w-8 h-8 transition-all hover:bg-gray-200 ${
                     selectedSource?.id === source.id ? 'bg-blue-50 ring-2 ring-blue-500' : ''
                   }`}
                 >
-                  {getFileIcon(source.title)}
+                  <div className="flex items-center justify-center w-full h-full">
+                    {getFileIcon(source.title)}
+                  </div>
                 </button>
               ))}
             </div>
@@ -624,6 +720,39 @@ const LeftBox: React.FC<LeftBoxProps> = ({
         title="알림"
         content="해당 파일은 요약 기능을 지원하지 않습니다."
         iconType="warning"
+        confirmButtonText={null}
+        cancelButtonText={null}
+      />
+
+      {/* 마인드맵 파일 선택 요청 모달 */}
+      <AlertModal
+        isOpen={isSelectFileForMindmapModalOpen}
+        onClose={() => setIsSelectFileForMindmapModalOpen(false)}
+        title="알림"
+        content="마인드맵을 생성할 파일을 선택해주세요."
+        iconType="warning"
+        confirmButtonText={null}
+        cancelButtonText={null}
+      />
+
+      {/* 마인드맵 생성 성공 모달 */}
+      <AlertModal
+        isOpen={isMindmapSuccessModalOpen}
+        onClose={() => setIsMindmapSuccessModalOpen(false)}
+        title="마인드맵 생성 시작"
+        content="마인드맵 생성이 시작되었습니다. 우측 마인드맵 탭에서 확인하세요."
+        iconType="success"
+        confirmButtonText={null}
+        cancelButtonText={null}
+      />
+
+      {/* 마인드맵 생성 실패 모달 */}
+      <AlertModal
+        isOpen={isMindmapErrorModalOpen}
+        onClose={() => setIsMindmapErrorModalOpen(false)}
+        title="마인드맵 생성 실패"
+        content={mindmapErrorMessage}
+        iconType="error"
         confirmButtonText={null}
         cancelButtonText={null}
       />

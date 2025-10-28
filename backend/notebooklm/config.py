@@ -81,6 +81,9 @@ class RAGConfig:
         # 정제 모델
         self.REFINER_MODEL = "Qwen/Qwen3-1.7B-FP8"
         
+        # 마인드맵 생성 모델 (요약 모델과 동일)
+        self.MINDMAP_MODEL = "Qwen/Qwen3-8B"
+        
         #############################################
         # 3. 모델 파라미터 설정
         #############################################
@@ -118,6 +121,12 @@ class RAGConfig:
         # 기본 모델 파라미터
         self.BATCH_SIZE = 4
         self.GENERATOR_TORCH_DTYPE = "auto"  # bfloat16에서 auto로 변경하여 한국어 텍스트 깨짐 방지
+        
+        # 마인드맵 생성 파라미터
+        self.MINDMAP_DEVICE = "cuda:0"
+        self.MINDMAP_MEM_FRACTION = 0.5  # GPU 메모리 50% 사용
+        self.MINDMAP_MAX_TOKENS = 8192
+        self.MINDMAP_TOKEN_BUFFER = 500
 
         #############################################
         # 5. 파이프라인 설정
@@ -240,12 +249,27 @@ class RAGConfig:
         # 기본 디바이스 설정
         self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
         
+        # ⚠️ 테스트 모드 설정 (GPU 배치 전환)
+        # True: SGLang=GPU1, Transformers=GPU0 (테스트용)
+        # False: SGLang=GPU0, Transformers=GPU1 (운영용, 기본값)
+        TEST_MODE = True
+        
         # GPU 분산 배치 설정 (2개 H100 GPU 활용)
-        self.TEXT_GENERATOR_DEVICE = "auto"    # 텍스트 생성 모델 (대용량, GPU 0 단독 할당)
-        self.RERANKER_DEVICE = "cuda:1"          # 리랭커 모델 (GPU 1)
-        self.REFINER_DEVICE = "cuda:1"           # 정제 모델 (GPU 1)
-        self.QUERY_REWRITER_DEVICE = "cuda:1"  # 쿼리 재작성 모델 (GPU 1)
-        self.EMBEDDING_DEVICE = "cuda:1"         # 모든 임베딩 관련 모델 (GPU 1)
+        if TEST_MODE:
+            # 🧪 테스트 모드: SGLang → GPU 1, Transformers → GPU 0
+            logger.info("🧪 TEST MODE: SGLang=GPU1, Transformers=GPU0")
+            self.TEXT_GENERATOR_DEVICE = "cuda:1"       # SGLang → GPU 1
+            self.RERANKER_DEVICE = "cuda:0"             # 리랭커 → GPU 0
+            self.REFINER_DEVICE = "cuda:0"              # 정제 모델 → GPU 0
+            self.QUERY_REWRITER_DEVICE = "cuda:0"       # 쿼리 재작성 → GPU 0
+            self.EMBEDDING_DEVICE = "cuda:0"            # 임베딩 → GPU 0
+        else:
+            # 🚀 운영 모드: SGLang → GPU 0, Transformers → GPU 1 (기본값)
+            self.TEXT_GENERATOR_DEVICE = "auto"         # SGLang → GPU 0 (auto)
+            self.RERANKER_DEVICE = "cuda:1"             # 리랭커 → GPU 1
+            self.REFINER_DEVICE = "cuda:1"              # 정제 모델 → GPU 1
+            self.QUERY_REWRITER_DEVICE = "cuda:1"       # 쿼리 재작성 → GPU 1
+            self.EMBEDDING_DEVICE = "cuda:1"            # 임베딩 → GPU 1
         
         # 하위 호환성 및 명시적 설정
         self.TEXT_EMBEDDING_DEVICE = self.EMBEDDING_DEVICE

@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>인터랙티브 마인드맵</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Malgun Gothic', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        #mindmap-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            border-radius: 8px;
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: all 0.2s;
+        }
+        
+        .control-btn:hover {
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transform: translateY(-1px);
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            max-width: 300px;
+        }
+        
+        .info-panel h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .info-panel p {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.5;
+        }
+        
+        .node {
+            cursor: pointer;
+        }
+        
+        .node circle {
+            stroke-width: 2.5px;
+            transition: all 0.3s;
+        }
+        
+        .node:hover circle {
+            stroke-width: 4px;
+            filter: brightness(1.1);
+        }
+        
+        .node text {
+            font-size: 13px;
+            font-weight: 500;
+            pointer-events: none;
+            text-shadow: 0 1px 3px rgba(255,255,255,0.8);
+        }
+        
+        .link {
+            fill: none;
+            stroke-width: 2px;
+            opacity: 0.6;
+            transition: all 0.3s;
+        }
+        
+        .link:hover {
+            opacity: 1;
+            stroke-width: 3px;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            max-width: 300px;
+            z-index: 2000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        .tooltip.show {
+            opacity: 1;
+        }
+        
+        .tooltip-title {
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+        
+        .tooltip-content {
+            line-height: 1.5;
+            color: #ddd;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+        
+        .legend-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="mindmap-container"></div>
+    
+    <div class="controls">
+        <button class="control-btn" onclick="resetView()">🔄 초기화</button>
+        <button class="control-btn" onclick="expandAll()">➕ 전체 펼치기</button>
+        <button class="control-btn" onclick="collapseAll()">➖ 전체 접기</button>
+    </div>
+    
+    <div class="info-panel">
+        <h3>💡 사용 방법</h3>
+        <p>• 드래그: 화면 이동<br>• 스크롤: 확대/축소<br>• 노드 클릭: 하위 항목 펼치기/접기<br>• 노드 호버: 상세 정보 보기</p>
+    </div>
+    
+    <div class="legend">
+        <div class="legend-title">범례</div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #667eea;"></div>
+            <span>주제 (Topic)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #f093fb;"></div>
+            <span>하위 주제 (Subtopic)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #4facfe;"></div>
+            <span>세부 사항 (Detail)</span>
+        </div>
+    </div>
+    
+    <div class="tooltip" id="tooltip"></div>
+    
+    <script>
+        const mindmapData = MINDMAP_DATA_PLACEHOLDER;
+        
+        // 색상 스킴
+        const colors = {
+            root: '#8b5cf6',
+            topic: '#667eea',
+            subtopic: '#f093fb',
+            detail: '#4facfe'
+        };
+        
+        // SVG 설정
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        const svg = d3.select('#mindmap-container')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+        
+        // 줌 기능
+        const g = svg.append('g');
+        
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 4])
+            .on('zoom', (event) => {
+                g.attr('transform', event.transform);
+            });
+        
+        svg.call(zoom);
+        
+        // 데이터 변환
+        function transformData(data) {
+            const root = {
+                name: '문서 마인드맵',
+                type: 'root',
+                children: []
+            };
+            
+            if (data && data.topics) {
+                data.topics.forEach(topic => {
+                    const topicNode = {
+                        name: topic.name,
+                        type: 'topic',
+                        summary: topic.summary,
+                        citations: topic.citations,
+                        children: []
+                    };
+                    
+                    if (topic.subtopics && topic.subtopics.length > 0) {
+                        topic.subtopics.forEach(subtopic => {
+                            const subtopicNode = {
+                                name: subtopic.name,
+                                type: 'subtopic',
+                                citations: subtopic.citations,
+                                children: []
+                            };
+                            
+                            if (subtopic.details && subtopic.details.length > 0) {
+                                subtopic.details.forEach(detail => {
+                                    subtopicNode.children.push({
+                                        name: detail.name || detail,
+                                        type: 'detail'
+                                    });
+                                });
+                            }
+                            
+                            topicNode.children.push(subtopicNode);
+                        });
+                    }
+                    
+                    root.children.push(topicNode);
+                });
+            }
+            
+            return root;
+        }
+        
+        // 트리 레이아웃
+        const treeLayout = d3.tree()
+            .size([2 * Math.PI, Math.min(width, height) / 2 - 150])
+            .separation((a, b) => (a.parent == b.parent ? 1 : 2) / a.depth);
+        
+        const rootData = transformData(mindmapData);
+        const root = d3.hierarchy(rootData);
+        
+        root.descendants().forEach(d => {
+            d._children = d.children;
+            if (d.depth > 1) {
+                d.children = null;
+            }
+        });
+        
+        treeLayout(root);
+        
+        // 링크 그리기
+        const linkGroup = g.append('g').attr('class', 'links');
+        const nodeGroup = g.append('g').attr('class', 'nodes');
+        
+        function update(source) {
+            treeLayout(root);
+            
+            // 링크 업데이트
+            const links = linkGroup.selectAll('.link')
+                .data(root.links(), d => d.target.data.name);
+            
+            links.exit().remove();
+            
+            const linkEnter = links.enter()
+                .append('path')
+                .attr('class', 'link')
+                .attr('stroke', d => colors[d.target.data.type] || '#999');
+            
+            linkEnter.merge(links)
+                .attr('d', d3.linkRadial()
+                    .angle(d => d.x)
+                    .radius(d => d.y));
+            
+            // 노드 업데이트
+            const nodes = nodeGroup.selectAll('.node')
+                .data(root.descendants(), d => d.data.name);
+            
+            nodes.exit().remove();
+            
+            const nodeEnter = nodes.enter()
+                .append('g')
+                .attr('class', 'node')
+                .on('click', (event, d) => {
+                    if (d.children) {
+                        d._children = d.children;
+                        d.children = null;
+                    } else if (d._children) {
+                        d.children = d._children;
+                        d._children = null;
+                    }
+                    update(d);
+                })
+                .on('mouseover', (event, d) => showTooltip(event, d))
+                .on('mouseout', hideTooltip);
+            
+            nodeEnter.append('circle')
+                .attr('r', d => d.depth === 0 ? 12 : d.depth === 1 ? 10 : d.depth === 2 ? 8 : 6)
+                .attr('fill', d => colors[d.data.type] || '#999')
+                .attr('stroke', '#fff');
+            
+            nodeEnter.append('text')
+                .attr('dy', '0.31em')
+                .attr('x', d => d.x < Math.PI === !d.children ? 6 : -6)
+                .attr('text-anchor', d => d.x < Math.PI === !d.children ? 'start' : 'end')
+                .attr('transform', d => d.x >= Math.PI ? 'rotate(180)' : null)
+                .text(d => {
+                    const maxLength = 20;
+                    return d.data.name.length > maxLength 
+                        ? d.data.name.substring(0, maxLength) + '...' 
+                        : d.data.name;
+                })
+                .style('fill', '#333')
+                .style('font-size', d => d.depth === 0 ? '15px' : d.depth === 1 ? '13px' : '11px');
+            
+            nodeEnter.merge(nodes)
+                .attr('transform', d => `
+                    rotate(${d.x * 180 / Math.PI - 90})
+                    translate(${d.y},0)
+                `);
+        }
+        
+        // 툴팁
+        function showTooltip(event, d) {
+            const tooltip = document.getElementById('tooltip');
+            let content = `<div class="tooltip-title">${d.data.name}</div>`;
+            
+            if (d.data.summary) {
+                content += `<div class="tooltip-content">${d.data.summary}</div>`;
+            }
+            if (d.data.citations) {
+                content += `<div class="tooltip-content" style="margin-top: 6px; color: #aaa;">📎 ${d.data.citations}</div>`;
+            }
+            
+            tooltip.innerHTML = content;
+            tooltip.style.left = event.pageX + 15 + 'px';
+            tooltip.style.top = event.pageY + 15 + 'px';
+            tooltip.classList.add('show');
+        }
+        
+        function hideTooltip() {
+            document.getElementById('tooltip').classList.remove('show');
+        }
+        
+        // 컨트롤 함수
+        function resetView() {
+            svg.transition()
+                .duration(750)
+                .call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2));
+        }
+        
+        function expandAll() {
+            root.descendants().forEach(d => {
+                if (d._children) {
+                    d.children = d._children;
+                    d._children = null;
+                }
+            });
+            update(root);
+        }
+        
+        function collapseAll() {
+            root.descendants().forEach(d => {
+                if (d.depth > 1 && d.children) {
+                    d._children = d.children;
+                    d.children = null;
+                }
+            });
+            update(root);
+        }
+        
+        // 초기 렌더링
+        g.attr('transform', `translate(${width / 2},${height / 2})`);
+        update(root);
+    </script>
+</body>
+</html>

@@ -14,9 +14,14 @@ import {
   FileType,
   Circle,
   CircleCheck,
+  Brain,
+  RefreshCw,
+  Network,
+  FileBarChart,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import SummaryModal from './SummaryModal';
+import MindmapModal from './MindmapModal';
 import Swal from 'sweetalert2';
 
 interface RightBoxProps {
@@ -41,11 +46,22 @@ const RightBox: React.FC<RightBoxProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 탭 상태
+  const [activeTab, setActiveTab] = useState<'summary' | 'mindmap' | 'report'>('summary');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   // 모달 관련 상태
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
+  const [mindmapModalOpen, setMindmapModalOpen] = useState(false);
   const [modalFile, setModalFile] = useState<string>('');
 
   const [checkedSummarizes, setCheckedSummarizes] = useState<string[]>([]);
+  const [checkedMindmaps, setCheckedMindmaps] = useState<string[]>([]);
+  const [checkedReports, setCheckedReports] = useState<string[]>([]);
+
+  // 마인드맵 목록
+  const [mindmaps, setMindmaps] = useState<string[]>([]);
+  const [isMindmapsLoading, setIsMindmapsLoading] = useState(false);
 
   const handleOpenModal = (filename: string) => {
     setSummaryModalOpen(true);
@@ -57,29 +73,75 @@ const RightBox: React.FC<RightBoxProps> = ({
     setModalFile('');
   };
 
+  const handleOpenMindmapModal = (filename: string) => {
+    setMindmapModalOpen(true);
+    setModalFile(filename);
+  };
+
+  const handleCloseMindmapModal = () => {
+    setMindmapModalOpen(false);
+    setModalFile('');
+  };
+
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      setCheckedSummarizes([...summarizedFiles]);
-    } else {
-      setCheckedSummarizes([]);
+    if (activeTab === 'summary') {
+      if (e.target.checked) {
+        setCheckedSummarizes([...summarizedFiles]);
+      } else {
+        setCheckedSummarizes([]);
+      }
+    } else if (activeTab === 'mindmap') {
+      if (e.target.checked) {
+        setCheckedMindmaps([...mindmaps]);
+      } else {
+        setCheckedMindmaps([]);
+      }
+    } else if (activeTab === 'report') {
+      if (e.target.checked) {
+        setCheckedReports([]);
+      } else {
+        setCheckedReports([]);
+      }
     }
   };
 
   const handleToggle = (file: string) => () => {
-    const currentIndex = checkedSummarizes.indexOf(file);
-    const newChecked = [...checkedSummarizes];
-
-    if (currentIndex === -1) {
-      newChecked.push(file);
-    } else {
-      newChecked.splice(currentIndex, 1);
+    if (activeTab === 'summary') {
+      const currentIndex = checkedSummarizes.indexOf(file);
+      const newChecked = [...checkedSummarizes];
+      if (currentIndex === -1) {
+        newChecked.push(file);
+      } else {
+        newChecked.splice(currentIndex, 1);
+      }
+      setCheckedSummarizes(newChecked);
+    } else if (activeTab === 'mindmap') {
+      const currentIndex = checkedMindmaps.indexOf(file);
+      const newChecked = [...checkedMindmaps];
+      if (currentIndex === -1) {
+        newChecked.push(file);
+      } else {
+        newChecked.splice(currentIndex, 1);
+      }
+      setCheckedMindmaps(newChecked);
     }
-
-    setCheckedSummarizes(newChecked);
   };
 
   const handleDelete = async () => {
-    if (checkedSummarizes.length === 0) return;
+    let itemsToDelete: string[] = [];
+    let itemType = '';
+
+    if (activeTab === 'summary') {
+      if (checkedSummarizes.length === 0) return;
+      itemsToDelete = checkedSummarizes;
+      itemType = '요약';
+    } else if (activeTab === 'mindmap') {
+      if (checkedMindmaps.length === 0) return;
+      itemsToDelete = checkedMindmaps;
+      itemType = '마인드맵';
+    } else {
+      return;
+    }
 
     const result = await Swal.fire({
       title: '정말 삭제하시겠습니까?',
@@ -93,23 +155,33 @@ const RightBox: React.FC<RightBoxProps> = ({
 
     if (result.isConfirmed) {
       try {
-        const response = await api.deleteSummary(checkedSummarizes);
-        if (response.data?.deleted_files && response.data.deleted_files.length > 0) {
-          setCheckedSummarizes([]);
-          Swal.fire('삭제 완료!', '요약이 삭제되었습니다.', 'success');
-          queryClient.invalidateQueries({ queryKey: ['summaries'] });
-        } else {
-          const errorMessage =
-            response.data?.failed_files?.length > 0
-              ? `요약 삭제 실패: ${response.data.failed_files
-                  .map((f: { filename: string; reason: string }) => f.filename)
-                  .join(', ')}`
-              : '요약 삭제에 실패했습니다.';
-          Swal.fire('삭제 실패!', errorMessage, 'error');
+        if (activeTab === 'summary') {
+          const response = await api.deleteSummary(itemsToDelete);
+          if (response.data?.deleted_files && response.data.deleted_files.length > 0) {
+            setCheckedSummarizes([]);
+            Swal.fire('삭제 완료!', `${itemType}이 삭제되었습니다.`, 'success');
+            queryClient.invalidateQueries({ queryKey: ['summaries'] });
+          } else {
+            const errorMessage =
+              response.data?.failed_files?.length > 0
+                ? `${itemType} 삭제 실패: ${response.data.failed_files
+                    .map((f: { filename: string; reason: string }) => f.filename)
+                    .join(', ')}`
+                : `${itemType} 삭제에 실패했습니다.`;
+            Swal.fire('삭제 실패!', errorMessage, 'error');
+          }
+        } else if (activeTab === 'mindmap') {
+          // 마인드맵 삭제는 개별 API 호출
+          for (const filename of itemsToDelete) {
+            await api.deleteMindmap(filename);
+          }
+          setCheckedMindmaps([]);
+          Swal.fire('삭제 완료!', `${itemType}이 삭제되었습니다.`, 'success');
+          await loadMindmaps();
         }
       } catch (error) {
-        console.error('요약 삭제 실패:', error);
-        Swal.fire('오류 발생!', '요약 삭제 중 오류가 발생했습니다.', 'error');
+        console.error(`${itemType} 삭제 실패:`, error);
+        Swal.fire('오류 발생!', `${itemType} 삭제 중 오류가 발생했습니다.`, 'error');
       }
     }
   };
@@ -117,6 +189,40 @@ const RightBox: React.FC<RightBoxProps> = ({
   useEffect(() => {
     setError(null);
   }, [selectedFiles]);
+
+  // 새로고침 핸들러
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      if (activeTab === 'summary') {
+        await queryClient.invalidateQueries({ queryKey: ['summaries'] });
+      } else if (activeTab === 'mindmap') {
+        await loadMindmaps();
+      }
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
+
+  // 마인드맵 목록 로드
+  const loadMindmaps = async () => {
+    setIsMindmapsLoading(true);
+    try {
+      const response = await api.getMindmaps();
+      setMindmaps(response.data.mindmaps || []);
+    } catch (error) {
+      console.error('마인드맵 목록 로드 실패:', error);
+    } finally {
+      setIsMindmapsLoading(false);
+    }
+  };
+
+  // 마인드맵 탭 활성화 시 목록 로드
+  useEffect(() => {
+    if (activeTab === 'mindmap') {
+      loadMindmaps();
+    }
+  }, [activeTab]);
 
   const formatFileName = (fileName: string) => {
     // 'summary_' 접두사 제거
@@ -179,14 +285,55 @@ const RightBox: React.FC<RightBoxProps> = ({
         {/* Header */}
         <div
           className={`flex items-center ${
-            collapsed ? 'px-1 py-2 justify-center' : 'px-4 py-2 justify-between'
+            collapsed ? 'justify-center px-1 py-2' : 'justify-between px-4 py-2'
           } border-b border-gray-200 flex-shrink-0 min-h-[52px]`}
         >
-          {!collapsed && <h2 className="text-lg font-bold">요약</h2>}
+          {!collapsed && <h2 className="text-lg font-bold">결과</h2>}
           <button onClick={onToggleCollapse} className="p-1 rounded-md hover:bg-gray-100">
             {collapsed ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
           </button>
         </div>
+
+        {/* Tabs */}
+        {!collapsed && (
+          <div className="flex items-center justify-between px-2 py-2 border-b border-gray-200 bg-gray-50/50">
+            <div className="flex gap-1">
+              <button
+                onClick={() => setActiveTab('summary')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  activeTab === 'summary'
+                    ? 'bg-blue-100 text-blue-700 font-semibold'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <FileText size={16} />
+                요약
+              </button>
+              <button
+                onClick={() => setActiveTab('mindmap')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  activeTab === 'mindmap'
+                    ? 'bg-purple-100 text-purple-700 font-semibold'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <Network size={16} />
+                마인드맵
+              </button>
+              <button
+                onClick={() => setActiveTab('report')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+                  activeTab === 'report'
+                    ? 'bg-green-100 text-green-700 font-semibold'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <FileBarChart size={16} />
+                보고서
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         {collapsed ? (
@@ -213,15 +360,17 @@ const RightBox: React.FC<RightBoxProps> = ({
           </div>
         ) : (
           <div className="flex-grow flex flex-col overflow-hidden">
-            {/* 에러 메시지 */}
-            {error && (
-              <div className="m-2 p-3 bg-red-50 border border-red-200 rounded-md flex items-start flex-shrink-0">
-                <AlertCircle size={16} className="text-red-500 mr-2 mt-0.5" />
-                <p className="text-red-600 text-sm">{error}</p>
-              </div>
-            )}
+            {/* 탭 컨텐츠 */}
+            <>
+              {/* 에러 메시지 */}
+              {error && (
+                <div className="m-2 p-3 bg-red-50 border border-red-200 rounded-md flex items-start flex-shrink-0">
+                  <AlertCircle size={16} className="text-red-500 mr-2 mt-0.5" />
+                  <p className="text-red-600 text-sm">{error}</p>
+                </div>
+              )}
 
-            <div className="h-full flex flex-col flex-grow overflow-hidden">
+              <div className="h-full flex flex-col flex-grow overflow-hidden">
               <div className="flex-shrink-0 flex justify-between items-center p-2 border-b border-gray-200 bg-gray-50/50">
                 <div className="flex items-center gap-2 px-1">
                   <label className="relative flex items-center justify-center h-5 w-5 cursor-pointer">
@@ -229,12 +378,16 @@ const RightBox: React.FC<RightBoxProps> = ({
                       type="checkbox"
                       onChange={handleSelectAll}
                       checked={
-                        summarizedFiles.length > 0 &&
-                        checkedSummarizes.length === summarizedFiles.length
+                        activeTab === 'summary'
+                          ? summarizedFiles.length > 0 && checkedSummarizes.length === summarizedFiles.length
+                          : activeTab === 'mindmap'
+                          ? mindmaps.length > 0 && checkedMindmaps.length === mindmaps.length
+                          : false
                       }
                       className="sr-only"
                     />
-                    {summarizedFiles.length > 0 && checkedSummarizes.length === summarizedFiles.length ? (
+                    {((activeTab === 'summary' && summarizedFiles.length > 0 && checkedSummarizes.length === summarizedFiles.length) ||
+                      (activeTab === 'mindmap' && mindmaps.length > 0 && checkedMindmaps.length === mindmaps.length)) ? (
                       <CircleCheck className="h-5 w-5 text-blue-500" />
                     ) : (
                       <Circle className="h-5 w-5 text-gray-400" />
@@ -242,27 +395,43 @@ const RightBox: React.FC<RightBoxProps> = ({
                   </label>
                   <span className="text-sm font-medium text-gray-700">전체 선택</span>
                 </div>
-                <button
-                  onClick={handleDelete}
-                  disabled={checkedSummarizes.length === 0}
-                  className={`p-1 rounded-md disabled:text-gray-300 disabled:cursor-not-allowed text-gray-600 hover:bg-gray-200`}
-                >
-                  <Trash2 size={18} />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    className="p-1 rounded-md text-gray-600 hover:bg-gray-200 disabled:opacity-50"
+                    title="새로고침"
+                  >
+                    <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    disabled={
+                      activeTab === 'summary'
+                        ? checkedSummarizes.length === 0
+                        : activeTab === 'mindmap'
+                        ? checkedMindmaps.length === 0
+                        : true
+                    }
+                    className={`p-1 rounded-md disabled:text-gray-300 disabled:cursor-not-allowed text-gray-600 hover:bg-gray-200`}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
 
               <div className="flex-grow overflow-y-auto no-scrollbar p-2">
-                {isSummariesLoading ? (
+                {activeTab === 'summary' && isSummariesLoading ? (
                   <div className="flex flex-col items-center justify-center h-[200px] text-gray-400">
                     <Loader2 size={32} className="mb-2 animate-spin" />
                     <p>요약 목록을 불러오는 중...</p>
                   </div>
-                ) : isSummariesError ? (
+                ) : activeTab === 'summary' && isSummariesError ? (
                   <div className="flex flex-col items-center justify-center h-[200px] text-red-400">
                     <AlertCircle size={32} className="mb-2" />
                     <p>목록을 불러오는데 실패했습니다.</p>
                   </div>
-                ) : summarizedFiles.length > 0 ? (
+                ) : activeTab === 'summary' && summarizedFiles.length > 0 ? (
                   <ul className="space-y-2">
                     {summarizedFiles.map((file, index) => {
                       const isChecked = checkedSummarizes.includes(file);
@@ -272,15 +441,7 @@ const RightBox: React.FC<RightBoxProps> = ({
                           onClick={() => handleOpenModal(file)}
                           className="px-1 py-2 mb-2 flex items-center justify-between hover:bg-gray-50 cursor-pointer gap-2"
                         >
-                          <div className="flex items-center flex-grow min-w-0">
-                            <div className="min-w-[40px] flex items-center justify-center">
-                              {getFileIcon(file)}
-                            </div>
-                            <div className="ml-2 truncate">
-                              <span className="text-sm">{formatFileName(file)}</span>
-                            </div>
-                          </div>
-                          <label className="relative flex items-center justify-center h-5 w-5 cursor-pointer mr-1" onClick={e => e.stopPropagation()}>
+                          <label className="relative flex items-center justify-center h-5 w-5 cursor-pointer" onClick={e => e.stopPropagation()}>
                             <input
                               type="checkbox"
                               checked={isChecked}
@@ -293,25 +454,88 @@ const RightBox: React.FC<RightBoxProps> = ({
                               <Circle className="h-5 w-5 text-gray-400" />
                             )}
                           </label>
+                          <div className="flex items-center flex-grow min-w-0">
+                            <div className="min-w-[40px] flex items-center justify-center">
+                              {getFileIcon(file)}
+                            </div>
+                            <div className="ml-2 truncate">
+                              <span className="text-sm">{formatFileName(file)}</span>
+                            </div>
+                          </div>
                         </li>
                       );
                     })}
                   </ul>
+                ) : activeTab === 'mindmap' && isMindmapsLoading ? (
+                  <div className="flex flex-col items-center justify-center h-[200px] text-gray-400">
+                    <Loader2 size={32} className="mb-2 animate-spin" />
+                    <p>마인드맵 목록을 불러오는 중...</p>
+                  </div>
+                ) : activeTab === 'mindmap' && mindmaps.length > 0 ? (
+                  <ul className="space-y-2">
+                    {mindmaps.map((file, index) => {
+                      const isChecked = checkedMindmaps.includes(file);
+                      return (
+                        <li
+                          key={index}
+                          onClick={() => handleOpenMindmapModal(file)}
+                          className="px-1 py-2 mb-2 flex items-center hover:bg-gray-50 cursor-pointer gap-2"
+                        >
+                          <label className="relative flex items-center justify-center h-5 w-5 cursor-pointer" onClick={e => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={handleToggle(file)}
+                              className="sr-only"
+                            />
+                            {isChecked ? (
+                              <CircleCheck className="h-5 w-5 text-blue-500" />
+                            ) : (
+                              <Circle className="h-5 w-5 text-gray-400" />
+                            )}
+                          </label>
+                          <div className="flex items-center flex-grow min-w-0">
+                            <div className="min-w-[40px] flex items-center justify-center">
+                              <div className="bg-purple-100 rounded-md p-1 items-center">
+                                <Network className="text-purple-500" size={20} />
+                              </div>
+                            </div>
+                            <div className="ml-2 truncate">
+                              <span className="text-sm">{file}</span>
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : activeTab === 'report' ? (
+                  <div className="flex flex-col items-center justify-center h-[200px] text-gray-400">
+                    <FileBarChart size={48} className="mb-2" />
+                    <p className="text-center px-4">
+                      보고서 기능은 준비 중입니다.
+                    </p>
+                  </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-[200px] text-gray-400">
                     <FileText size={48} className="mb-2" />
                     <p className="text-center px-4">
-                      파일을 선택하고 '요약 생성하기' 버튼을 클릭하여 문서 요약을 확인해보세요.
+                      {activeTab === 'summary'
+                        ? "파일을 선택하고 '요약' 버튼을 클릭하여 문서 요약을 확인해보세요."
+                        : activeTab === 'mindmap'
+                        ? "파일을 선택하고 '마인드맵' 버튼을 클릭하여 마인드맵을 생성해보세요."
+                        : '보고서 기능은 준비 중입니다.'}
                     </p>
                   </div>
                 )}
               </div>
             </div>
+            </>
           </div>
         )}
       </div>
 
       <SummaryModal open={summaryModalOpen} onClose={handleCloseModal} file={modalFile} />
+      <MindmapModal open={mindmapModalOpen} onClose={handleCloseMindmapModal} file={modalFile} />
     </div>
   );
 };
