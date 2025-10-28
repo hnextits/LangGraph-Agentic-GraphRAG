@@ -9,10 +9,12 @@ import { LeftBox, CenterBox, RightBox, Header } from '@/components/';
 import { useGetFiles } from '@/queries';
 
 export default function Home() {
-  const { data: files, isLoading: isLoadingFiles } = useGetFiles();
+  const { data: filesData, isLoading: isLoadingFiles } = useGetFiles();
+
+  const files = filesData?.files ?? [];
 
   // 파일 있는지 확인
-  const isFiles = files?.length !== 0;
+  const isFiles = files.length !== 0;
 
   const { width, height } = useWindowSize();
 
