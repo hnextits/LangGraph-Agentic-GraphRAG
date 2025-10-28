@@ -7,7 +7,7 @@ RAG 시스템 생성기 - SGLang을 사용하여 로컬에서 모델을 로드�
 
 import os, re, copy, logging
 import threading
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 import sglang as sgl
 
 # 로깅 설정
@@ -67,7 +67,13 @@ class SGLangGenerator:
             self.model_loaded = False
             raise
 
-    def generate_response(self, query: str, results, cancellation_event: Optional[threading.Event] = None) -> Dict[str, Any]:
+    def generate_response(
+        self,
+        query: str,
+        results,
+        cancellation_event: Optional[threading.Event] = None,
+        allowed_document_uuids: Optional[Set[str]] = None,
+    ) -> Dict[str, Any]:
         """
         검색 결과를 기반으로 답변 생성
         """

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, File, UploadFile, BackgroundTasks, Request, Body, Query
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 import os
 import shutil
 from pydantic import BaseModel, field_validator
@@ -23,6 +23,61 @@ from services.rag_service import run_rag_in_background
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1")
+
+UUID_PATTERN = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+
+def _resolve_sources_to_document_uuids(raw_sources: Optional[List[str]]) -> List[str]:
+    """사용자 입력 소스를 document_uuid 목록으로 변환합니다."""
+    logger.info("채팅 요청 소스(raw): %s", raw_sources)
+
+    if not raw_sources:
+        return []
+
+    uuid_list: List[str] = []
+    filenames: List[str] = []
+
+    for item in raw_sources:
+        if not item:
+            continue
+        if UUID_PATTERN.match(item):
+            uuid_list.append(item)
+        else:
+            filenames.append(item)
+
+    if filenames:
+        try:
+            from notebooklm.config import RAGConfig
+            from notebooklm.weaviate_utils import get_document_uuid_map
+
+            config = RAGConfig()
+            client = config.get_weaviate_client()
+            if client:
+                try:
+                    uuid_map = get_document_uuid_map(client, filenames)
+                    for filename in filenames:
+                        resolved = uuid_map.get(filename)
+                        if resolved:
+                            uuid_list.append(resolved)
+                        else:
+                            logger.warning("'%s' 파일에 대한 document_uuid를 찾을 수 없습니다.", filename)
+                finally:
+                    client.close() if hasattr(client, "close") else None
+            else:
+                logger.warning("Weaviate 클라이언트를 초기화할 수 없어 파일명을 UUID로 변환하지 못했습니다.")
+        except Exception as exc:
+            logger.warning("파일명을 document_uuid로 변환하는 중 오류 발생: %s", exc)
+
+    # 중복 제거 및 순서 보존
+    seen: Set[str] = set()
+    unique_uuids: List[str] = []
+    for value in uuid_list:
+        if value and value not in seen:
+            seen.add(value)
+            unique_uuids.append(value)
+
+    logger.info("채팅 요청 소스 변환 후(UUID): %s", unique_uuids)
+    return unique_uuids
 
 # skill.search 모듈에서 필요한 함수 임포트
 try:
@@ -916,6 +971,7 @@ async def chat(query: ChatQuery, request: Request, background_tasks: BackgroundT
     cancellation_event = threading.Event()
     request.app.state.running_tasks[task_id] = cancellation_event
     logger.info(f"[Task {task_id}] 채팅 작업 시작: '{query.query}'")
+    logger.info("[Task %s] 요청으로 전달된 sources(raw): %s", task_id, query.sources)
 
     rag_pipeline = getattr(request.app.state, 'rag_pipeline', None)
     if rag_pipeline is None:
@@ -930,11 +986,16 @@ async def chat(query: ChatQuery, request: Request, background_tasks: BackgroundT
     }
 
     # 백그라운드에서 RAG 파이프라인 실행
+    resolved_sources = _resolve_sources_to_document_uuids(query.sources)
+    logger.info("[Task %s] 변환된 document_uuid 목록: %s", task_id, resolved_sources)
+    source_filter_requested = bool(query.sources)
+
     background_tasks.add_task(
         run_rag_in_background,
         task_id=task_id,
         query=query.query,
-        sources=query.sources,
+        sources=resolved_sources,
+        source_filter_requested=source_filter_requested,
         rag_pipeline=rag_pipeline,
         cancellation_event=cancellation_event,
         tasks_dict=tasks,  # app.state.tasks를 전달

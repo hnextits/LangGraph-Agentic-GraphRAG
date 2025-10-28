@@ -11,7 +11,7 @@ import json
 import logging
 import numpy as np
 import threading
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 import weaviate
 import torch
 
@@ -113,7 +113,43 @@ class TextSearcher:
             logger.error(f"임베딩 생성 중 오류 발생: {e}")
             raise RuntimeError(f"임베딩 생성 실패: {e}") from e
 
-    def search(self, query: str, top_k: int = None, rerank: bool = True, rerank_top_k: int = None, cancellation_event: Optional[threading.Event] = None) -> List[Dict[str, Any]]:
+    def _build_uuid_where_filter(self, allowed_document_uuids: Set[str]) -> Optional[Dict[str, Any]]:
+        """Weaviate where 필터를 구성하여 document_uuid를 제한합니다."""
+        if not allowed_document_uuids:
+            return None
+
+        uuids = [uuid for uuid in allowed_document_uuids if uuid]
+        if not uuids:
+            return None
+
+        if len(uuids) == 1:
+            return {
+                "path": ["document_uuid"],
+                "operator": "Equal",
+                "valueString": uuids[0],
+            }
+
+        return {
+            "operator": "Or",
+            "operands": [
+                {
+                    "path": ["document_uuid"],
+                    "operator": "Equal",
+                    "valueString": uuid,
+                }
+                for uuid in uuids
+            ],
+        }
+
+    def search(
+        self,
+        query: str,
+        top_k: int = None,
+        rerank: bool = True,
+        rerank_top_k: int = None,
+        cancellation_event: Optional[threading.Event] = None,
+        allowed_document_uuids: Optional[Set[str]] = None,
+    ) -> List[Dict[str, Any]]:
         """텍스트 쿼리로 검색을 수행합니다."""
         # config에서 기본값 가져오기
         config = RAGConfig()
@@ -142,15 +178,20 @@ class TextSearcher:
             
             try:
                 # metadata 필드에 대한 서브 셀렉션 문제 해결
-                vector_search_results = (
+                query_builder = (
                     self.client.query
-                    .get(self.class_name, ["text", "title", "source", "page_num"])
+                    .get(self.class_name, ["text", "title", "source", "page_num", "document_uuid"])
                     .with_near_vector({
                         "vector": query_embedding.tolist()
                     })
                     .with_limit(search_top_k)
-                    .do()
                 )
+
+                uuid_filter = self._build_uuid_where_filter(allowed_document_uuids or set())
+                if uuid_filter:
+                    query_builder = query_builder.with_where(uuid_filter)
+
+                vector_search_results = query_builder.do()
                 
                 # 검색 결과 로깅
                 logger.debug(f"Weaviate 검색 결과: {vector_search_results}")
@@ -178,7 +219,8 @@ class TextSearcher:
                         'text': item.get("text", f"인덱스 {i}에 해당하는 문서"),
                         'source': item.get("source", ""),
                         'page_num': item.get("page_num", 0),
-                        'metadata': {}  # 빈 디터리로 대체
+                        'metadata': {},  # 빈 디터리로 대체
+                        'document_uuid': item.get("document_uuid"),
                     }
                     results.append(result)
             
@@ -235,6 +277,16 @@ class TextSearcher:
             elif rerank and results and not self.reranker:
                 logger.warning("리랭커가 초기화되지 않아 리랭킹을 건너뜁니다.")
             
+            if allowed_document_uuids:
+                before_filter_count = len(results)
+                results = [res for res in results if res.get('document_uuid') in allowed_document_uuids]
+                if before_filter_count != len(results):
+                    logger.info(
+                        "텍스트 검색 결과 UUID 필터링 적용: %d -> %d",
+                        before_filter_count,
+                        len(results),
+                    )
+
             return results[:top_k]
             
         except Exception as e:

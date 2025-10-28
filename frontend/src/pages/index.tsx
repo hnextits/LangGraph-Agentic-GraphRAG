@@ -12,6 +12,7 @@ export default function Home() {
   const { data: filesData, isLoading: isLoadingFiles } = useGetFiles();
 
   const files = filesData?.files ?? [];
+  const documentUuidMap = filesData?.document_uuid_map;
 
   // 파일 있는지 확인
   const isFiles = files.length !== 0;
@@ -75,6 +76,7 @@ export default function Home() {
               onToggleCollapse={() => setLeftCollapsed(!leftCollapsed)}
               onFilesSelected={handleFilesSelected}
               files={files}
+              documentUuidMap={documentUuidMap}
               isLoadingFiles={isLoadingFiles}
             />
           </div>

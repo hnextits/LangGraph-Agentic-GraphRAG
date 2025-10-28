@@ -394,6 +394,46 @@ def _collect_document_uuids(
         except Exception as query_err:
             logger.warning(f"metadata.file_path='{path}' 조회 중 오류: {query_err}", exc_info=True) # 상세 오류 로깅
 
+    if not uuids:
+        # 일부 인덱스는 metadata.file_path 대신 source 필드에 경로가 저장되어 있음
+        for path in metadata_paths:
+            if not path:
+                continue
+            logger.debug(f"source 필드로 UUID 검색 시도: '{path}'")
+            try:
+                result = (
+                    client.query
+                    .get(config.WEAVIATE_TEXT_CLASS, fields_to_get)
+                    .with_additional(["id"])
+                    .with_where({
+                        "path": ["source"],
+                        "operator": "Equal",
+                        "valueText": path,
+                    })
+                    .with_limit(10)
+                    .do()
+                )
+                logger.debug(f"source='{path}' 검색 결과: {result}")
+
+                items = (
+                    result
+                    .get("data", {})
+                    .get("Get", {})
+                    .get(config.WEAVIATE_TEXT_CLASS)
+                ) or []
+
+                for item in items:
+                    doc_uuid = item.get("document_uuid")
+                    if doc_uuid:
+                        logger.info(f"source '{path}'에서 UUID '{doc_uuid}' 찾음.")
+                        uuids.add(doc_uuid)
+                        break
+                if uuids:
+                    break
+
+            except Exception as query_err:
+                logger.warning(f"source='{path}' 조회 중 오류: {query_err}", exc_info=True)
+
     if not uuids and chunk_prefix:
         logger.debug(f"파일 경로 검색 실패, 청크 접두사로 UUID 검색 시도: '{chunk_prefix}%'") # <<< 로그 추가
         try:

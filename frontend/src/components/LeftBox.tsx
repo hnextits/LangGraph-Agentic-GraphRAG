@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import api from '@/lib/api';
 import FileContentBox from './FileContentBox';
 import Searchbox from './SearchBox';
 import FileUploadBox from './FileUploadBox';
 import { useQueryClient } from '@tanstack/react-query';
 import AlertModal from './AlertModal';
+import { FileContext } from '@/contexts/FileContext';
 import {
   ChevronLeft,
   ChevronRight,
@@ -38,6 +39,7 @@ interface LeftBoxProps {
   onFileUploadClick?: () => void;
   onFilesSelected?: (files: string[]) => void;
   files: string[] | undefined;
+  documentUuidMap?: Record<string, string>;
   isLoadingFiles: boolean;
 }
 
@@ -47,12 +49,12 @@ const LeftBox: React.FC<LeftBoxProps> = ({
   onFileUploadClick,
   onFilesSelected,
   files,
+  documentUuidMap,
   isLoadingFiles,
 }) => {
   const [sources, setSources] = useState<SourceItem[]>([]);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isFileUploadModalOpen, setIsFileUploadModalOpen] = useState(false);
-  const [checkedFiles, setCheckedFiles] = useState<string[]>([]);
   const [checked, setChecked] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSource, setSelectedSource] = useState<SourceItem | null>(null);
@@ -73,6 +75,14 @@ const LeftBox: React.FC<LeftBoxProps> = ({
   const [isNotSupportSummaryModalOpen, setIsNotSupportSummaryModalOpen] = useState(false); // 요약을 지원하지 않는 팡리 경고 모달
 
   const queryClient = useQueryClient();
+  const {
+    checkedFilenames,
+    setCheckedFilenames,
+    checkedFileUuids,
+    setCheckedFileUuids,
+    documentUuidMap: contextDocumentUuidMap,
+    setDocumentUuidMap,
+  } = useContext(FileContext);
 
   useEffect(() => {
     if (files) {
@@ -84,6 +94,12 @@ const LeftBox: React.FC<LeftBoxProps> = ({
       setSources(newSources);
     }
   }, [files]);
+
+  useEffect(() => {
+    if (documentUuidMap) {
+      setDocumentUuidMap(documentUuidMap);
+    }
+  }, [documentUuidMap, setDocumentUuidMap]);
 
   const handleProcessingStart = (tasks: any[]) => {
     const newSources = tasks.map(task => ({
@@ -105,7 +121,14 @@ const LeftBox: React.FC<LeftBoxProps> = ({
     }
     setChecked(newChecked);
     const newCheckedFiles = newChecked.map(index => sources[index].title);
-    setCheckedFiles(newCheckedFiles);
+    setCheckedFilenames(newCheckedFiles);
+
+    const uuidMap = documentUuidMap ?? contextDocumentUuidMap;
+    const newCheckedUuids = newCheckedFiles
+      .map(filename => uuidMap[filename])
+      .filter((uuid): uuid is string => Boolean(uuid));
+    setCheckedFileUuids(newCheckedUuids);
+
     if (onFilesSelected) {
       onFilesSelected(newCheckedFiles);
     }
@@ -116,13 +139,19 @@ const LeftBox: React.FC<LeftBoxProps> = ({
       const newChecked = sources.map((_, i) => i);
       setChecked(newChecked);
       const newCheckedFiles = sources.map(source => source.title);
-      setCheckedFiles(newCheckedFiles);
+      setCheckedFilenames(newCheckedFiles);
+      const uuidMap = documentUuidMap ?? contextDocumentUuidMap;
+      const newCheckedUuids = newCheckedFiles
+        .map(filename => uuidMap[filename])
+        .filter((uuid): uuid is string => Boolean(uuid));
+      setCheckedFileUuids(newCheckedUuids);
       if (onFilesSelected) {
         onFilesSelected(newCheckedFiles);
       }
     } else {
       setChecked([]);
-      setCheckedFiles([]);
+      setCheckedFilenames([]);
+      setCheckedFileUuids([]);
       if (onFilesSelected) {
         onFilesSelected([]);
       }
@@ -130,17 +159,18 @@ const LeftBox: React.FC<LeftBoxProps> = ({
   };
 
   const handleDelete = () => {
-    if (checkedFiles.length === 0) return;
+    if (checkedFilenames.length === 0) return;
     setIsDeleteModalOpen(true);
   };
 
   const confirmDelete = async () => {
     setIsDeleteModalOpen(false);
     try {
-      const response = await api.deleteFile(checkedFiles);
+      const response = await api.deleteFile(checkedFilenames, documentUuidMap ?? contextDocumentUuidMap);
       if (response.data?.deleted_files?.length > 0) {
         setChecked([]);
-        setCheckedFiles([]);
+        setCheckedFilenames([]);
+        setCheckedFileUuids([]);
         queryClient.invalidateQueries({ queryKey: ['files'] });
         setIsDeleteSuccessModalOpen(true);
       } else {
@@ -272,12 +302,12 @@ const LeftBox: React.FC<LeftBoxProps> = ({
 
   // 요약 생성 핸들러
   const handleGenerateSummary = async () => {
-    if (checkedFiles.length === 0) {
+    if (checkedFilenames.length === 0) {
       setIsSelectFileModalOpen(true);
       return;
     }
 
-    const isNotSupportSummary = checkedFiles.some(file => file.toLowerCase().endsWith('pdf'));
+    const isNotSupportSummary = checkedFilenames.some(file => file.toLowerCase().endsWith('pdf'));
     if (isNotSupportSummary) {
       setIsNotSupportSummaryModalOpen(true);
       return;
@@ -288,7 +318,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
 
     try {
       await api.summarize({
-        filenames: checkedFiles,
+        filenames: checkedFilenames,
       });
       queryClient.invalidateQueries({ queryKey: ['summaries'] });
     } catch (error) {
@@ -516,46 +546,6 @@ const LeftBox: React.FC<LeftBoxProps> = ({
         )}
       </div>
 
-      {/* 파일 내용 모달 */}
-      {isFileUploadModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-medium">{selectedSource?.title || '파일 내용'}</h3>
-              <button
-                onClick={() => setIsFileUploadModalOpen(false)}
-                className="p-1 rounded-md hover:bg-gray-100"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="lucide lucide-x"
-                >
-                  <path d="M18 6 6 18" />
-                  <path d="m6 6 12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="p-0 overflow-auto flex-grow">
-              {isLoading ? (
-                <div className="flex justify-center items-center p-8">
-                  <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
-                </div>
-              ) : (
-                <FileContentBox content={fileContent} />
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* 검색 모달 */}
       <Searchbox
         open={isSearchModalOpen}
@@ -576,7 +566,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={confirmDelete}
         title="정말 삭제하시겠습니까?"
-        content={`선택한 ${checkedFiles.length}개의 파일을 삭제합니다. 이 작업은 되돌릴 수 없습니다.`}
+        content={`선택한 ${checkedFilenames.length}개의 파일을 삭제합니다. 이 작업은 되돌릴 수 없습니다.`}
         iconType="warning"
         confirmButtonText="삭제"
         cancelButtonText="취소"

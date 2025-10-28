@@ -3,7 +3,7 @@ import sys
 import importlib.util
 import logging
 import threading
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Set
 import re
 from utils.helpers import process_response_with_images, encode_image_to_base64
 
@@ -158,6 +158,7 @@ def run_rag_in_background(
     task_id: str,
     query: str,
     sources: List[str],
+    source_filter_requested: bool,
     rag_pipeline,
     cancellation_event: threading.Event,
     tasks_dict: Dict[str, Any],
@@ -173,7 +174,13 @@ def run_rag_in_background(
 
     tasks_dict[task_id].update({"status": "processing", "message": "RAG 파이프라인 실행 중..."})
     try:
-        response_data = get_rag_response(query, sources, rag_pipeline, cancellation_event)
+        response_data = get_rag_response(
+            query,
+            sources,
+            rag_pipeline,
+            cancellation_event,
+            source_filter_requested=source_filter_requested,
+        )
         final_status = {
             "status": "completed",
             "message": "채팅 작업이 완료되었습니다.",
@@ -206,13 +213,59 @@ def run_rag_in_background(
             del running_tasks_dict[task_id]
             logger.info(f"[Task {task_id}] running_tasks에서 제거 완료.")
 
-def get_rag_response(query: str, sources: List[str], rag_pipeline, cancellation_event: Optional[threading.Event] = None) -> Dict[str, Any]:
+def _filter_results_by_uuid(results: List[Dict[str, Any]], allowed_uuids: Set[str]) -> List[Dict[str, Any]]:
+    """주어진 document_uuid 집합에 속하는 결과만 필터링합니다."""
+    if not results or not allowed_uuids:
+        return [] if allowed_uuids else results
+
+    filtered = [item for item in results if item.get('document_uuid') in allowed_uuids]
+
+    if not filtered:
+        logger.info("document_uuid 필터링 후 결과가 없습니다.")
+        return []
+
+    logger.info("document_uuid 필터링 적용: %d -> %d", len(results), len(filtered))
+    return filtered
+
+
+def get_rag_response(
+    query: str,
+    sources: List[str],
+    rag_pipeline,
+    cancellation_event: Optional[threading.Event] = None,
+    source_filter_requested: bool = False,
+) -> Dict[str, Any]:
     """
     사용자 질문과 소스 정보를 받아 RAG 파이프라인을 통해 답변과 이미지를 생성합니다.
     """
     try:
         # RAG 파이프라인 실행 (취소 이벤트 전달)
-        results = rag_pipeline.process_query(query=query, top_k=5, cancellation_event=cancellation_event)
+        allowed_uuids: Set[str] = {src for src in sources if src}
+
+        if source_filter_requested and not allowed_uuids:
+            logger.warning(
+                "소스 필터링을 요청했지만 document_uuid를 확인하지 못했습니다. 원본 소스: %s",
+                sources,
+            )
+
+        results = rag_pipeline.process_query(
+            query=query,
+            top_k=5,
+            cancellation_event=cancellation_event,
+            allowed_document_uuids=allowed_uuids or None,
+        )
+
+        if allowed_uuids:
+            logger.info("선택된 document_uuid로 검색 결과 필터링을 수행합니다: %s", allowed_uuids)
+
+            text_documents = results.get('text_documents')
+            if isinstance(text_documents, list):
+                results['text_documents'] = _filter_results_by_uuid(text_documents, allowed_uuids)
+
+            image_documents = results.get('image_documents')
+            if isinstance(image_documents, list):
+                results['image_documents'] = _filter_results_by_uuid(image_documents, allowed_uuids)
+
         raw_answer = results.get('answer', '답변을 생성하는 데 실패했습니다.')
         
         # 마크다운 테이블 처리 - 줄바꿈 문제 해결
