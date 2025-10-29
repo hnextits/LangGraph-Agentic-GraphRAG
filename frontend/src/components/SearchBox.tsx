@@ -30,30 +30,16 @@ const SearchBox: React.FC<SearchBoxProps> = ({ open, onClose, onProcessingStart 
   // 모달이 열릴 때마다 상태 초기화
   useEffect(() => {
     if (open) {
-      setSearchTerm('검색어를 입력하세요.');
+      setSearchTerm('');
       setResults([]);
       setChecked([]);
       setLoading(false);
     }
   }, [open]);
 
-  // 검색창 포커스 핸들러
-  const handleFocus = () => {
-    if (searchTerm === '검색어를 입력하세요.') {
-      setSearchTerm('');
-    }
-  };
-
-  // 검색창 블러 핸들러
-  const handleBlur = () => {
-    if (!searchTerm.trim()) {
-      setSearchTerm('검색어를 입력하세요.');
-    }
-  };
-
   // 검색 실행 핸들러
   const handleSearch = async () => {
-    if (!searchTerm.trim() || searchTerm === '검색어를 입력하세요.') {
+    if (!searchTerm.trim()) {
       alert('검색어를 입력해주세요!');
       return;
     }
@@ -162,8 +148,6 @@ const SearchBox: React.FC<SearchBoxProps> = ({ open, onClose, onProcessingStart 
             className="flex-grow border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
             autoFocus
             placeholder="검색어를 입력하세요."
             onKeyPress={e => {

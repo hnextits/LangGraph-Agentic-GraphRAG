@@ -420,16 +420,16 @@ const RightBox: React.FC<RightBoxProps> = ({
                 </div>
               </div>
 
-              <div className="flex-grow overflow-y-auto no-scrollbar p-2">
+              <div className="flex-grow overflow-y-auto no-scrollbar p-2 relative">
                 {activeTab === 'summary' && isSummariesLoading ? (
-                  <div className="flex flex-col items-center justify-center h-[200px] text-gray-400">
-                    <Loader2 size={32} className="mb-2 animate-spin" />
-                    <p>요약 목록을 불러오는 중...</p>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                    <Loader2 size={48} className="mb-4 animate-spin" />
+                    <p className="text-lg font-medium">요약 목록을 불러오는 중...</p>
                   </div>
                 ) : activeTab === 'summary' && isSummariesError ? (
-                  <div className="flex flex-col items-center justify-center h-[200px] text-red-400">
-                    <AlertCircle size={32} className="mb-2" />
-                    <p>목록을 불러오는데 실패했습니다.</p>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-red-400">
+                    <AlertCircle size={48} className="mb-4" />
+                    <p className="text-lg font-medium">목록을 불러오는데 실패했습니다.</p>
                   </div>
                 ) : activeTab === 'summary' && summarizedFiles.length > 0 ? (
                   <ul className="space-y-2">
@@ -467,9 +467,9 @@ const RightBox: React.FC<RightBoxProps> = ({
                     })}
                   </ul>
                 ) : activeTab === 'mindmap' && isMindmapsLoading ? (
-                  <div className="flex flex-col items-center justify-center h-[200px] text-gray-400">
-                    <Loader2 size={32} className="mb-2 animate-spin" />
-                    <p>마인드맵 목록을 불러오는 중...</p>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                    <Loader2 size={48} className="mb-4 animate-spin" />
+                    <p className="text-lg font-medium">마인드맵 목록을 불러오는 중...</p>
                   </div>
                 ) : activeTab === 'mindmap' && mindmaps.length > 0 ? (
                   <ul className="space-y-2">
@@ -509,20 +509,26 @@ const RightBox: React.FC<RightBoxProps> = ({
                     })}
                   </ul>
                 ) : activeTab === 'report' ? (
-                  <div className="flex flex-col items-center justify-center h-[200px] text-gray-400">
-                    <FileBarChart size={48} className="mb-2" />
-                    <p className="text-center px-4">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                    <FileBarChart size={64} className="mb-4" />
+                    <p className="text-center px-6 text-lg font-medium leading-relaxed">
                       보고서 기능은 준비 중입니다.
                     </p>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-[200px] text-gray-400">
-                    <FileText size={48} className="mb-2" />
-                    <p className="text-center px-4">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                    {activeTab === 'summary' ? (
+                      <FileText size={64} className="mb-4 text-blue-400" />
+                    ) : activeTab === 'mindmap' ? (
+                      <Network size={64} className="mb-4 text-purple-400" />
+                    ) : (
+                      <FileBarChart size={64} className="mb-4 text-green-400" />
+                    )}
+                    <p className="text-center px-6 text-lg font-medium leading-relaxed max-w-md whitespace-pre-line">
                       {activeTab === 'summary'
-                        ? "파일을 선택하고 '요약' 버튼을 클릭하여 문서 요약을 확인해보세요."
+                        ? "파일을 선택하고 '요약' 버튼을 클릭하여\n문서 요약을 확인해보세요."
                         : activeTab === 'mindmap'
-                        ? "파일을 선택하고 '마인드맵' 버튼을 클릭하여 마인드맵을 생성해보세요."
+                        ? "파일을 선택하고 '마인드맵' 버튼을 클릭하여\n마인드맵을 생성해보세요."
                         : '보고서 기능은 준비 중입니다.'}
                     </p>
                   </div>

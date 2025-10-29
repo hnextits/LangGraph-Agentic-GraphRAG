@@ -3,6 +3,7 @@ import api from '@/lib/api';
 import FileContentBox from './FileContentBox';
 import Searchbox from './SearchBox';
 import FileUploadBox from './FileUploadBox';
+import ReportModal from './ReportModal';
 import { useQueryClient } from '@tanstack/react-query';
 import AlertModal from './AlertModal';
 import { FileContext } from '@/contexts/FileContext';
@@ -85,6 +86,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
 
   // 보고서 관련 상태
   const [isReportLoading, setIsReportLoading] = useState<boolean>(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const queryClient = useQueryClient();
   const {
@@ -343,12 +345,12 @@ const LeftBox: React.FC<LeftBoxProps> = ({
 
   // 마인드맵 생성 핸들러
   const handleGenerateMindmap = async () => {
-    if (checkedFiles.length === 0) {
+    if (checkedFilenames.length === 0) {
       setIsSelectFileForMindmapModalOpen(true);
       return;
     }
 
-    if (checkedFiles.length > 1) {
+    if (checkedFilenames.length > 1) {
       setMindmapErrorMessage('마인드맵은 한 번에 하나의 파일만 생성할 수 있습니다.');
       setIsMindmapErrorModalOpen(true);
       return;
@@ -358,7 +360,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
 
     try {
       const response = await api.generateMindmap({
-        filename: checkedFiles[0],
+        filename: checkedFilenames[0],
         max_topics: 8,
       });
       
@@ -375,15 +377,25 @@ const LeftBox: React.FC<LeftBoxProps> = ({
     }
   };
 
-  // 보고서 생성 핸들러 (추후 구현)
+  // 보고서 생성 핸들러
   const handleGenerateReport = async () => {
-    if (checkedFiles.length === 0) {
-      alert('보고서를 생성할 파일을 선택해주세요.');
-      return;
+    setIsReportModalOpen(true);
+  };
+
+  // 보고서 생성 실행
+  const handleReportGenerate = async (file: File, templateType: string) => {
+    setIsReportLoading(true);
+    try {
+      // TODO: 보고서 생성 API 구현
+      console.log('보고서 생성:', file.name, templateType);
+      // await api.generateReport({ file, templateType });
+      alert(`${templateType} 양식으로 보고서 생성이 시작되었습니다.`);
+    } catch (error) {
+      console.error('보고서 생성 실패:', error);
+      alert('보고서 생성 중 오류가 발생했습니다.');
+    } finally {
+      setIsReportLoading(false);
     }
-    
-    // TODO: 보고서 생성 API 구현
-    alert('보고서 생성 기능은 준비 중입니다.');
   };
 
   return (
@@ -743,6 +755,13 @@ const LeftBox: React.FC<LeftBoxProps> = ({
         iconType="error"
         confirmButtonText={null}
         cancelButtonText={null}
+      />
+
+      {/* 보고서 생성 모달 */}
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        onGenerate={handleReportGenerate}
       />
     </div>
   );

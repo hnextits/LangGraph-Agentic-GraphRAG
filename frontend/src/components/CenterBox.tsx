@@ -193,7 +193,7 @@ const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
       </div>
       {/* Message Display Area */}
       <div className="flex-grow overflow-auto p-2 relative">
-        {!isFiles && messages.length === 0 ? (
+        {(!isFiles || messages.length === 0) ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <ChatInit />
           </div>
