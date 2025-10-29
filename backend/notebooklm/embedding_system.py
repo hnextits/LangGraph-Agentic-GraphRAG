@@ -27,7 +27,7 @@ from shared_embedding import shared_embedding
 import sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from config import RAGConfig
-from weaviate_utils import create_schema, add_document, batch_import_text_documents
+from weaviate_utils import create_schema, batch_import_text_documents
 
 # 로깅 설정
 logger = logging.getLogger(__name__)

@@ -26,7 +26,7 @@ try:
     object_count = count_result["data"]["Aggregate"][TEXT_CLASS_NAME][0]["meta"]["count"]
     
     # 이전에 132개의 청크를 만들었으므로, 최소 132개 이상이어야 합니다.
-    print(f"\n✅ Weaviate 클래스 '{TEXT_CLASS_NAME}'의 총 객체 수: {object_count}개")
+    print(f"\n Weaviate 클래스 '{TEXT_CLASS_NAME}'의 총 객체 수: {object_count}개")
     print(datetime.datetime.now())
 
     if object_count > 0:
