@@ -86,43 +86,46 @@ class VectorDBService:
 
     
     def _init_schema(self, content_type: str):
-        """Weaviate 스키마 초기화"""
+        """Weaviate 스키마 초기화 (v4 API)"""
+        from weaviate.classes.config import Configure, Property, DataType
+        
         try:
             # 텍스트 문서 스키마 처리
             text_class_name = self.config.WEAVIATE_TEXT_CLASS
-            if content_type == 'text' and self.recreate_schema and self.client.schema.exists(text_class_name):
+            if content_type == 'text' and self.recreate_schema and self.client.collections.exists(text_class_name):
                 logger.warning(f"기존 텍스트 클래스 '{text_class_name}'를 삭제합니다.")
-                self.client.schema.delete_class(text_class_name)
-            create_schema(self.client, recreate=False) # 항상 생성 시도는 하되, 중복 생성은 방지
+                self.client.collections.delete(text_class_name)
+            create_schema(self.client, recreate=False)
 
             # 이미지 클래스 스키마 처리
             image_class_name = self.config.WEAVIATE_IMAGE_CLASS
-            if content_type == 'image' and self.recreate_schema and self.client.schema.exists(image_class_name):
+            if content_type == 'image' and self.recreate_schema and self.client.collections.exists(image_class_name):
                 logger.warning(f"기존 이미지 클래스 '{image_class_name}'를 삭제합니다.")
-                self.client.schema.delete_class(image_class_name)
+                self.client.collections.delete(image_class_name)
 
-            if not self.client.schema.exists(image_class_name):
+            if not self.client.collections.exists(image_class_name):
                 logger.info(f"'{image_class_name}' 클래스를 새로 생성합니다.")
-                image_class = {
-                    "class": image_class_name,
-                    "description": "이미지 메타데이터와 임베딩을 저장하는 클래스",
-                    "vectorizer": "none",
-                    "properties": [
-                        {"name": "title", "dataType": ["text"]},
-                        {"name": "caption", "dataType": ["text"]},
-                        {"name": "text", "dataType": ["text"]},
-                        {"name": "image_path", "dataType": ["text"]},
-                        {"name": "page_num", "dataType": ["int"]},
-                        {"name": "con_type", "dataType": ["text"]},
-                        {"name": "metadata", "dataType": ["object"], "nestedProperties": [
-                            {"name": "document_id", "dataType": ["text"]},
-                            {"name": "content_type", "dataType": ["text"]},
-                            {"name": "file_path", "dataType": ["text"]}
-                        ]},
-                        {"name": "tags", "dataType": ["text[]"]}
+                self.client.collections.create(
+                    name=image_class_name,
+                    description="이미지 메타데이터와 임베딩을 저장하는 클래스",
+                    vectorizer_config=Configure.Vectorizer.none(),
+                    properties=[
+                        Property(name="title", data_type=DataType.TEXT),
+                        Property(name="caption", data_type=DataType.TEXT),
+                        Property(name="text", data_type=DataType.TEXT),
+                        Property(name="image_path", data_type=DataType.TEXT),
+                        Property(name="page_num", data_type=DataType.INT),
+                        Property(name="con_type", data_type=DataType.TEXT),
+                        Property(name="metadata", data_type=DataType.OBJECT,
+                            nested_properties=[
+                                Property(name="document_id", data_type=DataType.TEXT),
+                                Property(name="content_type", data_type=DataType.TEXT),
+                                Property(name="file_path", data_type=DataType.TEXT)
+                            ]
+                        ),
+                        Property(name="tags", data_type=DataType.TEXT_ARRAY)
                     ]
-                }
-                self.client.schema.create_class(image_class)
+                )
                 logger.info(f"이미지 클래스 '{image_class_name}' 생성 완료")
             else:
                 logger.info(f"이미지 클래스 '{image_class_name}'가 이미 존재합니다.")
@@ -243,33 +246,19 @@ class VectorDBService:
             if "tags" in metadata and isinstance(metadata["tags"], list):
                 data_object["tags"] = metadata["tags"]
                 
-            # Weaviate에 객체 추가
+            # Weaviate에 객체 추가 (v4 API)
             try:
-                with self.client.batch as batch:
-                    batch.batch_size = 1  # 단일 객체 추가
-                    batch.add_data_object(
-                        data_object=data_object,
-                        class_name=image_class_name,
-                        uuid=object_uuid,
-                        vector=embedding.tolist()
-                    )
+                collection = self.client.collections.get(image_class_name)
+                collection.data.insert(
+                    properties=data_object,
+                    uuid=object_uuid,
+                    vector=embedding.tolist()
+                )
                 logger.info(f"이미지 객체 추가 완료: ID {object_uuid}")
                 return True
-            except Exception as batch_error:
-                logger.error(f"Weaviate 배치 추가 오류: {batch_error}")
-                # 단일 객체 추가 시도
-                try:
-                    self.client.data_object.create(
-                        data_object=data_object,
-                        class_name=image_class_name,
-                        uuid=object_uuid,
-                        vector=embedding.tolist()
-                    )
-                    logger.info(f"이미지 객체 추가 완료(단일 추가): ID {object_uuid}")
-                    return True
-                except Exception as single_error:
-                    logger.error(f"Weaviate 단일 객체 추가 오류: {single_error}")
-                    return False
+            except Exception as insert_error:
+                logger.error(f"Weaviate 객체 추가 오류: {insert_error}")
+                return False
             
         except Exception as e:
             logger.error(f"Weaviate에 항목 추가 중 오류 발생: {str(e)}")
@@ -673,47 +662,43 @@ class VectorDBService:
                 else:
                     query_vector = query_embedding[0].tolist()
                 
-                # Weaviate 벡터 검색 수행
-                vector_search_results = (
-                    client.query
-                    .get(config.WEAVIATE_IMAGE_CLASS, ["file_path", "caption", "image_id", "content_type"])
-                    .with_near_vector({
-                        "vector": query_vector
-                    })
-                    .with_limit(top_k)
-                    .with_additional(["distance", "id"])
-                    .do()
+                # Weaviate 벡터 검색 수행 (v4 API)
+                collection = client.collections.get(config.WEAVIATE_IMAGE_CLASS)
+                
+                response = collection.query.near_vector(
+                    near_vector=query_vector,
+                    limit=top_k,
+                    return_metadata=['distance'],
+                    return_properties=["file_path", "caption", "image_id", "content_type"]
                 )
                 
                 # 결과 파싱 및 FAISS 형식으로 변환
                 distances = []
                 indices = []
                 
-                if "data" in vector_search_results and "Get" in vector_search_results["data"]:
-                    items = vector_search_results["data"]["Get"].get(config.WEAVIATE_IMAGE_CLASS, [])
+                for i, obj in enumerate(response.objects):
+                    # Weaviate의 distance를 가져오기
+                    distance = obj.metadata.distance if obj.metadata.distance is not None else 1.0
+                    # 거리를 유사도 점수로 변환 (1 - 거리)
+                    similarity = 1.0 - distance if distance <= 1.0 else 0.0
                     
-                    for i, item in enumerate(items):
-                        # Weaviate의 distance를 가져오기
-                        distance = item.get("_additional", {}).get("distance", 1.0)
-                        # 거리를 유사도 점수로 변환 (1 - 거리)
-                        similarity = 1.0 - distance if distance <= 1.0 else 0.0
-                        
-                        # image_id에서 인덱스 추출 (예: "img_42_..." -> 42)
-                        image_id = item.get("image_id", f"img_{i}_unknown")
-                        try:
-                            index = int(image_id.split("_")[1])
-                        except (IndexError, ValueError):
-                            index = i
-                        
-                        distances.append(similarity)
-                        indices.append(index)
-                        
-                        logger.debug(f"Weaviate 검색 결과 {i+1}: ID={item.get('id', 'N/A')}, 유사도={similarity:.4f}")
+                    # image_id에서 인덱스 추출 (예: "img_42_..." -> 42)
+                    image_id = obj.properties.get("image_id", f"img_{i}_unknown")
+                    try:
+                        index = int(image_id.split("_")[1])
+                    except (IndexError, ValueError):
+                        index = i
+                    
+                    distances.append(similarity)
+                    indices.append(index)
+                    
+                    logger.debug(f"Weaviate 검색 결과 {i+1}: ID={obj.uuid}, 유사도={similarity:.4f}")
                 
                 # FAISS 형식과 호환되도록 numpy 배열로 변환
                 if not distances:  # 결과가 없으면 빈 배열 반환
                     return np.array([]), np.array([])
                     
+                client.close()
                 return np.array(distances), np.array(indices)
                 
             except Exception as e:
@@ -742,55 +727,43 @@ class VectorDBService:
             # 쿼리 임베딩 생성
             query_embedding = self.generate_text_embedding(query)
             
-            # 이미지 클래스 이름 가져오기
+            # 이미지 클래스 이름 가져오기 (v4 API)
             image_class_name = self.config.WEAVIATE_IMAGE_CLASS
+            collection = self.client.collections.get(image_class_name)
             
-            # 검색 쿼리 구성
-            search_query = self.client.query.get(image_class_name, [
-                "title", "caption", "text", "image_path", "page_num", "con_type", "metadata"
-            ])
-            
-            # 벡터 검색 적용
-            search_query = search_query.with_near_vector({"vector": query_embedding.tolist()})
-            
-            # 콘텐츠 타입 필터 적용 (있는 경우)
+            # 콘텐츠 타입 필터 적용
+            filters = None
             if content_type:
-                search_query = search_query.with_where({
-                    "path": ["con_type"],
-                    "operator": "Equal",
-                    "valueString": content_type
-                })
+                from weaviate.classes.query import Filter
+                filters = Filter.by_property("con_type").equal(content_type)
             
-            # 결과 수 제한
-            search_query = search_query.with_limit(top_k)
-            
-            # 거리 정보 추가
-            search_query = search_query.with_additional(["distance"])
-            
-            # 검색 실행
-            results = search_query.do()
+            # 벡터 검색 실행
+            response = collection.query.near_vector(
+                near_vector=query_embedding.tolist(),
+                limit=top_k,
+                filters=filters,
+                return_metadata=['distance'],
+                return_properties=["title", "caption", "text", "image_path", "page_num", "con_type", "metadata"]
+            )
             
             # 결과 처리
             processed_results = []
-            if "data" in results and "Get" in results["data"]:
-                items = results["data"]["Get"].get(image_class_name, [])
+            for i, obj in enumerate(response.objects):
+                # 거리를 유사도 점수로 변환 (1 - 거리)
+                distance = obj.metadata.distance if obj.metadata.distance is not None else 1.0
+                similarity_score = 1.0 - distance if distance <= 1.0 else 0.0
                 
-                for i, item in enumerate(items):
-                    # 거리를 유사도 점수로 변환 (1 - 거리)
-                    distance = item.get("_additional", {}).get("distance", 1.0)
-                    similarity_score = 1.0 - distance if distance <= 1.0 else 0.0
-                    
-                    processed_results.append({
-                        'score': similarity_score,
-                        'index': i,
-                        'title': item.get("title", ""),
-                        'caption': item.get("caption", ""),
-                        'text': item.get("text", ""),
-                        'image_path': item.get("image_path", ""),
-                        'page_num': item.get("page_num", 0),
-                        'con_type': item.get("con_type", "image"),
-                        'metadata': item.get("metadata", {})
-                    })
+                processed_results.append({
+                    'score': similarity_score,
+                    'index': i,
+                    'title': obj.properties.get("title", ""),
+                    'caption': obj.properties.get("caption", ""),
+                    'text': obj.properties.get("text", ""),
+                    'image_path': obj.properties.get("image_path", ""),
+                    'page_num': obj.properties.get("page_num", 0),
+                    'con_type': obj.properties.get("con_type", "image"),
+                    'metadata': obj.properties.get("metadata", {})
+                })
             
             return processed_results
             
@@ -812,33 +785,27 @@ class VectorDBService:
                 logger.error("Weaviate 클라이언트가 초기화되지 않았습니다.")
                 return False
             
-            # Weaviate 서버 상태 확인
-            meta_info = self.client.get_meta()
-            if not meta_info:
+            # Weaviate 서버 상태 확인 (v4 API)
+            if not self.client.is_ready():
                 logger.error("Weaviate 서버에 연결할 수 없습니다.")
                 return False
-                
-            # 버전 확인
-            version = meta_info.get("version", "unknown")
-            logger.info(f"Weaviate 서버 버전: {version}")
+            
+            logger.info("Weaviate 서버 연결 정상")
             
             # 이미지 클래스 존재 확인
             image_class_name = self.config.WEAVIATE_IMAGE_CLASS
-            class_exists = self.client.schema.exists(image_class_name)
+            class_exists = self.client.collections.exists(image_class_name)
             
             if not class_exists:
                 logger.warning(f"이미지 클래스 {image_class_name}가 존재하지 않습니다. 스키마를 초기화해야 합니다.")
                 return False
             
-            # 클래스 정보 가져오기
-            class_info = self.client.schema.get(image_class_name)
-            
             # 클래스에 저장된 객체 수 확인
             try:
-                count_result = self.client.query.aggregate(image_class_name).with_meta_count().do()
-                if "data" in count_result and "Aggregate" in count_result["data"]:
-                    count = count_result["data"]["Aggregate"][image_class_name][0]["meta"]["count"]
-                    logger.info(f"이미지 클래스 {image_class_name}에 {count}개의 객체가 저장되어 있습니다.")
+                collection = self.client.collections.get(image_class_name)
+                result = collection.aggregate.over_all(total_count=True)
+                count = result.total_count
+                logger.info(f"이미지 클래스 {image_class_name}에 {count}개의 객체가 저장되어 있습니다.")
             except Exception as count_error:
                 logger.warning(f"객체 수 확인 중 오류: {count_error}")
             

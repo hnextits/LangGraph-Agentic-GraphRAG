@@ -343,12 +343,12 @@ const LeftBox: React.FC<LeftBoxProps> = ({
 
   // 마인드맵 생성 핸들러
   const handleGenerateMindmap = async () => {
-    if (checkedFiles.length === 0) {
+    if (checkedFilenames.length === 0) {
       setIsSelectFileForMindmapModalOpen(true);
       return;
     }
 
-    if (checkedFiles.length > 1) {
+    if (checkedFilenames.length > 1) {
       setMindmapErrorMessage('마인드맵은 한 번에 하나의 파일만 생성할 수 있습니다.');
       setIsMindmapErrorModalOpen(true);
       return;
@@ -358,7 +358,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
 
     try {
       const response = await api.generateMindmap({
-        filename: checkedFiles[0],
+        filename: checkedFilenames[0],
         max_topics: 8,
       });
       
@@ -377,7 +377,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
 
   // 보고서 생성 핸들러 (추후 구현)
   const handleGenerateReport = async () => {
-    if (checkedFiles.length === 0) {
+    if (checkedFilenames.length === 0) {
       alert('보고서를 생성할 파일을 선택해주세요.');
       return;
     }

@@ -1,7 +1,7 @@
 uvicorn
 fastapi
 python-dotenv
-weaviate-client==3.26.2
+weaviate-client>=4.17.0
 sse-starlette
 requests
 

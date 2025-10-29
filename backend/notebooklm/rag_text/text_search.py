@@ -173,56 +173,58 @@ class TextSearcher:
             if cancellation_event and cancellation_event.is_set():
                 raise InterruptedError("Operation cancelled before Weaviate search")
             
-            # Weaviate 벡터 검색 수행
+            # Weaviate 벡터 검색 수행 (v4 API)
             logger.debug(f"Weaviate 검색 시작: 클래스={self.class_name}, top_k={search_top_k}")
             
             try:
-                # metadata 필드에 대한 서브 셀렉션 문제 해결
-                query_builder = (
-                    self.client.query
-                    .get(self.class_name, ["text", "title", "source", "page_num", "document_uuid"])
-                    .with_near_vector({
-                        "vector": query_embedding.tolist()
-                    })
-                    .with_limit(search_top_k)
+                from weaviate.classes.query import Filter
+                
+                collection = self.client.collections.get(self.class_name)
+                
+                # UUID 필터 구성
+                filters = None
+                if allowed_document_uuids:
+                    uuids = [uuid for uuid in allowed_document_uuids if uuid]
+                    if len(uuids) == 1:
+                        filters = Filter.by_property("document_uuid").equal(uuids[0])
+                    elif len(uuids) > 1:
+                        filters = Filter.by_property("document_uuid").contains_any(uuids)
+                
+                # 벡터 검색 실행
+                response = collection.query.near_vector(
+                    near_vector=query_embedding.tolist(),
+                    limit=search_top_k,
+                    filters=filters,
+                    return_metadata=['distance'],
+                    return_properties=["text", "title", "source", "page_num", "document_uuid"]
                 )
-
-                uuid_filter = self._build_uuid_where_filter(allowed_document_uuids or set())
-                if uuid_filter:
-                    query_builder = query_builder.with_where(uuid_filter)
-
-                vector_search_results = query_builder.do()
                 
                 # 검색 결과 로깅
-                logger.debug(f"Weaviate 검색 결과: {vector_search_results}")
+                logger.debug(f"Weaviate 검색 결과: {len(response.objects)}개")
             except Exception as e:
                 logger.error(f"Weaviate 검색 오류: {str(e)}")
-                vector_search_results = {"data": {"Get": {}}}
                 raise
             
             # 결과 파싱
             results = []
-            if "data" in vector_search_results and "Get" in vector_search_results["data"]:
-                items = vector_search_results["data"]["Get"].get(self.class_name, [])
+            for i, obj in enumerate(response.objects):
+                # Weaviate의 distance 가져오기
+                score = obj.metadata.distance if obj.metadata.distance is not None else 0
+                # 거리를 유사도 점수로 변환 (1 - 거리)
+                similarity_score = 1 - score if score <= 1 else 0
                 
-                for i, item in enumerate(items):
-                    # Weaviate의 _additional 필드에서 거리 점수 가져오기
-                    score = item.get("_additional", {}).get("distance", 0)
-                    # 거리를 유사도 점수로 변환 (1 - 거리)
-                    similarity_score = 1 - score if score <= 1 else 0
-                    
-                    result = {
-                        'score': similarity_score,
-                        'index': i,
-                        'id': item.get("id", f"doc_{i}"),
-                        'title': item.get("title", f"문서 {i}"),
-                        'text': item.get("text", f"인덱스 {i}에 해당하는 문서"),
-                        'source': item.get("source", ""),
-                        'page_num': item.get("page_num", 0),
-                        'metadata': {},  # 빈 디터리로 대체
-                        'document_uuid': item.get("document_uuid"),
-                    }
-                    results.append(result)
+                result = {
+                    'score': similarity_score,
+                    'index': i,
+                    'id': str(obj.uuid),
+                    'title': obj.properties.get("title", f"문서 {i}"),
+                    'text': obj.properties.get("text", f"인덱스 {i}에 해당하는 문서"),
+                    'source': obj.properties.get("source", ""),
+                    'page_num': obj.properties.get("page_num", 0),
+                    'metadata': {},
+                    'document_uuid': obj.properties.get("document_uuid"),
+                }
+                results.append(result)
             
             logger.info(f"쿼리 '{query}'에 대한 검색 완료, 결과 수: {len(results)}")
             

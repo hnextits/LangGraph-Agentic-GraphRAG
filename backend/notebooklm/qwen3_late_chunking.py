@@ -39,66 +39,63 @@ class RAGConfig:
         self.WEAVIATE_TEXT_CLASS = "TextDocument"
         # 💡 참고: 이 파일에서 WEAVIATE_DOCUMENT_CLASS는 사용되지 않으므로 제거해도 무방합니다.
 
-    def get_weaviate_client(self) -> weaviate.Client | None:
+    def get_weaviate_client(self):
         """Weaviate 클라이언트를 초기화하고 반환합니다."""
         try:
-            client = weaviate.Client(url=self.WEAVIATE_URL)
-            if client.is_live():
+            # v4 API 사용
+            host = self.WEAVIATE_URL.replace('http://', '').replace('https://', '').split(':')[0]
+            port = int(self.WEAVIATE_URL.split(':')[-1]) if ':' in self.WEAVIATE_URL.split('//')[-1] else 8080
+            
+            client = weaviate.connect_to_custom(
+                http_host=host,
+                http_port=port,
+                http_secure=False,
+                grpc_host=host,
+                grpc_port=50051,
+                grpc_secure=False
+            )
+            if client.is_ready():
                 return client
             else:
-                logger.error(f"Weaviate is not live at {self.WEAVIATE_URL}")
+                logger.error(f"Weaviate is not ready at {self.WEAVIATE_URL}")
+                client.close()
                 return None
         except Exception as e:
             logger.error(f"Weaviate 클라이언트 초기화 중 오류 발생: {str(e)}")
             return None
 
-def create_schema(client: weaviate.Client):
-    """필요한 Weaviate 스키마를 생성합니다. (참조 순서에 맞춰 Document를 먼저 생성)"""
-    config = RAGConfig()
-    text_class = {
-        "class": config.WEAVIATE_TEXT_CLASS,
-        "description": "Text chunks and their embeddings.",
-        "vectorizer": "none", 
-        "moduleConfig": {
-            "text2vec-contextionary": {
-                "skip": True
-            }
-        },
-        "properties": [
-            {"name": "text", "dataType": ["text"]},
-            {"name": "title", "dataType": ["text"]},
-            {"name": "source", "dataType": ["text"]},
-            {"name": "page_num", "dataType": ["int"]},
-            {"name": "chunk_id", "dataType": ["text"]},
-            
-            # vvvv [수정] 이 줄을 추가해야 합니다 vvvv
-            {"name": "document_uuid", "dataType": ["text"]},
-            # ^^^^ [수정] 이 줄을 추가해야 합니다 ^^^^
-
-            {"name": "metadata", "dataType": ["object"], "nestedProperties": [
-                {"name": "document_id", "dataType": ["text"]},
-                {"name": "content_type", "dataType": ["text"]},
-                {"name": "file_path", "dataType": ["text"]}
-            ]},
-            # 💡 참고: 다른 파일(weaviate_utils.py)의 스키마와 일치하지 않으므로 
-            # 'belongsTo' 속성은 이 파일의 삽입 로직(add_vectors)에서 사용되지 않습니다.
-            # 만약 'Document' 클래스와의 관계가 필요하다면, 
-            # 'weaviate_utils.py'의 스키마와 'qwen3_late_chunking.py'의 스키마 및 삽입 로직을
-            # 완전히 동일하게 맞춰야 합니다.
-            # {"name": "belongsTo", "dataType": [config.WEAVIATE_DOCUMENT_CLASS]}
-        ]
-    }
+def create_schema(client):
+    """필요한 Weaviate 스키마를 생성합니다. (v4 API)"""
+    from weaviate.classes.config import Configure, Property, DataType
     
-    # 💡 참고: 이 파일은 'Document' 클래스를 실제로 생성하거나 참조하지 않습니다.
-    # 'weaviate_utils.py'에서는 'Document' 클래스가 정의되어 있지만,
-    # 실제 인덱싱은 이 파일('qwen3_late_chunking.py')이 담당하므로
-    # 'Document' 클래스 관련 로직은 여기서는 생략합니다.
-
+    config = RAGConfig()
+    
     try:
-        # 'TextDocument' 클래스 생성
-        if not client.schema.exists(text_class['class']):
-            client.schema.create_class(text_class)
-            logger.info(f"Created schema class: {text_class['class']}")
+        # v4 API: collection이 이미 존재하는지 확인
+        if client.collections.exists(config.WEAVIATE_TEXT_CLASS):
+            logger.info(f"Collection '{config.WEAVIATE_TEXT_CLASS}' already exists")
+            return
+        
+        # v4 API로 collection 생성
+        client.collections.create(
+            name=config.WEAVIATE_TEXT_CLASS,
+            description="Text chunks and their embeddings.",
+            vectorizer_config=Configure.Vectorizer.none(),
+            properties=[
+                Property(name="text", data_type=DataType.TEXT),
+                Property(name="title", data_type=DataType.TEXT),
+                Property(name="source", data_type=DataType.TEXT),
+                Property(name="page_num", data_type=DataType.INT),
+                Property(name="chunk_id", data_type=DataType.TEXT),
+                Property(name="document_uuid", data_type=DataType.TEXT),
+                Property(name="metadata", data_type=DataType.OBJECT, nested_properties=[
+                    Property(name="document_id", data_type=DataType.TEXT),
+                    Property(name="content_type", data_type=DataType.TEXT),
+                    Property(name="file_path", data_type=DataType.TEXT)
+                ]),
+            ]
+        )
+        logger.info(f"Created schema collection: {config.WEAVIATE_TEXT_CLASS}")
             
     except Exception as e:
         logger.error(f"Weaviate 스키마 생성 중 오류 발생: {str(e)}")
@@ -220,18 +217,16 @@ class WeaviateVectorStore:
             logger.warning("Weaviate 클라이언트가 초기화되지 않았거나 벡터가 없습니다. 데이터베이스 저장을 건너뜁니다.")
             return
         
-        # 1. 배치 API를 사용하여 청크 데이터 저장
+        # 1. 배치 API를 사용하여 청크 데이터 저장 (v4)
         first_vec = vectors[0]
         metadata = first_vec.metadata
         file_path = metadata.get('file_path', '')
         filename = os.path.basename(file_path) if file_path else f"doc_{first_vec.document_id[:8]}"
         
-        # document_uuid는 L368에서 객체에 직접 삽입되므로 여기서는 생성만 합니다.
         document_uuid = generate_uuid5(first_vec.document_id)
 
         document_metadata = {
             "document_id": first_vec.document_id,
-            # "document_uuid": document_uuid, # metadata 안이 아니라 최상위 레벨로 이동
         }
         if file_path:
             document_metadata["file_path"] = file_path
@@ -240,41 +235,33 @@ class WeaviateVectorStore:
             document_metadata["content_type"] = content_type
 
         text_class_name = self.config.WEAVIATE_TEXT_CLASS
+        collection = self.client.collections.get(text_class_name)
         
-        chunk_uuid_map = {}
-
-        with self.client.batch as batch:
-            batch.configure(
-                batch_size=100,
-                dynamic=True,
-            )
-            
+        # v4 API: batch context manager 사용
+        with collection.batch.dynamic() as batch:
             for vec in tqdm(vectors, desc="Adding chunks to Weaviate batch"):
                 chunk_uuid = generate_uuid5(vec.chunk_id)
-                chunk_uuid_map[vec.chunk_id] = chunk_uuid
                 chunk_metadata = {
                     "document_id": vec.document_id,
-                    # "document_uuid": document_uuid, # metadata 안이 아니라 최상위 레벨로 이동
                 }
                 if vec.content_type:
                     chunk_metadata["content_type"] = vec.content_type
 
-                text_chunk_object = {
+                properties = {
                     "text": vec.text,
                     "title": metadata.get('title', ''),
                     "source": file_path,
                     "page_num": metadata.get('page_num', 0),
                     "chunk_id": vec.chunk_id,
-                    "document_uuid": document_uuid, # [수정] 스키마에 맞게 최상위 레벨로 설정
+                    "document_uuid": str(document_uuid),
                     "metadata": {
                         **document_metadata,
                         **chunk_metadata,
                     },
                 }
                 
-                batch.add_data_object(
-                    data_object=text_chunk_object,
-                    class_name=text_class_name,
+                batch.add_object(
+                    properties=properties,
                     uuid=chunk_uuid,
                     vector=vec.embedding.tolist()
                 )
@@ -414,34 +401,34 @@ def search_vectors(query: str, top_k: int = 5) -> List[Dict]:
         logger.error(f"Error generating query embedding: {e}")
         return []
     
-    vector_search_results = (
-        client.query
-        .get(config.WEAVIATE_TEXT_CLASS, ["text", "metadata", "document_uuid"]) # document_uuid 가져오기
-        .with_near_vector({"vector": query_embedding.tolist()})
-        .with_limit(top_k)
-        .with_additional(["distance"])
-        .do()
-    )
-    
-    results = []
-    text_class = config.WEAVIATE_TEXT_CLASS
-    
-    if "data" in vector_search_results and "Get" in vector_search_results["data"]:
-        items = vector_search_results["data"]["Get"].get(text_class, [])
-        for item in items:
-            distance = item.get("_additional", {}).get("distance", 1.0)
-            similarity_score = 1.0 - distance if 0.0 <= distance <= 1.0 else 0.0 
+    try:
+        # v4 API: collection을 통한 검색
+        collection = client.collections.get(config.WEAVIATE_TEXT_CLASS)
+        
+        response = collection.query.near_vector(
+            near_vector=query_embedding.tolist(),
+            limit=top_k,
+            return_metadata=['distance']
+        )
+        
+        results = []
+        for obj in response.objects:
+            distance = obj.metadata.distance if obj.metadata.distance is not None else 1.0
+            similarity_score = 1.0 - distance if 0.0 <= distance <= 1.0 else 0.0
             
-            metadata = item.get("metadata", {})
-                
+            metadata = obj.properties.get("metadata", {})
+            
             results.append({
                 'score': similarity_score,
                 'document_id': metadata.get('document_id', ''),
-                'document_uuid': item.get('document_uuid', ''), # document_uuid 반환
-                'text': item.get('text', ''),
+                'document_uuid': obj.properties.get('document_uuid', ''),
+                'text': obj.properties.get('text', ''),
                 'content_type': metadata.get('content_type', 'text'),
             })
-    return results
+        
+        return results
+    finally:
+        client.close()
 
 # =============================================================================
 # Main 함수 (스키마 삭제 및 생성 순서 수정 완료)
