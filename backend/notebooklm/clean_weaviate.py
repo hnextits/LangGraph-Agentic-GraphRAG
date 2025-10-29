@@ -15,18 +15,25 @@ def delete_all_text_documents() -> Dict[str, Any]:
     if client is None:
         raise RuntimeError("Weaviate 클라이언트를 초기화할 수 없습니다. 서버 상태를 확인하세요.")
 
-    where_filter: Dict[str, Any] = {
-        "path": ["chunk_id"],
-        "operator": "Like",
-        "valueText": "*",
-    }
-
-    result = client.batch.delete_objects(
-        class_name=config.WEAVIATE_TEXT_CLASS,
-        where=where_filter,
-        output="verbose",
-    )
-    return result
+    try:
+        # v4 API: collection을 가져와서 삭제
+        collection = client.collections.get(config.WEAVIATE_TEXT_CLASS)
+        
+        # 모든 객체 삭제
+        result = collection.data.delete_many(
+            where={
+                "path": ["chunk_id"],
+                "operator": "Like",
+                "valueText": "*",
+            }
+        )
+        
+        return {
+            "deleted": result.matches if hasattr(result, 'matches') else 0,
+            "status": "success"
+        }
+    finally:
+        client.close()
 
 
 def main() -> None:

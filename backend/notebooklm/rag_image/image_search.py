@@ -194,62 +194,64 @@ class ImageSearcher:
             logger.debug(f"Weaviate 이미지 검색 시작: 클래스={self.class_name}, top_k={search_top_k}")
             
             try:
-                # metadata 필드에 대한 서브 셀렉션 문제 해결
-                query_builder = (
-                    self.client.query
-                    .get(self.class_name, ["caption", "title", "image_path", "con_type", "tags", "text", "document_uuid"])
-                    .with_near_vector({
-                        "vector": query_embedding.tolist()
-                    })
-                    .with_limit(search_top_k)
+                from weaviate.classes.query import Filter
+                
+                collection = self.client.collections.get(self.class_name)
+                
+                # UUID 필터 구성
+                filters = None
+                if allowed_document_uuids:
+                    uuids = [uuid for uuid in allowed_document_uuids if uuid]
+                    if len(uuids) == 1:
+                        filters = Filter.by_property("document_uuid").equal(uuids[0])
+                    elif len(uuids) > 1:
+                        filters = Filter.by_property("document_uuid").contains_any(uuids)
+                
+                # 벡터 검색 실행 (v4 API)
+                response = collection.query.near_vector(
+                    near_vector=query_embedding.tolist(),
+                    limit=search_top_k,
+                    filters=filters,
+                    return_metadata=['distance'],
+                    return_properties=["caption", "title", "image_path", "con_type", "tags", "text", "document_uuid"]
                 )
-
-                uuid_filter = self._build_uuid_where_filter(allowed_document_uuids or set())
-                if uuid_filter:
-                    query_builder = query_builder.with_where(uuid_filter)
-
-                vector_search_results = query_builder.do()
                 
                 # 검색 결과 로깅
-                logger.debug(f"Weaviate 이미지 검색 결과: {vector_search_results}")
+                logger.debug(f"Weaviate 이미지 검색 결과: {len(response.objects)}개")
             except Exception as e:
                 logger.error(f"Weaviate 이미지 검색 오류: {str(e)}")
-                vector_search_results = {"data": {"Get": {}}}
                 raise
             
             # 결과 파싱
             results = []
-            if "data" in vector_search_results and "Get" in vector_search_results["data"]:
-                items = vector_search_results["data"]["Get"].get(self.class_name, [])
+            for i, obj in enumerate(response.objects):
+                # Weaviate의 distance 가져오기
+                score = obj.metadata.distance if obj.metadata.distance is not None else 0
+                # 거리를 유사도 점수로 변환 (1 - 거리)
+                similarity_score = 1 - score if score <= 1 else 0
                 
-                for i, item in enumerate(items):
-                    # Weaviate의 _additional 필드에서 거리 점수 가져오기
-                    score = item.get("_additional", {}).get("distance", 0)
-                    # 거리를 유사도 점수로 변환 (1 - 거리)
-                    similarity_score = 1 - score if score <= 1 else 0
-                    
-                    # 텍스트 필드 준비 - text > caption > title 우선순위
-                    text = item.get("text", "")
-                    caption = item.get("caption", "")
-                    title = item.get("title", "")
-                    
-                    # text 필드 우선, 없으면 caption, 그것도 없으면 title
-                    doc_text = text if text else (caption if caption else title)
-                    
-                    result = {
-                        'score': similarity_score,
-                        'index': i,
-                        'id': item.get("id", f"img_{i}"),
-                        'title': title if title else f"이미지 {i}",
-                        'caption': caption,
-                        'file_path': item.get("image_path", ""),  # image_path를 file_path로 변환
-                        'content_type': item.get("con_type", "image"),  # con_type을 content_type으로 변환
-                        'tags': item.get("tags", []),
-                        'page_num': 1,  # 기본값 사용
-                        'text': doc_text,  # OCR 텍스트 우선 사용
-                        'document_uuid': item.get("document_uuid"),
-                    }
-                    results.append(result)
+                # 텍스트 필드 준비 - text > caption > title 우선순위
+                text = obj.properties.get("text", "")
+                caption = obj.properties.get("caption", "")
+                title = obj.properties.get("title", "")
+                
+                # text 필드 우선, 없으면 caption, 그것도 없으면 title
+                doc_text = text if text else (caption if caption else title)
+                
+                result = {
+                    'score': similarity_score,
+                    'index': i,
+                    'id': str(obj.uuid),
+                    'title': title if title else f"이미지 {i}",
+                    'caption': caption,
+                    'file_path': obj.properties.get("image_path", ""),
+                    'content_type': obj.properties.get("con_type", "image"),
+                    'tags': obj.properties.get("tags", []),
+                    'page_num': 1,
+                    'text': doc_text,
+                    'document_uuid': obj.properties.get("document_uuid"),
+                }
+                results.append(result)
             
             logger.info(f"쿼리 '{query}'에 대한 검색 완료, 결과 수: {len(results)}")
             

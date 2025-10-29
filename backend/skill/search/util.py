@@ -70,10 +70,11 @@ def filter_search_results(results, max_results=10):
     Returns:
         필터링된 검색 결과 리스트
     """
-    # 포함할 사이트 목록 (나무위키와 위키피디아만 포함)
+    # 포함할 사이트 목록 (나무위키와 위키피디아, 네이트 뉴스 포함)
     included_sites = [
         'namu.wiki',
-        'wikipedia.org'
+        'wikipedia.org',
+        'news.nate.com'
     ]
     
     filtered_results = []

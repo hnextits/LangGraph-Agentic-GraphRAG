@@ -62,7 +62,7 @@ def _resolve_sources_to_document_uuids(raw_sources: Optional[List[str]]) -> List
                         else:
                             logger.warning("'%s' 파일에 대한 document_uuid를 찾을 수 없습니다.", filename)
                 finally:
-                    client.close() if hasattr(client, "close") else None
+                    client.close()
             else:
                 logger.warning("Weaviate 클라이언트를 초기화할 수 없어 파일명을 UUID로 변환하지 못했습니다.")
         except Exception as exc:
@@ -90,13 +90,6 @@ except ImportError as e:
     sanitize_filename = lambda x: x  # 폴백 함수
     crawling_web = None
 
-# 백엔드 디렉토리 설정
-backend_dir = Path(__file__).resolve().parent.parent
-
-# 경로 설정
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-
 # summarizer 모듈 임포트
 try:
     from skill.search.summarizer import AnswerGenerator
@@ -104,6 +97,13 @@ try:
 except ImportError as e:
     logger.error(f"AnswerGenerator 모듈 임포트 실패: {e}")
     AnswerGenerator = None
+
+# 백엔드 디렉토리 설정
+backend_dir = Path(__file__).resolve().parent.parent
+
+# 경로 설정
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
 
 # --- 작업 상태 관리 ---
 # 작업 상태는 main.py의 app.state를 통해 중앙에서 관리됩니다.
@@ -519,6 +519,19 @@ async def process_search_and_summarize(task_id: str, query: str):
         result_file = CLEAN_MD_DIR / f"summary_{timestamp}_{sanitize_filename(query)}.md"
         result_file.write_text(final_summary, encoding="utf-8")
         
+        # MD 파일을 임베딩하여 Weaviate에 저장
+        task_status[task_id].update({"status": "running", "message": "검색 결과 임베딩 중...", "progress": 95})
+        try:
+            logger.info(f"[{task_id}] MD 파일 임베딩 시작: {result_file}")
+            from notebooklm.qwen3_late_chunking import main as chunking_main
+            
+            # 임베딩 처리
+            chunking_main(input_file=str(result_file), recreate_schema=False, search_mode=False)
+            logger.info(f"[{task_id}] MD 파일 임베딩 완료")
+        except Exception as e:
+            logger.error(f"[{task_id}] MD 파일 임베딩 중 오류 발생: {e}", exc_info=True)
+            # 임베딩 실패해도 요약 결과는 반환
+        
         task_status[task_id].update({
             "status": "completed", "message": "요약이 완료되었습니다.", "progress": 100,
             "result": {"summary": final_summary, "sources": sources, "result_file": str(result_file)}
@@ -615,23 +628,59 @@ async def summarize_files(request_data: SummarizeRequest) -> SummarizeResponse:
         # AnswerGenerator 인스턴스 가져오기
         generator = get_answer_generator()
         
-        # OCR 결과 디렉토리 존재 여부 확인
-        if not os.path.exists(OCR_RESULTS_DIR):
-            logger.error(f"OCR 결과 디렉토리가 존재하지 않습니다: {OCR_RESULTS_DIR}")
-            raise HTTPException(status_code=404, detail=f"OCR 결과 디렉토리가 존재하지 않습니다: {OCR_RESULTS_DIR}")
+        # DOC_DIR 존재 여부 확인
+        if not os.path.exists(DOC_DIR):
+            logger.error(f"문서 디렉토리가 존재하지 않습니다: {DOC_DIR}")
+            raise HTTPException(status_code=404, detail=f"문서 디렉토리가 존재하지 않습니다: {DOC_DIR}")
             
-        # OCR 결과 디렉토리가 비어있는지 확인
-        if not os.listdir(OCR_RESULTS_DIR):
-            logger.error(f"OCR 결과 디렉토리가 비어 있습니다: {OCR_RESULTS_DIR}")
-            raise HTTPException(status_code=404, detail=f"OCR 결과 디렉토리가 비어 있습니다. OCR 처리가 완료되었는지 확인하세요.")
-            
-        # 파일 내용 수집
+        # 파일 내용 수집 (개선된 파일 검색)
         file_contents = []
         missing_files = []
+        
+        # DOC_DIR과 OCR_RESULTS_DIR에서 파일 찾기
+        search_dirs = [DOC_DIR, OCR_RESULTS_DIR]
+        available_files = {}
+        for search_dir in search_dirs:
+            if os.path.exists(search_dir):
+                for f in os.listdir(search_dir):
+                    file_full_path = os.path.join(search_dir, f)
+                    if os.path.isfile(file_full_path):
+                        # 파일명을 키로, 전체 경로를 값으로 저장 (중복 시 덮어쓰기)
+                        available_files[f] = file_full_path
+        
+        logger.info(f"검색 가능한 파일 수: {len(available_files)}")
+        
         for file_name in file_names:
-            file_path = os.path.join(OCR_RESULTS_DIR, file_name)
-            if not os.path.exists(file_path):
-                logger.warning(f"파일을 찾을 수 없음: {file_path}")
+            file_path = available_files.get(file_name)
+            found = False
+            
+            # 1. 정확한 파일명으로 검색
+            if file_path and os.path.exists(file_path):
+                found = True
+                logger.info(f"파일 찾음: {file_name} -> {file_path}")
+            else:
+                # 2. 파일명 정규화하여 검색 (공백, 특수문자 처리)
+                normalized_name = file_name.strip()
+                for available_file, available_path in available_files.items():
+                    if available_file == normalized_name or available_file.strip() == normalized_name:
+                        file_path = available_path
+                        found = True
+                        logger.info(f"정규화된 파일명으로 찾음: {file_name} -> {available_file}")
+                        break
+                
+                # 3. 확장자 없이 검색
+                if not found:
+                    base_name = os.path.splitext(file_name)[0]
+                    for available_file, available_path in available_files.items():
+                        if os.path.splitext(available_file)[0] == base_name:
+                            file_path = available_path
+                            found = True
+                            logger.info(f"확장자 없이 찾음: {file_name} -> {available_file}")
+                            break
+            
+            if not found:
+                logger.warning(f"파일을 찾을 수 없음: {file_name}")
+                logger.debug(f"사용 가능한 파일 목록 (처음 10개): {list(available_files.keys())[:10]}")
                 missing_files.append(file_name)
                 continue
                 
@@ -676,7 +725,7 @@ async def summarize_files(request_data: SummarizeRequest) -> SummarizeResponse:
             if data:
                 combined_content += f"\n\n## 출처: {link}\n\n{data}\n"
         
-        # generate_answer 호출하여 요약 생성
+        # generate_answer 호출하여 요약 생성 (내부에서 자동으로 청킹 처리)
         summary = generator.generate_answer(combined_content)
         
         # 요약 결과 저장 디렉토리 설정
@@ -692,11 +741,6 @@ async def summarize_files(request_data: SummarizeRequest) -> SummarizeResponse:
         # 요약 결과를 마크다운 파일로 저장
         with open(summary_path, "w", encoding="utf-8") as f:
             # 헤더 정보 추가
-            f.write(f"# 요약 결과 ({timestamp})\n\n")
-            f.write(f"## 요약 대상 파일\n")
-            for file_name in file_names:
-                f.write(f"- {file_name}\n")
-            f.write("\n## 요약 내용\n\n")
             f.write(summary)
 
         # API 응답에 파일 경로 추가
@@ -795,28 +839,31 @@ def _delete_document_resources(filename: str, document_uuid: Optional[str] = Non
             client = config.get_weaviate_client()
 
             if client:
-                if document_uuid:
-                    logger.info("Weaviate 삭제 요청 (UUID 기준): filename=%s, uuid=%s", filename, document_uuid)
-                    weaviate_deleted = delete_document(client, document_uuid)
-                    result["weaviate_deleted"] = weaviate_deleted
-                    if weaviate_deleted:
-                        logger.info("Weaviate에서 문서 UUID '%s' 관련 데이터 삭제 완료", document_uuid)
-                    else:
-                        logger.warning("Weaviate에서 문서 UUID '%s' 관련 데이터를 찾을 수 없습니다. 파일명으로 재시도", document_uuid)
-                        fallback_deleted = delete_document_by_filename(client, filename)
-                        result["weaviate_deleted"] = fallback_deleted
-                        if fallback_deleted:
-                            logger.info("파일명 기반 Weaviate 삭제 성공: %s", filename)
+                try:
+                    if document_uuid:
+                        logger.info("Weaviate 삭제 요청 (UUID 기준): filename=%s, uuid=%s", filename, document_uuid)
+                        weaviate_deleted = delete_document(client, document_uuid)
+                        result["weaviate_deleted"] = weaviate_deleted
+                        if weaviate_deleted:
+                            logger.info("Weaviate에서 문서 UUID '%s' 관련 데이터 삭제 완료", document_uuid)
                         else:
-                            logger.warning("파일명 기반 Weaviate 삭제 실패: %s", filename)
-                else:
-                    logger.info("Weaviate 삭제 요청 (파일명 기준): filename=%s", filename)
-                    weaviate_deleted = delete_document_by_filename(client, filename)
-                    result["weaviate_deleted"] = weaviate_deleted
-                    if weaviate_deleted:
-                        logger.info("Weaviate에서 문서 '%s' 관련 데이터 삭제 완료", filename)
+                            logger.warning("Weaviate에서 문서 UUID '%s' 관련 데이터를 찾을 수 없습니다. 파일명으로 재시도", document_uuid)
+                            fallback_deleted = delete_document_by_filename(client, filename)
+                            result["weaviate_deleted"] = fallback_deleted
+                            if fallback_deleted:
+                                logger.info("파일명 기반 Weaviate 삭제 성공: %s", filename)
+                            else:
+                                logger.warning("파일명 기반 Weaviate 삭제 실패: %s", filename)
                     else:
-                        logger.warning("Weaviate에서 문서 '%s' 관련 데이터를 찾을 수 없습니다.", filename)
+                        logger.info("Weaviate 삭제 요청 (파일명 기준): filename=%s", filename)
+                        weaviate_deleted = delete_document_by_filename(client, filename)
+                        result["weaviate_deleted"] = weaviate_deleted
+                        if weaviate_deleted:
+                            logger.info("Weaviate에서 문서 '%s' 관련 데이터 삭제 완료", filename)
+                        else:
+                            logger.warning("Weaviate에서 문서 '%s' 관련 데이터를 찾을 수 없습니다.", filename)
+                finally:
+                    client.close()
         except Exception as e:
             logger.error(f"Weaviate 데이터 삭제 오류: {str(e)}")
             result["weaviate_error"] = str(e)
@@ -886,6 +933,8 @@ async def list_doc_files() -> FileListResponse:
                     document_uuid_map.update(uuid_map)
                 except Exception as query_error:
                     logger.warning(f"Weaviate 문서 UUID 조회 중 오류 발생: {query_error}")
+                finally:
+                    client.close()
         except Exception as e:
             logger.warning(f"Weaviate 클라이언트 초기화 실패: {e}")
 

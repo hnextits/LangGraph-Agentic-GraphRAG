@@ -13,9 +13,69 @@ import re
 import json
 import os
 
+# 토큰 카운팅을 위한 tiktoken 임포트
+try:
+    import tiktoken
+    TOKENIZER = tiktoken.get_encoding("cl100k_base")  # GPT-4/Qwen 호환 인코더
+    logger = logging.getLogger(__name__)
+    logger.info("tiktoken 모듈 로드 성공")
+except ImportError:
+    TOKENIZER = None
+    logger = logging.getLogger(__name__)
+    logger.warning("tiktoken 모듈을 찾을 수 없습니다. 문자 수 기반 추정을 사용합니다.")
+
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+
+# 토큰 카운팅 및 청킹 유틸리티 함수
+def count_tokens(text: str) -> int:
+    """텍스트의 토큰 수를 계산합니다."""
+    if TOKENIZER:
+        return len(TOKENIZER.encode(text))
+    else:
+        # tiktoken이 없으면 문자 수 기반 추정 (1 토큰 ≈ 4 문자)
+        return len(text) // 4
+
+def chunk_text_by_tokens(text: str, max_tokens: int = 20000, overlap_tokens: int = 500) -> list:
+    """
+    텍스트를 토큰 수 기반으로 청킹합니다.
+    
+    Args:
+        text: 청킹할 텍스트
+        max_tokens: 청크당 최대 토큰 수
+        overlap_tokens: 청크 간 오버랩 토큰 수
+        
+    Returns:
+        list: 청크 리스트
+    """
+    if TOKENIZER:
+        tokens = TOKENIZER.encode(text)
+        chunks = []
+        start = 0
+        
+        while start < len(tokens):
+            end = min(start + max_tokens, len(tokens))
+            chunk_tokens = tokens[start:end]
+            chunk_text = TOKENIZER.decode(chunk_tokens)
+            chunks.append(chunk_text)
+            
+            # 오버랩을 고려하여 다음 시작 위치 설정
+            start = end - overlap_tokens if end < len(tokens) else end
+            
+        return chunks
+    else:
+        # tiktoken이 없으면 문자 수 기반 청킹
+        max_chars = max_tokens * 4
+        overlap_chars = overlap_tokens * 4
+        chunks = []
+        start = 0
+        
+        while start < len(text):
+            end = min(start + max_chars, len(text))
+            chunks.append(text[start:end])
+            start = end - overlap_chars if end < len(text) else end
+            
+        return chunks
 
 
 class AnswerGenerator:
@@ -117,6 +177,69 @@ class AnswerGenerator:
             if not self.load_model():
                 return "모델 로딩에 실패하여 답변을 생성할 수 없습니다."
         
+        # 토큰 수 체크 및 청킹 처리
+        token_count = count_tokens(content)
+        logger.info(f"입력 토큰 수: {token_count}")
+        
+        if token_count > 20000:
+            logger.info(f"토큰 수({token_count})가 20000을 초과하여 청킹 처리를 시작합니다.")
+            return self._generate_answer_with_chunking(content, max_tokens)
+        
+        # 토큰 수가 적으면 바로 요약
+        return self._generate_single_answer(content, max_tokens)
+    
+    def _generate_answer_with_chunking(self, content: str, max_tokens: int = 8192) -> str:
+        """
+        긴 문서를 청킹하여 요약 생성
+        
+        Args:
+            content: 요약할 문서 내용
+            max_tokens: 최대 생성 토큰 수
+            
+        Returns:
+            str: 생성된 요약 텍스트
+        """
+        try:
+            # 텍스트를 청크로 분할
+            chunks = chunk_text_by_tokens(content, max_tokens=20000, overlap_tokens=500)
+            logger.info(f"총 {len(chunks)}개의 청크로 분할되었습니다.")
+            
+            # 각 청크를 개별적으로 요약
+            chunk_summaries = []
+            for i, chunk in enumerate(chunks):
+                logger.info(f"청크 {i+1}/{len(chunks)} 요약 중... (토큰 수: {count_tokens(chunk)})")
+                chunk_summary = self._generate_single_answer(chunk, max_tokens=4096)
+                chunk_summaries.append(chunk_summary)
+            
+            # 청크 요약들을 다시 합쳐서 최종 요약 생성
+            combined_summaries = "\n\n---\n\n".join(chunk_summaries)
+            final_token_count = count_tokens(combined_summaries)
+            logger.info(f"청크 요약 합계 토큰 수: {final_token_count}")
+            
+            # 합친 요약이 여전히 크면 한 번 더 요약
+            if final_token_count > 20000:
+                logger.info("청크 요약 합계가 여전히 크므로 재요약을 수행합니다.")
+                return self._generate_single_answer(combined_summaries, max_tokens=max_tokens)
+            else:
+                # 청크 요약들을 최종 요약으로 통합
+                summary_prompt = f"다음은 긴 문서를 여러 부분으로 나누어 요약한 내용입니다. 이를 하나의 일관된 요약으로 통합해주세요:\n\n{combined_summaries}"
+                return self._generate_single_answer(summary_prompt, max_tokens=max_tokens)
+        
+        except Exception as e:
+            logger.error(f"청킹 요약 중 오류 발생: {e}")
+            return f"청킹 요약에 실패했습니다: {str(e)}"
+    
+    def _generate_single_answer(self, content: str, max_tokens: int = 8192) -> str:
+        """
+        단일 요약 생성 (내부 메서드)
+        
+        Args:
+            content: 요약할 문서 내용
+            max_tokens: 최대 생성 토큰 수
+            
+        Returns:
+            str: 생성된 요약 텍스트
+        """
         try:
             # 요약 생성을 위한 시스템 프롬프트
             system_prompt = """You are an expert summarizer. Read the following document carefully and provide a clear, accurate, and well-structured summary.

@@ -44,7 +44,9 @@ logger.info(f"weaviate_utils: NEXTITS_DATA_DIR 설정됨: {NEXTITS_DATA_DIR}")
 
 
 def create_schema(client, recreate: bool = False) -> bool:
-    """필요한 Weaviate 스키마(TextDocument, ImageDocument) 생성"""
+    """필요한 Weaviate 스키마(TextDocument, ImageDocument) 생성 (v4 API)"""
+    from weaviate.classes.config import Configure, Property, DataType
+    
     config = RAGConfig()
 
     if client is None:
@@ -52,164 +54,117 @@ def create_schema(client, recreate: bool = False) -> bool:
         return False
 
     try:
-        import weaviate
-
         if recreate:
             logger.warning("기존 스키마를 삭제하고 새로 생성합니다.")
-            client.schema.delete_all()
+            # v4: 모든 collection 삭제
+            for collection in client.collections.list_all():
+                client.collections.delete(collection)
 
-        schema = client.schema.get()
-        existing_classes = {cls["class"] for cls in schema.get("classes", [])}
+        # TextDocument collection 생성
+        if not client.collections.exists(config.WEAVIATE_TEXT_CLASS):
+            client.collections.create(
+                name=config.WEAVIATE_TEXT_CLASS,
+                description="텍스트 문서 청크",
+                vectorizer_config=Configure.Vectorizer.none(),
+                properties=[
+                    Property(name="text", data_type=DataType.TEXT, description="문서 텍스트 내용"),
+                    Property(name="title", data_type=DataType.TEXT, description="문서 제목"),
+                    Property(name="source", data_type=DataType.TEXT, description="문서 출처"),
+                    Property(name="page_num", data_type=DataType.INT, description="페이지 번호"),
+                    Property(name="chunk_id", data_type=DataType.TEXT, description="청크 고유 ID", skip_vectorization=True, index_searchable=True),
+                    Property(name="document_uuid", data_type=DataType.TEXT, description="연결된 문서 UUID"),
+                    Property(name="metadata", data_type=DataType.OBJECT, description="추가 메타데이터",
+                        nested_properties=[
+                            Property(name="document_id", data_type=DataType.TEXT),
+                            Property(name="content_type", data_type=DataType.TEXT),
+                            Property(name="file_path", data_type=DataType.TEXT),
+                        ]
+                    ),
+                ]
+            )
+            logger.info("스키마 클래스 생성 완료: %s", config.WEAVIATE_TEXT_CLASS)
+        else:
+            logger.info("%s 클래스가 이미 존재합니다", config.WEAVIATE_TEXT_CLASS)
 
-        def ensure_class(definition: Dict[str, Any]):
-            class_name = definition["class"]
-            if class_name in existing_classes:
-                logger.info("%s 클래스가 이미 존재합니다: %s", class_name, class_name)
-            else:
-                client.schema.create_class(definition)
-                existing_classes.add(class_name)
-                logger.info("스키마 클래스 생성 완료: %s", class_name)
-
-        text_class = {
-            "class": config.WEAVIATE_TEXT_CLASS,
-            "description": "텍스트 문서 청크",
-            "vectorizer": "none",
-            "properties": [
-                {"name": "text", "dataType": ["text"], "description": "문서 텍스트 내용"},
-                {"name": "title", "dataType": ["text"], "description": "문서 제목"},
-                {"name": "source", "dataType": ["text"], "description": "문서 출처"},
-                {"name": "page_num", "dataType": ["int"], "description": "페이지 번호"},
-                {"name": "chunk_id", "dataType": ["text"], "description": "청크 고유 ID", "indexInverted": True},
-                {"name": "document_uuid", "dataType": ["text"], "description": "연결된 문서 UUID"}, # 최상위
-                {
-                    "name": "metadata",
-                    "dataType": ["object"],
-                    "description": "추가 메타데이터",
-                    "nestedProperties": [
-                        {"name": "document_id", "dataType": ["text"]},
-                        {"name": "content_type", "dataType": ["text"]},
-                        {"name": "file_path", "dataType": ["text"]},
-                    ],
-                },
-            ],
-        }
-
-        image_class = {
-            "class": config.WEAVIATE_IMAGE_CLASS,
-            "description": "이미지 청크",
-            "vectorizer": config.WEAVIATE_VECTORIZER,
-            "moduleConfig": {config.WEAVIATE_VECTORIZER: {"vectorizeClassName": True}},
-            "properties": [
-                {"name": "caption", "dataType": ["text"], "description": "이미지 캡션"},
-                {"name": "title", "dataType": ["text"], "description": "이미지 제목"},
-                {"name": "file_path", "dataType": ["text"], "description": "이미지 파일 경로"},
-                {"name": "content_type", "dataType": ["text"], "description": "콘텐츠 타입"},
-                {"name": "image_id", "dataType": ["text"], "description": "이미지 고유 ID", "indexInverted": True},
-                {"name": "tags", "dataType": ["text[]"], "description": "이미지 태그"},
-                {"name": "document_uuid", "dataType": ["text"], "description": "연결된 문서 UUID"}, # 최상위
-                {
-                    "name": "metadata",
-                    "dataType": ["object"],
-                    "description": "추가 메타데이터",
-                    "nestedProperties": [
-                        {"name": "document_id", "dataType": ["text"]},
-                        {"name": "content_type", "dataType": ["text"]},
-                        {"name": "file_path", "dataType": ["text"]},
-                    ],
-                },
-            ],
-        }
-
-        ensure_class(text_class)
-        ensure_class(image_class)
+        # ImageDocument collection 생성
+        if not client.collections.exists(config.WEAVIATE_IMAGE_CLASS):
+            client.collections.create(
+                name=config.WEAVIATE_IMAGE_CLASS,
+                description="이미지 청크",
+                vectorizer_config=Configure.Vectorizer.none(),
+                properties=[
+                    Property(name="caption", data_type=DataType.TEXT, description="이미지 캡션"),
+                    Property(name="title", data_type=DataType.TEXT, description="이미지 제목"),
+                    Property(name="file_path", data_type=DataType.TEXT, description="이미지 파일 경로"),
+                    Property(name="content_type", data_type=DataType.TEXT, description="콘텐츠 타입"),
+                    Property(name="image_id", data_type=DataType.TEXT, description="이미지 고유 ID", skip_vectorization=True, index_searchable=True),
+                    Property(name="tags", data_type=DataType.TEXT_ARRAY, description="이미지 태그"),
+                    Property(name="document_uuid", data_type=DataType.TEXT, description="연결된 문서 UUID"),
+                    Property(name="metadata", data_type=DataType.OBJECT, description="추가 메타데이터",
+                        nested_properties=[
+                            Property(name="document_id", data_type=DataType.TEXT),
+                            Property(name="content_type", data_type=DataType.TEXT),
+                            Property(name="file_path", data_type=DataType.TEXT),
+                        ]
+                    ),
+                ]
+            )
+            logger.info("스키마 클래스 생성 완료: %s", config.WEAVIATE_IMAGE_CLASS)
+        else:
+            logger.info("%s 클래스가 이미 존재합니다", config.WEAVIATE_IMAGE_CLASS)
 
         return True
 
     except Exception as exc:
-        logger.error("Weaviate 스키마 생성 중 오류 발생: %s", exc, exc_info=True) # 상세 오류 로깅
+        logger.error("Weaviate 스키마 생성 중 오류 발생: %s", exc, exc_info=True)
         return False
 
 def batch_import_text_documents(client, documents: List[Dict[str, Any]], document_uuid: str = None) -> bool:
     """
-    텍스트 문서를 배치로 Weaviate에 임포트
-    (qwen3_late_chunking.py의 로직과 일치시킴)
+    텍스트 문서를 배치로 Weaviate에 임포트 (v4 API)
     """
     config = RAGConfig()
 
     try:
-        # Weaviate 버전 확인
-        import weaviate
-        weaviate_version = weaviate.__version__
-        is_v4 = not weaviate_version.startswith('3.')
+        text_collection = client.collections.get(config.WEAVIATE_TEXT_CLASS)
 
-        if is_v4:
-            # v4 API
-            text_collection = client.collections.get(config.WEAVIATE_TEXT_CLASS)
+        with text_collection.batch.dynamic() as batch:
+            for i, doc in enumerate(documents):
+                chunk_id = doc.get("chunk_id", f"chunk_{i}_{hash(doc.get('text', '')[:50])}")
 
-            with text_collection.batch.dynamic() as batch:
-                batch.batch_size = config.WEAVIATE_BATCH_SIZE
+                properties = {
+                    "text": doc.get("text", ""),
+                    "title": doc.get("title", ""),
+                    "source": doc.get("source", ""),
+                    "page_num": doc.get("page_num", 0),
+                    "chunk_id": chunk_id,
+                    "document_uuid": doc.get("document_uuid") or document_uuid,
+                    "metadata": doc.get("metadata", {})
+                }
+                vector = doc.get("embedding")
 
-                for i, doc in enumerate(documents):
-                    chunk_id = doc.get("chunk_id", f"chunk_{i}_{hash(doc.get('text', '')[:50])}")
-
-                    properties = {
-                        "text": doc.get("text", ""),
-                        "title": doc.get("title", ""),
-                        "source": doc.get("source", ""),
-                        "page_num": doc.get("page_num", 0),
-                        "chunk_id": chunk_id,
-                        "document_uuid": doc.get("document_uuid") or document_uuid, # 최상위 UUID
-                        "metadata": doc.get("metadata", {})
-                    }
-                    vector = doc.get("embedding")
-
-                    batch.add_object(
-                        properties=properties,
-                        vector=vector
-                    )
-        else:
-            # v3 API
-            with client.batch as batch:
-                batch.batch_size = config.WEAVIATE_BATCH_SIZE
-
-                for i, doc in enumerate(documents):
-                    chunk_id = doc.get("chunk_id", f"chunk_{i}_{hash(doc.get('text', '')[:50])}")
-
-                    properties = {
-                        "text": doc.get("text", ""),
-                        "title": doc.get("title", ""),
-                        "source": doc.get("source", ""),
-                        "page_num": doc.get("page_num", 0),
-                        "chunk_id": chunk_id,
-                        "document_uuid": doc.get("document_uuid") or document_uuid, # 최상위 UUID
-                        "metadata": doc.get("metadata", {})
-                    }
-                    vector = doc.get("embedding")
-
-                    batch.add_data_object(
-                        data_object=properties,
-                        class_name=config.WEAVIATE_TEXT_CLASS,
-                        uuid=None,
-                        vector=vector
-                    )
+                batch.add_object(
+                    properties=properties,
+                    vector=vector
+                )
 
         logger.info(f"{len(documents)}개의 텍스트 문서를 배치로 추가했습니다.")
         return True
 
     except Exception as e:
-        logger.error(f"텍스트 문서 배치 임포트 중 오류 발생: {str(e)}", exc_info=True) # 상세 오류 로깅
+        logger.error(f"텍스트 문서 배치 임포트 중 오류 발생: {str(e)}", exc_info=True)
         return False
 
-def batch_import_image_documents(client: weaviate.Client, documents: List[Dict[str, Any]], document_uuid: str = None) -> bool:
+def batch_import_image_documents(client, documents: List[Dict[str, Any]], document_uuid: str = None) -> bool:
     """
-    이미지 문서를 배치로 Weaviate에 임포트
+    이미지 문서를 배치로 Weaviate에 임포트 (v4 API)
     """
     config = RAGConfig()
 
     try:
-        with client.batch as batch:
-            batch.batch_size = config.WEAVIATE_BATCH_SIZE
-
+        image_collection = client.collections.get(config.WEAVIATE_IMAGE_CLASS)
+        
+        with image_collection.batch.dynamic() as batch:
             for i, doc in enumerate(documents):
                 image_id = doc.get("image_id", f"img_{i}_{hash(doc.get('file_path', ''))}")
 
@@ -220,254 +175,151 @@ def batch_import_image_documents(client: weaviate.Client, documents: List[Dict[s
                     "content_type": doc.get("content_type", "image"),
                     "image_id": image_id,
                     "tags": doc.get("tags", []),
-                    "document_uuid": doc.get("document_uuid") or document_uuid, # 최상위 UUID
+                    "document_uuid": doc.get("document_uuid") or document_uuid,
                     "metadata": doc.get("metadata", {})
                 }
 
                 vector = doc.get("embedding")
 
-                batch.add_data_object(
-                    data_object=properties,
-                    class_name=config.WEAVIATE_IMAGE_CLASS,
-                    vector=vector,
-                    uuid=None,
+                batch.add_object(
+                    properties=properties,
+                    vector=vector
                 )
 
         logger.info(f"{len(documents)}개의 이미지 문서 임포트 완료")
         return True
 
     except Exception as e:
-        logger.error(f"이미지 문서 배치 임포트 중 오류 발생: {str(e)}", exc_info=True) # 상세 오류 로깅
+        logger.error(f"이미지 문서 배치 임포트 중 오류 발생: {str(e)}", exc_info=True)
         return False
 
-def delete_document(client: weaviate.Client, document_uuid: str) -> bool:
+def delete_document(client, document_uuid: str) -> bool:
     """
-    문서와 관련된 모든 데이터 삭제
+    문서와 관련된 모든 데이터 삭제 (v4 API)
     """
+    from weaviate.classes.query import Filter
+    
     config = RAGConfig()
-    logger.info(f"delete_document 호출됨: UUID='{document_uuid}'") # <<< 로그 추가
+    logger.info(f"delete_document 호출됨: UUID='{document_uuid}'")
 
     try:
-        # 1. 문서와 관련된 텍스트 청크 삭제
-        text_chunks_to_delete = []
-        try:
-            text_result = (
-                client.query
-                .get(config.WEAVIATE_TEXT_CLASS, [])
-                .with_additional(["id"])
-                .with_where({
-                    "path": ["document_uuid"], # <-- [수정] 최상위 경로로 수정
-                    "operator": "Equal",
-                    "valueString": document_uuid,
-                })
-                .with_limit(10000) # 많은 청크를 삭제하기 위해 limit 증가
-                .do()
-            )
-            logger.debug(f"텍스트 청크 조회 결과 (UUID: {document_uuid}): {text_result}") # <<< 로그 추가
-
-            if text_result and "data" in text_result and "Get" in text_result["data"]:
-                text_chunks_to_delete = (
-                    text_result["data"]["Get"].get(config.WEAVIATE_TEXT_CLASS)
-                ) or []
-            logger.info(f"삭제할 텍스트 청크 {len(text_chunks_to_delete)}개 찾음 (UUID: {document_uuid})") # <<< 로그 추가
-
-        except Exception as query_err:
-            logger.warning(f"텍스트 청크 조회 중 오류: {query_err}", exc_info=True) # 상세 오류 로깅
-
         deleted_text_count = 0
-        if text_chunks_to_delete:
-            logger.info("텍스트 청크 %d개 개별 삭제 시도 (UUID: %s)", len(text_chunks_to_delete), document_uuid)
-            for chunk in text_chunks_to_delete:
-                chunk_id = chunk.get("_additional", {}).get("id")
-                if not chunk_id:
-                    continue
-                try:
-                    client.data_object.delete(chunk_id, config.WEAVIATE_TEXT_CLASS)
-                    deleted_text_count += 1
-                except Exception as single_del_err:
-                    logger.warning("텍스트 청크 개별 삭제 실패 (ID: %s): %s", chunk_id, single_del_err)
-
-
-        if deleted_text_count > 0:
-            logger.info(f"텍스트 청크 {deleted_text_count}개 삭제 완료: (UUID: {document_uuid})")
-
-        # 2. 문서와 관련된 이미지 삭제
-        images_to_delete = []
-        try:
-            image_result = (
-                client.query
-                .get(config.WEAVIATE_IMAGE_CLASS, [])
-                .with_additional(["id"])
-                .with_where({
-                    "path": ["document_uuid"], # <-- [수정] 최상위 경로로 수정
-                    "operator": "Equal",
-                    "valueString": document_uuid,
-                })
-                .with_limit(10000) # 많은 청크를 삭제하기 위해 limit 증가
-                .do()
-            )
-            logger.debug(f"이미지 객체 조회 결과 (UUID: {document_uuid}): {image_result}") # <<< 로그 추가
-
-            if image_result and "data" in image_result and "Get" in image_result["data"]:
-                images_to_delete = (
-                    image_result["data"]["Get"].get(config.WEAVIATE_IMAGE_CLASS)
-                ) or []
-            logger.info(f"삭제할 이미지 객체 {len(images_to_delete)}개 찾음 (UUID: {document_uuid})") # <<< 로그 추가
-
-        except Exception as query_err:
-            logger.warning(f"이미지 객체 조회 중 오류: {query_err}", exc_info=True) # 상세 오류 로깅
-
         deleted_image_count = 0
-        if images_to_delete:
-            logger.info("이미지 객체 %d개 개별 삭제 시도 (UUID: %s)", len(images_to_delete), document_uuid)
-            for image in images_to_delete:
-                image_id = image.get("_additional", {}).get("id")
-                if not image_id:
-                    continue
-                try:
-                    client.data_object.delete(image_id, config.WEAVIATE_IMAGE_CLASS)
-                    deleted_image_count += 1
-                except Exception as single_del_err:
-                    logger.warning("이미지 객체 개별 삭제 실패 (ID: %s): %s", image_id, single_del_err)
+        
+        # 1. 텍스트 청크 삭제
+        try:
+            text_collection = client.collections.get(config.WEAVIATE_TEXT_CLASS)
+            result = text_collection.data.delete_many(
+                where=Filter.by_property("document_uuid").equal(document_uuid)
+            )
+            deleted_text_count = result.matches if hasattr(result, 'matches') else 0
+            logger.info(f"텍스트 청크 {deleted_text_count}개 삭제 완료 (UUID: {document_uuid})")
+        except Exception as text_err:
+            logger.warning(f"텍스트 청크 삭제 중 오류: {text_err}", exc_info=True)
 
-        if deleted_image_count > 0:
-            logger.info(f"이미지 {deleted_image_count}개 삭제 완료: (UUID: {document_uuid})")
+        # 2. 이미지 삭제
+        try:
+            image_collection = client.collections.get(config.WEAVIATE_IMAGE_CLASS)
+            result = image_collection.data.delete_many(
+                where=Filter.by_property("document_uuid").equal(document_uuid)
+            )
+            deleted_image_count = result.matches if hasattr(result, 'matches') else 0
+            logger.info(f"이미지 {deleted_image_count}개 삭제 완료 (UUID: {document_uuid})")
+        except Exception as image_err:
+            logger.warning(f"이미지 삭제 중 오류: {image_err}", exc_info=True)
 
         if deleted_text_count == 0 and deleted_image_count == 0:
             logger.warning(f"삭제할 데이터를 찾지 못했습니다. (UUID: {document_uuid})")
-            return False # 삭제된 것이 없으면 False 반환
+            return False
 
         logger.info(f"문서 관련 데이터 삭제 완료: {document_uuid}")
         return True
 
     except Exception as e:
-        logger.error(f"문서 삭제 중 오류 발생: {str(e)}", exc_info=True) # 상세 오류 로깅
+        logger.error(f"문서 삭제 중 오류 발생: {str(e)}", exc_info=True)
         return False
 
 def _collect_document_uuids(
-    client: weaviate.Client,
+    client,
     metadata_paths: List[str],
     chunk_prefix: Optional[str] = None,
 ) -> Set[str]:
-    """주어진 metadata.file_path 또는 chunk prefix로 document_uuid 목록 조회"""
+    """주어진 metadata.file_path 또는 chunk prefix로 document_uuid 목록 조회 (v4 API)"""
+    from weaviate.classes.query import Filter
+    
     config = RAGConfig()
     uuids: Set[str] = set()
+    
+    logger.debug(f"_collect_document_uuids: 후보 경로={metadata_paths}, 청크 접두사={chunk_prefix}")
+    collection = client.collections.get(config.WEAVIATE_TEXT_CLASS)
 
-    fields_to_get = ["document_uuid", "metadata { file_path }"]
-    logger.debug(f"_collect_document_uuids: 후보 경로={metadata_paths}, 청크 접두사={chunk_prefix}") # <<< 로그 추가
-
+    # metadata.file_path로 검색
     for path in metadata_paths:
         if not path:
             continue
-        logger.debug(f"파일 경로로 UUID 검색 시도: '{path}'") # <<< 로그 추가
+        logger.debug(f"파일 경로로 UUID 검색 시도: '{path}'")
         try:
-            result = (
-                client.query
-                .get(config.WEAVIATE_TEXT_CLASS, fields_to_get)
-                .with_additional(["id"])
-                .with_where({
-                    "path": ["metadata", "file_path"],
-                    "operator": "Equal",
-                    "valueText": path,
-                })
-                .with_limit(10) # UUID는 중복되므로 1~10개만 찾아도 됨
-                .do()
+            response = collection.query.fetch_objects(
+                filters=Filter.by_property("metadata").contains_any(["file_path", path]),
+                limit=10,
+                return_properties=["document_uuid"]
             )
-            logger.debug(f"경로 '{path}' 검색 결과: {result}") # <<< 로그 추가
-
-            items = (
-                result
-                .get("data", {})
-                .get("Get", {})
-                .get(config.WEAVIATE_TEXT_CLASS)
-            ) or []
-
-            for item in items:
-                doc_uuid = item.get("document_uuid") # 최상위 경로에서 가져옴
+            
+            for obj in response.objects:
+                doc_uuid = obj.properties.get("document_uuid")
                 if doc_uuid:
-                    logger.info(f"파일 경로 '{path}'에서 UUID '{doc_uuid}' 찾음.") # <<< 로그 추가
+                    logger.info(f"파일 경로 '{path}'에서 UUID '{doc_uuid}' 찾음.")
                     uuids.add(doc_uuid)
-                    break # UUID 하나만 찾으면 됨
+                    break
             if uuids:
-                break # 다음 경로 후보를 찾을 필요 없음
-
+                break
         except Exception as query_err:
-            logger.warning(f"metadata.file_path='{path}' 조회 중 오류: {query_err}", exc_info=True) # 상세 오류 로깅
+            logger.warning(f"metadata.file_path='{path}' 조회 중 오류: {query_err}", exc_info=True)
 
+    # source 필드로 검색
     if not uuids:
-        # 일부 인덱스는 metadata.file_path 대신 source 필드에 경로가 저장되어 있음
         for path in metadata_paths:
             if not path:
                 continue
             logger.debug(f"source 필드로 UUID 검색 시도: '{path}'")
             try:
-                result = (
-                    client.query
-                    .get(config.WEAVIATE_TEXT_CLASS, fields_to_get)
-                    .with_additional(["id"])
-                    .with_where({
-                        "path": ["source"],
-                        "operator": "Equal",
-                        "valueText": path,
-                    })
-                    .with_limit(10)
-                    .do()
+                response = collection.query.fetch_objects(
+                    filters=Filter.by_property("source").equal(path),
+                    limit=10,
+                    return_properties=["document_uuid"]
                 )
-                logger.debug(f"source='{path}' 검색 결과: {result}")
-
-                items = (
-                    result
-                    .get("data", {})
-                    .get("Get", {})
-                    .get(config.WEAVIATE_TEXT_CLASS)
-                ) or []
-
-                for item in items:
-                    doc_uuid = item.get("document_uuid")
+                
+                for obj in response.objects:
+                    doc_uuid = obj.properties.get("document_uuid")
                     if doc_uuid:
                         logger.info(f"source '{path}'에서 UUID '{doc_uuid}' 찾음.")
                         uuids.add(doc_uuid)
                         break
                 if uuids:
                     break
-
             except Exception as query_err:
                 logger.warning(f"source='{path}' 조회 중 오류: {query_err}", exc_info=True)
 
+    # chunk_id prefix로 검색
     if not uuids and chunk_prefix:
-        logger.debug(f"파일 경로 검색 실패, 청크 접두사로 UUID 검색 시도: '{chunk_prefix}%'") # <<< 로그 추가
+        logger.debug(f"파일 경로 검색 실패, 청크 접두사로 UUID 검색 시도: '{chunk_prefix}%'")
         try:
-            result = (
-                client.query
-                .get(config.WEAVIATE_TEXT_CLASS, fields_to_get)
-                .with_additional(["id"])
-                .with_where({
-                    "path": ["chunk_id"],
-                    "operator": "Like",
-                    "valueText": f"{chunk_prefix}%",
-                })
-                .with_limit(1) # UUID는 중복되므로 1개만 찾아도 됨
-                .do()
+            response = collection.query.fetch_objects(
+                filters=Filter.by_property("chunk_id").like(f"{chunk_prefix}*"),
+                limit=1,
+                return_properties=["document_uuid"]
             )
-            logger.debug(f"청크 접두사 '{chunk_prefix}%' 검색 결과: {result}") # <<< 로그 추가
-
-            items = (
-                result
-                .get("data", {})
-                .get("Get", {})
-                .get(config.WEAVIATE_TEXT_CLASS)
-            ) or []
-
-            for item in items:
-                doc_uuid = item.get("document_uuid") # 최상위 경로에서 가져옴
+            
+            for obj in response.objects:
+                doc_uuid = obj.properties.get("document_uuid")
                 if doc_uuid:
-                    logger.info(f"청크 접두사 '{chunk_prefix}%'에서 UUID '{doc_uuid}' 찾음.") # <<< 로그 추가
+                    logger.info(f"청크 접두사 '{chunk_prefix}%'에서 UUID '{doc_uuid}' 찾음.")
                     uuids.add(doc_uuid)
                     break
         except Exception as query_err:
-            logger.warning(f"chunk_id prefix '{chunk_prefix}%' 조회 중 오류: {query_err}", exc_info=True) # 상세 오류 로깅
+            logger.warning(f"chunk_id prefix '{chunk_prefix}%' 조회 중 오류: {query_err}", exc_info=True)
 
-    logger.info(f"_collect_document_uuids: 찾은 UUID 목록={uuids}") # <<< 로그 추가
+    logger.info(f"_collect_document_uuids: 찾은 UUID 목록={uuids}")
     return uuids
 
 

@@ -252,7 +252,7 @@ class RAGConfig:
         # ⚠️ 테스트 모드 설정 (GPU 배치 전환)
         # True: SGLang=GPU1, Transformers=GPU0 (테스트용)
         # False: SGLang=GPU0, Transformers=GPU1 (운영용, 기본값)
-        TEST_MODE = True
+        TEST_MODE = False
         
         # GPU 분산 배치 설정 (2개 H100 GPU 활용)
         if TEST_MODE:
@@ -573,15 +573,20 @@ class RAGConfig:
         try:
             # Weaviate 클라이언트 초기화
             import weaviate
+            from weaviate.classes.init import Auth
             # 버전 확인
             weaviate_version = weaviate.__version__
             logger.info(f"Weaviate 버전: {weaviate_version}")
             
             try:
-                # v3 API 사용
-                client = weaviate.Client(
-                    url=config.WEAVIATE_URL,
-                    startup_period=30  # 시작 대기 시간을 30초로 늘림
+                # v4 API 사용
+                client = weaviate.connect_to_custom(
+                    http_host=config.WEAVIATE_HOST,
+                    http_port=config.WEAVIATE_PORT,
+                    http_secure=False,
+                    grpc_host=config.WEAVIATE_HOST,
+                    grpc_port=50051,
+                    grpc_secure=False
                 )
             except Exception as e:
                 logger.error(f"Weaviate 클라이언트 초기화 오류: {e}")
