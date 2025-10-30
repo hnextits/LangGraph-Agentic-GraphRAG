@@ -145,8 +145,18 @@ class ImageSearcher:
         rerank: bool = True,
         cancellation_event: Optional[threading.Event] = None,
         allowed_document_uuids: Optional[Set[str]] = None,
+        use_uuid_filter: bool = False,
     ) -> List[Dict[str, Any]]:
-        """이미지 쿼리로 검색을 수행합니다."""
+        """이미지 쿼리로 검색을 수행합니다.
+        
+        Args:
+            query: 검색 쿼리
+            top_k: 반환할 결과 수
+            rerank: 리랭킹 사용 여부
+            cancellation_event: 취소 이벤트
+            allowed_document_uuids: 허용된 문서 UUID 집합
+            use_uuid_filter: UUID 필터 사용 여부 (기본값: False, 전체 이미지 검색)
+        """
         # 설정에서 기본값 가져오기
         config = RAGConfig()
         if top_k is None:
@@ -198,14 +208,18 @@ class ImageSearcher:
                 
                 collection = self.client.collections.get(self.class_name)
                 
-                # UUID 필터 구성
+                # UUID 필터 구성 (use_uuid_filter가 True일 때만 적용)
                 filters = None
-                if allowed_document_uuids:
+                if use_uuid_filter and allowed_document_uuids:
                     uuids = [uuid for uuid in allowed_document_uuids if uuid]
                     if len(uuids) == 1:
                         filters = Filter.by_property("document_uuid").equal(uuids[0])
+                        logger.info(f"이미지 검색에 UUID 필터 적용: {uuids[0]}")
                     elif len(uuids) > 1:
                         filters = Filter.by_property("document_uuid").contains_any(uuids)
+                        logger.info(f"이미지 검색에 UUID 필터 적용: {len(uuids)}개 문서")
+                else:
+                    logger.info("이미지 검색: 전체 이미지 데이터베이스에서 검색")
                 
                 # 벡터 검색 실행 (v4 API)
                 response = collection.query.near_vector(
@@ -289,12 +303,13 @@ class ImageSearcher:
                     content_types_filtered[ct] = 1
             logger.info(f"필터링 후 content_type 분포: {content_types_filtered}")
             
-            if allowed_document_uuids:
+            # use_uuid_filter가 True일 때만 후처리 필터링도 적용
+            if use_uuid_filter and allowed_document_uuids:
                 before_filter_count = len(filtered_results)
                 filtered_results = [res for res in filtered_results if res.get('document_uuid') in allowed_document_uuids]
                 if before_filter_count != len(filtered_results):
                     logger.info(
-                        "이미지 검색 결과 UUID 필터링 적용: %d -> %d",
+                        "이미지 검색 결과 UUID 후처리 필터링 적용: %d -> %d",
                         before_filter_count,
                         len(filtered_results),
                     )

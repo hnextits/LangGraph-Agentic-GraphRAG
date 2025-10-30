@@ -156,32 +156,49 @@ async def generate_mindmap_task(task_id: str, filename: str, max_topics: int):
             if process.stderr:
                 for line in process.stderr.split('\n'):
                     if line.strip():
-                        logger.info(f"[{task_id}] {line.strip()}")
+                        logger.info(f"[{task_id}] stderr: {line.strip()}")
             
+            # 반환 코드 확인
             if process.returncode != 0:
                 logger.error(f"[{task_id}] Exit code: {process.returncode}")
                 logger.error(f"[{task_id}] Stderr: {process.stderr}")
-                raise Exception(f"마인드맵 생성 실패 (exit code: {process.returncode})")
+                logger.error(f"[{task_id}] Stdout: {process.stdout[:1000] if process.stdout else 'None'}")
+                raise Exception(f"마인드맵 생성 실패 (exit code: {process.returncode}). stderr: {process.stderr[:200]}")
             
             # stdout이 비어있는지 확인
             if not process.stdout or not process.stdout.strip():
                 logger.error(f"[{task_id}] stdout이 비어있습니다")
-                logger.error(f"[{task_id}] stderr: {process.stderr}")
-                raise Exception("마인드맵 생성 실패: 출력 없음")
+                logger.error(f"[{task_id}] stderr 전체: {process.stderr}")
+                logger.error(f"[{task_id}] 실행 명령: {' '.join(cmd)}")
+                raise Exception(f"마인드맵 생성 실패: 출력 없음. stderr: {process.stderr[:200] if process.stderr else 'None'}")
+            
+            # stdout 내용 로깅 (디버깅용)
+            logger.info(f"[{task_id}] stdout 길이: {len(process.stdout)}")
+            logger.info(f"[{task_id}] stdout 앞부분: {process.stdout[:200]}")
             
             # JSON 결과 파싱
             try:
                 result = json.loads(process.stdout)
             except json.JSONDecodeError as e:
                 logger.error(f"[{task_id}] JSON 파싱 실패: {e}")
-                logger.error(f"[{task_id}] stdout 내용: {process.stdout[:500]}")
-                raise Exception(f"JSON 파싱 실패: {e}")
+                logger.error(f"[{task_id}] stdout 전체 내용:\n{process.stdout}")
+                logger.error(f"[{task_id}] stderr 전체 내용:\n{process.stderr}")
+                raise Exception(f"JSON 파싱 실패: {e}. stdout: {process.stdout[:200]}")
         finally:
             # 임시 파일 삭제
             Path(tmp_path).unlink(missing_ok=True)
         
-        if not result or result.get("status") != "success":
-            raise Exception("마인드맵 생성 실패")
+        # 결과 상태 확인
+        if not result:
+            raise Exception("마인드맵 생성 실패: 결과 없음")
+        
+        if result.get("status") == "error":
+            error_msg = result.get("error", "알 수 없는 오류")
+            logger.error(f"[{task_id}] 마인드맵 생성 스크립트 에러: {error_msg}")
+            raise Exception(f"마인드맵 생성 실패: {error_msg}")
+        
+        if result.get("status") != "success":
+            raise Exception(f"마인드맵 생성 실패: 예상치 못한 상태 - {result.get('status')}")
         
         # 파일 경로에서 내용 읽기
         output_files = result.get("output_files", {})

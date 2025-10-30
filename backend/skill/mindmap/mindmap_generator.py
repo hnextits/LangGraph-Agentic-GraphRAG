@@ -4479,8 +4479,22 @@ async def main():
                 print(f"- {filename}")
             
     except Exception as e:
-        logger.error(f"Error: {str(e)}")
-        raise
+        error_msg = f"Error: {str(e)}"
+        logger.error(error_msg)
+        
+        # JSON 출력 모드에서는 에러도 JSON으로 반환
+        if args.output_json:
+            result = {
+                "status": "error",
+                "error": str(e),
+                "message": error_msg
+            }
+            sys.stdout.write(json.dumps(result, ensure_ascii=False))
+            sys.stdout.write('\n')
+            sys.stdout.flush()
+            sys.exit(1)
+        else:
+            raise
 
 # === API 호환 래퍼 함수 ===
 async def generate_mindmap_for_api(

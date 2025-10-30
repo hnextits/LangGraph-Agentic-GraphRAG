@@ -249,6 +249,8 @@ Use concise and professional language suitable for an executive or technical aud
 
 The summary must be written entirely in Korean.
 
+IMPORTANT: Do NOT include the document filename or title at the beginning of your summary. Start directly with the content.
+
 Please organize the output as follows:
 
 Overview: A brief description of the document's purpose and scope.
