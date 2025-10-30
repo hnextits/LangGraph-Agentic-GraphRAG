@@ -230,15 +230,16 @@ def crawling_web(result: dict, output_dir: str) -> str:
     
     Args:
         result: {'title': str, 'link': str, 'snippet': str (optional)} 형태의 딕셔너리
-        output_dir: 저장할 디렉토리 경로
+        output_dir: 저장할 디렉토리 경로 (doc 또는 search_data/crawling)
         
     Returns:
-        str: 저장된 파일 경로
+        str: 저장된 파일 경로 (doc 디렉토리의 파일)
     """
     import requests
     from bs4 import BeautifulSoup
     from pathlib import Path
     import re
+    import shutil
     
     title = result.get('title', 'untitled')
     link = result.get('link', '')
@@ -253,6 +254,11 @@ def crawling_web(result: dict, output_dir: str) -> str:
     
     # 디렉토리 생성
     Path(output_dir).mkdir(parents=True, exist_ok=True)
+    
+    # 3.OCR_results 디렉토리 경로 설정
+    ocr_results_dir = Path(output_dir).parent / 'Results' / '3.OCR_results'
+    ocr_results_dir.mkdir(parents=True, exist_ok=True)
+    ocr_results_path = ocr_results_dir / f"{safe_filename}.md"
     
     try:
         # 웹 페이지 가져오기
@@ -286,9 +292,14 @@ def crawling_web(result: dict, output_dir: str) -> str:
             markdown_content += f"**요약:** {snippet}\n\n"
         markdown_content += f"## 본문\n\n{content}\n"
         
-        # 파일 저장
+        # doc 디렉토리에 파일 저장
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(markdown_content)
+        
+        # 3.OCR_results 디렉토리에도 복사
+        shutil.copy2(output_path, ocr_results_path)
+        print(f"검색 결과 저장: {output_path}")
+        print(f"검색 결과 복사: {ocr_results_path}")
         
         return str(output_path)
         
@@ -299,7 +310,13 @@ def crawling_web(result: dict, output_dir: str) -> str:
         markdown_content += f"**요약:** {snippet}\n\n"
         markdown_content += f"**오류:** 페이지 크롤링 실패 - {str(e)}\n"
         
+        # doc 디렉토리에 파일 저장
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(markdown_content)
+        
+        # 3.OCR_results 디렉토리에도 복사
+        shutil.copy2(output_path, ocr_results_path)
+        print(f"검색 결과 저장 (오류 포함): {output_path}")
+        print(f"검색 결과 복사 (오류 포함): {ocr_results_path}")
         
         return str(output_path)

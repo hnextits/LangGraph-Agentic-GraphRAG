@@ -215,6 +215,16 @@ def run_document_pipeline(task_id: str, title: str, link: str):
         if not (isinstance(file_path, str) and os.path.exists(file_path)):
             raise ValueError(f"크롤링 실패 또는 유효하지 않은 파일 경로: {file_path}")
 
+        # OCR_RESULTS_DIR에도 복사 (클릭 시 표시용)
+        try:
+            import shutil
+            file_name = Path(file_path).name
+            ocr_copy_path = OCR_RESULTS_DIR / file_name
+            shutil.copy2(file_path, ocr_copy_path)
+            logger.info(f"[{task_id}] 크롤링 결과를 OCR_RESULTS_DIR에 복사: {ocr_copy_path}")
+        except Exception as copy_error:
+            logger.warning(f"[{task_id}] OCR_RESULTS_DIR 복사 실패 (계속 진행): {copy_error}")
+
         tasks[task_id]['message'] = '문서 청킹 및 인덱싱 중...'
         if check_and_handle_pause(task_id): return
         
@@ -267,25 +277,20 @@ def check_and_handle_pause(task_id: str) -> bool:
     return False
 
 def run_text_indexing(task_id: str, file_path: str):
-    """텍스트 인덱싱 실행 함수"""
+    """텍스트 인덱싱 실행 함수 - 3.OCR_results에서만 검색"""
     logger.info(f"[{task_id}] 텍스트 인덱싱 시작: {file_path}")
     tasks[task_id]['status'] = 'indexing'
     tasks[task_id]['message'] = '텍스트 인덱싱 중...'
     try:
         if check_and_handle_pause(task_id): return
         base_name = Path(file_path).stem
-        md_candidates = [
-            DOC_DIR / f"{base_name}.md",
-            STT_TEXT_DIR / f"{base_name}.md",
-            OCR_RESULTS_DIR / f"{base_name}.md",
-        ]
+        
+        # 3.OCR_results에서만 검색
+        md_file_path = OCR_RESULTS_DIR / f"{base_name}.md"
 
-        md_file_path = next((path for path in md_candidates if path.exists()), None)
-
-        if not md_file_path:
+        if not md_file_path.exists():
             raise FileNotFoundError(
-                "OCR 결과 파일(.md)을 찾을 수 없습니다: "
-                f"{md_candidates[1]} 또는 {md_candidates[2]}"
+                f"3.OCR_results에서 파일을 찾을 수 없습니다: {md_file_path}"
             )
 
         original_cwd, original_sys_path, original_argv = os.getcwd(), list(sys.path), sys.argv
@@ -367,16 +372,19 @@ async def process_summarize_files(task_id: str, filenames: List[str]):
             progress = 10 + int((i / len(filenames)) * 80)
             tasks[task_id].update({"message": f"파일 처리 중... ({i+1}/{len(filenames)}): {filename}", "progress": progress})
 
-            # OCR 처리된 .md 파일을 우선적으로 찾음
+            # 3.OCR_results에서만 파일 검색
             base_name = Path(filename).stem
-            file_to_summarize = OCR_RESULTS_DIR / f"{base_name}.md"
-
-            # .md 파일이 없으면 원본 파일 디렉토리(DOC_DIR)에서 찾아봄
-            if not file_to_summarize.exists():
-                file_to_summarize = DOC_DIR / filename
+            candidate_names = [filename, f"{base_name}.md"]
             
-            if not file_to_summarize.exists():
-                logger.warning(f"[{task_id}] 요약할 파일을 찾을 수 없습니다: {filename}")
+            file_to_summarize = None
+            for name in candidate_names:
+                file_path = OCR_RESULTS_DIR / name
+                if file_path.exists():
+                    file_to_summarize = file_path
+                    break
+            
+            if file_to_summarize is None:
+                logger.warning(f"[{task_id}] 3.OCR_results에서 파일을 찾을 수 없습니다: {filename}")
                 continue
 
             try:
@@ -516,17 +524,26 @@ async def process_search_and_summarize(task_id: str, query: str):
                 generator.cleanup_model()
                 logger.info(f"[{task_id}] LLM 요약 모델 메모리 정리 완료")
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        result_file = CLEAN_MD_DIR / f"summary_{timestamp}_{sanitize_filename(query)}.md"
-        result_file.write_text(final_summary, encoding="utf-8")
+        safe_query = sanitize_filename(query)
         
-        # MD 파일을 임베딩하여 Weaviate에 저장
+        # 1. DOC_DIR에 저장 (기존 동작 유지)
+        doc_file = DOC_DIR / f"summary_{timestamp}_{safe_query}.md"
+        doc_file.write_text(final_summary, encoding="utf-8")
+        logger.info(f"[{task_id}] 검색 결과를 DOC_DIR에 저장: {doc_file}")
+        
+        # 2. OCR_RESULTS_DIR에도 저장 (클릭 시 표시용)
+        ocr_result_file = OCR_RESULTS_DIR / f"summary_{timestamp}_{safe_query}.md"
+        ocr_result_file.write_text(final_summary, encoding="utf-8")
+        logger.info(f"[{task_id}] 검색 결과를 OCR_RESULTS_DIR에 저장: {ocr_result_file}")
+        
+        # MD 파일을 임베딩하여 Weaviate에 저장 (DOC_DIR 파일 사용)
         task_status[task_id].update({"status": "running", "message": "검색 결과 임베딩 중...", "progress": 95})
         try:
-            logger.info(f"[{task_id}] MD 파일 임베딩 시작: {result_file}")
+            logger.info(f"[{task_id}] MD 파일 임베딩 시작: {doc_file}")
             from notebooklm.qwen3_late_chunking import main as chunking_main
             
             # 임베딩 처리
-            chunking_main(input_file=str(result_file), recreate_schema=False, search_mode=False)
+            chunking_main(input_file=str(doc_file), recreate_schema=False, search_mode=False)
             logger.info(f"[{task_id}] MD 파일 임베딩 완료")
         except Exception as e:
             logger.error(f"[{task_id}] MD 파일 임베딩 중 오류 발생: {e}", exc_info=True)
@@ -534,9 +551,9 @@ async def process_search_and_summarize(task_id: str, query: str):
         
         task_status[task_id].update({
             "status": "completed", "message": "요약이 완료되었습니다.", "progress": 100,
-            "result": {"summary": final_summary, "sources": sources, "result_file": str(result_file)}
+            "result": {"summary": final_summary, "sources": sources, "result_file": str(doc_file), "ocr_result_file": str(ocr_result_file)}
         })
-        logger.info(f"[{task_id}] 요약 작업 완료. 파일: {result_file}")
+        logger.info(f"[{task_id}] 요약 작업 완료. DOC: {doc_file}, OCR: {ocr_result_file}")
     except Exception as e:
         logger.error(f"[{task_id}] 요약 작업 파이프라인 실패: {e}", exc_info=True)
         task_status[task_id].update({"status": "failed", "message": f"오류 발생: {e}", "progress": 100, "error": str(e)})
@@ -947,26 +964,41 @@ async def list_doc_files() -> FileListResponse:
 # 원본 파일이 처리된 후의 텍스트(OCR) 내용을 조회하는 API
 @router.get("/files/{filename}", response_model=FileContentResponse, tags=["Document Management"])
 async def get_ocr_file_content(filename: str) -> FileContentResponse:
+    """3.OCR_results 디렉토리에서만 파일을 검색합니다."""
     base_name = Path(filename).stem
-    candidate_names = {filename, f"{base_name}.md"}
-    candidate_paths = []
+    candidate_names = [filename, f"{base_name}.md"]
 
+    logger.info(f"파일 내용 조회 요청: {filename}, base_name: {base_name}")
+
+    # 3.OCR_results에서만 검색
+    existing_path = None
     for name in candidate_names:
-        candidate_paths.extend(
-            [
-                DOC_DIR / name,
-                STT_TEXT_DIR / name,
-                OCR_RESULTS_DIR / name,
-            ]
-        )
-
-    existing_path = next((path for path in candidate_paths if path.is_file()), None)
+        file_path = OCR_RESULTS_DIR / name
+        if file_path.is_file():
+            existing_path = file_path
+            logger.info(f"3.OCR_results에서 파일 발견: {existing_path}")
+            break
 
     if existing_path is None:
+        logger.warning(f"3.OCR_results에서 파일을 찾을 수 없음: {filename}")
         detail = f"처리된 파일을 찾을 수 없습니다: {filename}"
         raise HTTPException(status_code=404, detail=detail)
 
-    content = existing_path.read_text(encoding="utf-8")
+    # 여러 인코딩 시도
+    encodings = ['utf-8', 'utf-8-sig', 'cp949', 'euc-kr', 'latin-1']
+    content = None
+    
+    for encoding in encodings:
+        try:
+            content = existing_path.read_text(encoding=encoding)
+            break
+        except (UnicodeDecodeError, LookupError):
+            continue
+    
+    if content is None:
+        # 모든 인코딩 실패 시 바이너리로 읽고 에러 무시
+        content = existing_path.read_bytes().decode('utf-8', errors='ignore')
+    
     return {"filename": existing_path.name, "content": content}
 
 # 업로드된 파일을 다중 삭제하는 API

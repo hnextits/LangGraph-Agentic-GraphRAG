@@ -4412,8 +4412,7 @@ async def process_text_file(filepath: str):
         # Save outputs with simple names based on input file
         output_files = {
             # str(output_dir / f"{base_filename}_mindmap.txt"): mindmap,
-            # str(output_dir / f"{base_filename}_mindmap.html"): html,
-            str(output_dir / f"{base_filename}_mindmap_interactive.html"): interactive_html,
+            str(output_dir / f"{base_filename}_mindmap.html"): interactive_html,
             # str(output_dir / f"{base_filename}_mindmap_outline.md"): markdown_outline
         }
         # Save all outputs

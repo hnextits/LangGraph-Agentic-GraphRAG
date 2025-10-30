@@ -24,6 +24,7 @@ interface Message {
   text: string;
   images?: (string | ImageData)[];
   sources?: string[];
+  timestamp?: Date;
 }
 
 interface CenterBoxProps {
@@ -74,7 +75,11 @@ const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
 
   const handleSendMessage = async () => {
     if (input.trim() && !isStreaming) {
-      const userMessage: Message = { sender: 'user', text: input };
+      const userMessage: Message = { 
+        sender: 'user', 
+        text: input,
+        timestamp: new Date()
+      };
       setMessages(prev => [...prev, userMessage]);
       setInput('');
       setIsStreaming(true);
@@ -93,6 +98,7 @@ const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
         const errorMessage: Message = {
           sender: 'bot',
           text: '작업을 시작하는 데 실패했습니다.',
+          timestamp: new Date()
         };
         setMessages(prev => [...prev, errorMessage]);
       }
@@ -117,6 +123,7 @@ const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
       const cancelledMessage: Message = {
         sender: 'bot',
         text: '사용자의 요청에 의해 중단되었습니다.',
+        timestamp: new Date()
       };
       setMessages(prev => [...prev, cancelledMessage]);
     }
@@ -137,6 +144,7 @@ const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
               text: result.answer || '답변을 받지 못했습니다.',
               images: result.images || result.image_paths || [],
               sources: result.context ? result.context.split('\n') : [],
+              timestamp: new Date()
             };
             console.log('Bot response with images:', result.images);
             setMessages(prev => [...prev, finalMessage]);
@@ -147,6 +155,7 @@ const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
             const errorMessage: Message = {
               sender: 'bot',
               text: `오류가 발생했습니다: ${task.error || '알 수 없는 오류'}`,
+              timestamp: new Date()
             };
             setMessages(prev => [...prev, errorMessage]);
             setIsStreaming(false);
@@ -164,6 +173,7 @@ const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
           const errorMessage: Message = {
             sender: 'bot',
             text: '작업 상태를 확인하는 중 오류가 발생했습니다.',
+            timestamp: new Date()
           };
           setMessages(prev => [...prev, errorMessage]);
           setIsStreaming(false);
@@ -215,6 +225,14 @@ const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
                     msg.sender === 'user' ? 'items-end' : 'items-start'
                   }`}
                 >
+                  {/* 타임스탬프 */}
+                  <div className="text-xs text-gray-400 mb-1 px-1">
+                    {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('ko-KR', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    }) : ''}
+                  </div>
+                  
                   <div
                     className={`rounded-lg p-3 ${
                       msg.sender === 'user'
