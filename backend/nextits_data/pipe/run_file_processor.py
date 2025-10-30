@@ -228,27 +228,40 @@ def process_image_file(file_path: str, skip_existing: bool = True, resume: bool 
         return False
 
 def process_sound_file(file_path: str, skip_existing: bool = True, resume: bool = True):
-    """음성 또는 영상 파일을 STT 파이프라인에 전달하고 마크다운 결과를 저장합니다."""
+    """음성 또는 영상 파일을 STT 파이프라인에 전달하고 결과를 저장합니다.
+    
+    저장 위치:
+    - 3.OCR_results: 화자 정보 포함 (클릭 시 표시용)
+    - 7.stt: 텍스트만 (임베딩용)
+    """
     try:
         print(f"음성/영상 파일 처리 중: {file_path}")
 
-        markdown_dir = Path(__file__).parent.parent / 'doc'
-        markdown_dir.mkdir(parents=True, exist_ok=True)
-
-        markdown_path = markdown_dir / f"{Path(file_path).stem}.md"
-        if skip_existing and markdown_path.exists():
-            print(f"이미 처리된 음성/영상 결과가 존재하여 건너뜁니다: {markdown_path}")
+        # 3.OCR_results와 7.stt 디렉토리에서 이미 처리된 파일 확인
+        ocr_results_dir = Path(__file__).parent.parent / 'Results' / '3.OCR_results'
+        stt_dir = Path(__file__).parent.parent / 'Results' / '7.stt'
+        ocr_results_dir.mkdir(parents=True, exist_ok=True)
+        stt_dir.mkdir(parents=True, exist_ok=True)
+        
+        ocr_path = ocr_results_dir / f"{Path(file_path).stem}.md"
+        stt_path = stt_dir / f"{Path(file_path).stem}.md"
+        
+        if skip_existing and ocr_path.exists() and stt_path.exists():
+            print(f"이미 처리된 음성/영상 결과가 존재하여 건너뜁니다:")
+            print(f"  - 화자 정보 포함: {ocr_path}")
+            print(f"  - 텍스트만: {stt_path}")
             return True
 
-        result = run_sound_pipeline(file_path, markdown_dir=str(markdown_dir))
+        # STT 파이프라인 실행 (markdown_dir 없이)
+        result = run_sound_pipeline(file_path, markdown_dir=None)
 
-        if not result or not result.get("markdown_path"):
-            print("경고: STT 결과가 비어 있거나 마크다운 경로를 찾을 수 없습니다.")
-            if markdown_path.exists():
-                markdown_path.unlink(missing_ok=True)
+        if not result or not result.get("text_path") or not result.get("markdown_path"):
+            print("경고: STT 결과가 비어 있거나 경로를 찾을 수 없습니다.")
             return False
 
-        print(f"음성/영상 처리 완료: {result['markdown_path']}")
+        print(f"음성/영상 처리 완료:")
+        print(f"  - 화자 정보 포함: {result['markdown_path']}")
+        print(f"  - 텍스트만: {result['text_path']}")
         return True
 
     except Exception as e:

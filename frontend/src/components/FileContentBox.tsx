@@ -45,37 +45,81 @@ const FileContentBox: React.FC<FileContentBoxProps> = ({ content }) => {
     );
   }
 
-  // 마크다운 렌더링
+  // 마크다운 렌더링 (CenterBox와 동일한 스타일)
   if (fileType === 'markdown') {
     return (
       <div className="p-4 prose prose-sm max-w-none dark:prose-invert markdown-content">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           components={{
-            code({node, inline, className, children, ...props}) {
-              const match = /language-(\w+)/.exec(className || '');
-              return !inline && match ? (
-                <SyntaxHighlighter
-                  style={vscDarkPlus as any}
-                  language={match[1]}
-                  PreTag="div"
-                  {...props}
-                >
-                  {String(children).replace(/\n$/, '')}
-                </SyntaxHighlighter>
-              ) : (
-                <code className={className} {...props}>
-                  {children}
-                </code>
-              );
-            },
-            table({node, ...props}) {
+            table: ({ node, ...props }) => (
+              <div className="table-container overflow-x-auto my-2">
+                <table className="markdown-table border-collapse w-full" {...props} />
+              </div>
+            ),
+            thead: props => (
+              <thead className="markdown-thead bg-[#f5f7fa]" {...props} />
+            ),
+            tbody: props => <tbody className="markdown-tbody" {...props} />,
+            tr: props => (
+              <tr
+                className="markdown-tr border-b border-gray-200 hover:bg-gray-50"
+                {...props}
+              />
+            ),
+            th: props => (
+              <th
+                className="markdown-th p-2 text-left font-semibold border-b-2 border-gray-300"
+                {...props}
+              />
+            ),
+            td: props => <td className="markdown-td p-2 border-gray-200" {...props} />,
+            code: ({ node, inline, className, children, ...props }) => {
+              const match = /language-(.*)/.exec(className || '');
+              const language = match ? match[1] : '';
+
+              if (inline) {
+                return (
+                  <code
+                    className="inline-code px-1 py-0.5 rounded bg-gray-100 text-red-500"
+                    {...props}
+                  >
+                    {children}
+                  </code>
+                );
+              }
+
               return (
-                <div className="overflow-x-auto w-full">
-                  <table className="markdown-table" {...props} />
+                <div className="code-block-wrapper my-3 rounded overflow-hidden">
+                  {language && (
+                    <div className="code-header bg-gray-800 text-gray-200 text-xs px-4 py-1">
+                      <span className="language-tag">{language}</span>
+                    </div>
+                  )}
+                  <SyntaxHighlighter
+                    style={vscDarkPlus as any}
+                    language={language || 'text'}
+                    PreTag="div"
+                    className="code-block"
+                    showLineNumbers={!inline && language !== 'text'}
+                    wrapLines={true}
+                    {...props}
+                  >
+                    {String(children).replace(/\n$/, '')}
+                  </SyntaxHighlighter>
                 </div>
               );
-            }
+            },
+            a: ({ href, children }) => (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="markdown-link text-blue-600 hover:underline"
+              >
+                {children}
+              </a>
+            ),
           }}
         >
           {content}

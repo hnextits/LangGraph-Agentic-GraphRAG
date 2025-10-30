@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import api from '@/lib/api';
 import FileContentBox from './FileContentBox';
+import FileContentModal from './FileContentModal';
 import Searchbox from './SearchBox';
 import FileUploadBox from './FileUploadBox';
 import ReportModal from './ReportModal';
@@ -17,15 +18,17 @@ import {
   ExternalLink,
   File,
   FileText,
-  Image as ImageIcon,
-  Code,
   FileType,
+  ImageIcon,
+  Code,
   WandSparkles,
   Loader2,
   Circle,
   CircleCheck,
   Network,
   FileBarChart,
+  Music,
+  Video,
 } from 'lucide-react';
 
 // 타입 정의
@@ -58,6 +61,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
   const [sources, setSources] = useState<SourceItem[]>([]);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [isFileUploadModalOpen, setIsFileUploadModalOpen] = useState(false);
+  const [isFileContentModalOpen, setIsFileContentModalOpen] = useState(false);
   const [checked, setChecked] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSource, setSelectedSource] = useState<SourceItem | null>(null);
@@ -267,6 +271,31 @@ const LeftBox: React.FC<LeftBoxProps> = ({
       return (
         <div className="bg-green-100 rounded-md p-1 items-center">
           <ImageIcon className="text-green-500" size={20} />
+        </div>
+      );
+    // 음성 파일
+    if (
+      lowerFileName.endsWith('.mp3') ||
+      lowerFileName.endsWith('.wav') ||
+      lowerFileName.endsWith('.ogg') ||
+      lowerFileName.endsWith('.flac')
+    )
+      return (
+        <div className="bg-orange-100 rounded-md p-1 items-center">
+          <Music className="text-orange-500" size={20} />
+        </div>
+      );
+    // 영상 파일
+    if (
+      lowerFileName.endsWith('.mp4') ||
+      lowerFileName.endsWith('.mov') ||
+      lowerFileName.endsWith('.avi') ||
+      lowerFileName.endsWith('.wmv') ||
+      lowerFileName.endsWith('.webm')
+    )
+      return (
+        <div className="bg-pink-100 rounded-md p-1 items-center">
+          <Video className="text-pink-500" size={20} />
         </div>
       );
     if (
@@ -571,7 +600,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
                     {formatFileName(selectedSource.title)}
                   </h3>
                   <button
-                    onClick={() => setIsFileUploadModalOpen(true)}
+                    onClick={() => setIsFileContentModalOpen(true)}
                     title="모달로 보기"
                     className="p-1 rounded-md hover:bg-gray-100"
                   >
@@ -762,6 +791,14 @@ const LeftBox: React.FC<LeftBoxProps> = ({
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
         onGenerate={handleReportGenerate}
+      />
+
+      {/* 파일 내용 모달 */}
+      <FileContentModal
+        isOpen={isFileContentModalOpen}
+        onClose={() => setIsFileContentModalOpen(false)}
+        fileName={selectedSource?.title || ''}
+        content={fileContent}
       />
     </div>
   );

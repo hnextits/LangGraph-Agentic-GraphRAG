@@ -14,7 +14,7 @@
         
         body {
             font-family: 'Segoe UI', 'Malgun Gothic', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #f5f5f5;
             min-height: 100vh;
             overflow: hidden;
         }
@@ -35,15 +35,15 @@
         }
         
         .control-btn {
-            background: rgba(255, 255, 255, 0.95);
-            border: none;
-            border-radius: 8px;
-            padding: 10px 16px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 8px 14px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
-            color: #333;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            color: #555;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
             transition: all 0.2s;
         }
         
@@ -57,11 +57,12 @@
             position: absolute;
             top: 20px;
             left: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 12px;
-            padding: 16px 20px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
-            max-width: 300px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 14px 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            max-width: 280px;
         }
         
         .info-panel h3 {
@@ -95,7 +96,7 @@
             font-size: 13px;
             font-weight: 500;
             pointer-events: none;
-            text-shadow: 0 1px 3px rgba(255,255,255,0.8);
+            fill: #333;
         }
         
         .link {
@@ -144,10 +145,11 @@
             position: absolute;
             bottom: 20px;
             left: 20px;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 12px;
-            padding: 16px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
         
         .legend-title {
@@ -192,15 +194,15 @@
     <div class="legend">
         <div class="legend-title">범례</div>
         <div class="legend-item">
-            <div class="legend-color" style="background: #667eea;"></div>
+            <div class="legend-color" style="background: #4A90E2;"></div>
             <span>주제 (Topic)</span>
         </div>
         <div class="legend-item">
-            <div class="legend-color" style="background: #f093fb;"></div>
+            <div class="legend-color" style="background: #7B68EE;"></div>
             <span>하위 주제 (Subtopic)</span>
         </div>
         <div class="legend-item">
-            <div class="legend-color" style="background: #4facfe;"></div>
+            <div class="legend-color" style="background: #50C878;"></div>
             <span>세부 사항 (Detail)</span>
         </div>
     </div>
@@ -210,12 +212,12 @@
     <script>
         const mindmapData = MINDMAP_DATA_PLACEHOLDER;
         
-        // 색상 스킴
+        // 색상 스킴 - 깔끔하고 심플한 색상
         const colors = {
-            root: '#8b5cf6',
-            topic: '#667eea',
-            subtopic: '#f093fb',
-            detail: '#4facfe'
+            root: '#2C3E50',
+            topic: '#4A90E2',
+            subtopic: '#7B68EE',
+            detail: '#50C878'
         };
         
         // SVG 설정
@@ -285,10 +287,10 @@
             return root;
         }
         
-        // 트리 레이아웃
+        // 트리 레이아웃 - 좌→우 방향
         const treeLayout = d3.tree()
-            .size([2 * Math.PI, Math.min(width, height) / 2 - 150])
-            .separation((a, b) => (a.parent == b.parent ? 1 : 2) / a.depth);
+            .size([height - 100, width - 400])
+            .separation((a, b) => (a.parent == b.parent ? 1 : 1.5));
         
         const rootData = transformData(mindmapData);
         const root = d3.hierarchy(rootData);
@@ -321,9 +323,9 @@
                 .attr('stroke', d => colors[d.target.data.type] || '#999');
             
             linkEnter.merge(links)
-                .attr('d', d3.linkRadial()
-                    .angle(d => d.x)
-                    .radius(d => d.y));
+                .attr('d', d3.linkHorizontal()
+                    .x(d => d.y)
+                    .y(d => d.x));
             
             // 노드 업데이트
             const nodes = nodeGroup.selectAll('.node')
@@ -348,29 +350,27 @@
                 .on('mouseout', hideTooltip);
             
             nodeEnter.append('circle')
-                .attr('r', d => d.depth === 0 ? 12 : d.depth === 1 ? 10 : d.depth === 2 ? 8 : 6)
+                .attr('r', d => d.depth === 0 ? 10 : d.depth === 1 ? 8 : d.depth === 2 ? 6 : 5)
                 .attr('fill', d => colors[d.data.type] || '#999')
-                .attr('stroke', '#fff');
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2);
             
             nodeEnter.append('text')
                 .attr('dy', '0.31em')
-                .attr('x', d => d.x < Math.PI === !d.children ? 6 : -6)
-                .attr('text-anchor', d => d.x < Math.PI === !d.children ? 'start' : 'end')
-                .attr('transform', d => d.x >= Math.PI ? 'rotate(180)' : null)
+                .attr('x', d => d.children || d._children ? -12 : 12)
+                .attr('text-anchor', d => d.children || d._children ? 'end' : 'start')
                 .text(d => {
-                    const maxLength = 20;
+                    const maxLength = 25;
                     return d.data.name.length > maxLength 
                         ? d.data.name.substring(0, maxLength) + '...' 
                         : d.data.name;
                 })
                 .style('fill', '#333')
-                .style('font-size', d => d.depth === 0 ? '15px' : d.depth === 1 ? '13px' : '11px');
+                .style('font-size', d => d.depth === 0 ? '14px' : d.depth === 1 ? '13px' : '12px')
+                .style('font-weight', d => d.depth === 0 ? '600' : '500');
             
             nodeEnter.merge(nodes)
-                .attr('transform', d => `
-                    rotate(${d.x * 180 / Math.PI - 90})
-                    translate(${d.y},0)
-                `);
+                .attr('transform', d => `translate(${d.y},${d.x})`);
         }
         
         // 툴팁
@@ -399,7 +399,7 @@
         function resetView() {
             svg.transition()
                 .duration(750)
-                .call(zoom.transform, d3.zoomIdentity.translate(width / 2, height / 2));
+                .call(zoom.transform, d3.zoomIdentity.translate(80, height / 2).scale(1));
         }
         
         function expandAll() {
@@ -422,8 +422,8 @@
             update(root);
         }
         
-        // 초기 렌더링
-        g.attr('transform', `translate(${width / 2},${height / 2})`);
+        // 초기 렌더링 - 좌측에서 시작
+        g.attr('transform', `translate(80,${height / 2})`);
         update(root);
     </script>
 </body>

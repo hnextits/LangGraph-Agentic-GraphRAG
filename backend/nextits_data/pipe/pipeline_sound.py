@@ -251,35 +251,34 @@ def run_sound_pipeline(audio_path, markdown_dir=None):
     print(f"오디오 길이 대비 처리 속도: {audio_duration / total_time:.2f} 배속")
     print(f"{'=' * 50}")
 
-    markdown_output = None
-    text_output = None
-    if markdown_dir:
-        os.makedirs(markdown_dir, exist_ok=True)
-        markdown_output = Path(markdown_dir) / f"{Path(audio_path).stem}.md"
+    # 1. 화자 정보 포함 마크다운 저장 (3.OCR_results - 클릭 시 표시용)
+    ocr_results_dir = Path(__file__).parent.parent / 'Results' / '3.OCR_results'
+    ocr_results_dir.mkdir(parents=True, exist_ok=True)
+    markdown_output = ocr_results_dir / f"{Path(audio_path).stem}.md"
 
-        lines = [
-            f"# Transcription for {Path(audio_path).name}",
-            "",
-            f"- Duration: {audio_duration:.2f}s",
-            f"- Generated at: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}",
-            "",
-            "## Speaker Timeline",
-            ""
-        ]
+    lines = [
+        f"# Transcription for {Path(audio_path).name}",
+        "",
+        f"- Duration: {audio_duration:.2f}s",
+        f"- Generated at: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())}",
+        "",
+        "## Speaker Timeline",
+        ""
+    ]
 
-        for trans in merged:
-            lines.append(
-                f"### {trans['speaker']} ({trans['start']:.2f}s - {trans['end']:.2f}s)"
-            )
-            lines.append(trans["text"])
-            lines.append("")
+    for trans in merged:
+        lines.append(
+            f"### {trans['speaker']} ({trans['start']:.2f}s - {trans['end']:.2f}s)"
+        )
+        lines.append(trans["text"])
+        lines.append("")
 
-        with open(markdown_output, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines).strip() + "\n")
+    with open(markdown_output, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines).strip() + "\n")
 
-        print(f"마크다운 결과 저장: {markdown_output}")
+    print(f"화자 정보 포함 마크다운 저장: {markdown_output}")
 
-    # 화자 정보 없이 전체 텍스트만 저장
+    # 2. 화자 정보 없이 전체 텍스트만 저장 (7.stt - 임베딩용)
     speakerless_text = "\n".join(t["text"] for t in merged if t["speaker"] != "UNKNOWN").strip()
     stt_text_dir = Path(__file__).parent.parent / 'Results' / '7.stt'
     stt_text_dir.mkdir(parents=True, exist_ok=True)
@@ -301,7 +300,7 @@ def run_sound_pipeline(audio_path, markdown_dir=None):
         else:
             f.write(f"<!--METADATA:{json.dumps(metadata_block, ensure_ascii=False)}-->\n")
 
-    print(f"텍스트 결과 저장(화자 구분 없음): {text_output}")
+    print(f"텍스트만 저장 (임베딩용): {text_output}")
 
     return {
         "segments": merged,

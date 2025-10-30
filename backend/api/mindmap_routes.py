@@ -80,20 +80,13 @@ async def generate_mindmap_task(task_id: str, filename: str, max_topics: int):
             "progress": 10
         }
         
-        # 파일 경로 찾기
+        # 3.OCR_results에서만 파일 찾기
         base_dir = Path(__file__).parent.parent / "nextits_data"
-        
-        # OCR 결과에서 찾기
         ocr_dir = base_dir / "Results" / "3.OCR_results"
         file_path = ocr_dir / filename
         
-        # doc 디렉토리에서 찾기
         if not file_path.exists():
-            doc_dir = base_dir / "doc"
-            file_path = doc_dir / filename
-        
-        if not file_path.exists():
-            raise FileNotFoundError(f"파일을 찾을 수 없습니다: {filename}")
+            raise FileNotFoundError(f"3.OCR_results에서 파일을 찾을 수 없습니다: {filename}")
         
         # 파일 내용 읽기
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -112,10 +105,13 @@ async def generate_mindmap_task(task_id: str, filename: str, max_topics: int):
         import json
         import tempfile
         
-        # 임시 파일에 문서 내용 저장
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False, encoding='utf-8') as tmp:
+        # 원본 파일명을 유지하면서 임시 파일 생성
+        base_filename = Path(filename).stem
+        temp_dir = Path(tempfile.gettempdir())
+        tmp_path = temp_dir / f"{base_filename}.txt"
+        
+        with open(tmp_path, 'w', encoding='utf-8') as tmp:
             tmp.write(document_content)
-            tmp_path = tmp.name
         
         try:
             # 별도 프로세스로 실행
@@ -131,7 +127,7 @@ async def generate_mindmap_task(task_id: str, filename: str, max_topics: int):
                 "python",
                 "-u",  # unbuffered output (실시간 로그)
                 str(script_path),
-                tmp_path,
+                str(tmp_path),
                 "--request-id", task_id,
                 "--max-topics", str(max_topics),
                 "--output-json"  # JSON 형식으로 결과 출력
@@ -198,10 +194,9 @@ async def generate_mindmap_task(task_id: str, filename: str, max_topics: int):
                 mermaid_file = filename
             elif filename.endswith('_mindmap_outline.md'):
                 markdown_file = filename
-            elif filename.endswith('_mindmap_interactive.html'):
-                interactive_html_file = filename
             elif filename.endswith('_mindmap.html'):
                 html_file = filename
+                interactive_html_file = filename  # 동일한 파일
         
         # 완료
         mindmap_tasks[task_id].update({

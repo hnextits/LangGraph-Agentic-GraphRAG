@@ -6,6 +6,8 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkEmoji from 'remark-emoji';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { useGetSummaryContent } from '@/queries';
 
 // 타입 정의
@@ -249,40 +251,63 @@ const SummaryModal: React.FC<SummaryModalProps> = ({ open, onClose, file }) => {
                       {...props}
                     />
                   ),
-                  code: ({ node, inline, ...props }) =>
-                    inline ? (
-                      <Typography
-                        component="code"
-                        sx={{
-                          backgroundColor: '#fef3c7',
-                          color: '#92400e',
-                          px: 0.75,
-                          py: 0.25,
-                          borderRadius: '3px',
-                          fontFamily: '"Fira Code", "Consolas", monospace',
-                          fontSize: '0.85em',
-                        }}
-                        {...props}
-                      />
-                    ) : (
-                      <Box
-                        component="pre"
-                        sx={{
-                          backgroundColor: '#1f2937',
-                          color: '#f3f4f6',
-                          p: 2,
-                          borderRadius: '6px',
-                          overflowX: 'auto',
-                          textAlign: 'left',
-                          my: 1.5,
-                          '& code': {
+                  code: ({ node, inline, className, children, ...props }) => {
+                    const match = /language-(.*)/.exec(className || '');
+                    const language = match ? match[1] : '';
+
+                    if (inline) {
+                      return (
+                        <Typography
+                          component="code"
+                          sx={{
+                            backgroundColor: '#fef3c7',
+                            color: '#92400e',
+                            px: 0.75,
+                            py: 0.25,
+                            borderRadius: '3px',
                             fontFamily: '"Fira Code", "Consolas", monospace',
                             fontSize: '0.85em',
-                          },
-                        }}
-                        {...props}
-                      />
-                    ),
+                          }}
+                          {...props}
+                        >
+                          {children}
+                        </Typography>
+                      );
+                    }
+
+                    return (
+                      <Box sx={{ my: 1.5 }}>
+                        {language && (
+                          <Box
+                            sx={{
+                              backgroundColor: '#1f2937',
+                              color: '#9ca3af',
+                              px: 2,
+                              py: 0.5,
+                              fontSize: '0.75rem',
+                              borderTopLeftRadius: '6px',
+                              borderTopRightRadius: '6px',
+                            }}
+                          >
+                            {language}
+                          </Box>
+                        )}
+                        <SyntaxHighlighter
+                          style={vscDarkPlus as any}
+                          language={language || 'text'}
+                          PreTag="div"
+                          showLineNumbers={language !== 'text'}
+                          wrapLines={true}
+                          customStyle={{
+                            margin: 0,
+                            borderRadius: language ? '0 0 6px 6px' : '6px',
+                          }}
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                      </Box>
+                    );
+                  },
                   table: ({ node, ...props }) => (
                     <Box sx={{ overflowX: 'auto', my: 3 }}>
                       <Box
