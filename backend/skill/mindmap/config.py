@@ -9,9 +9,9 @@ config_loader = DecoupleConfig(RepositoryEnv(str(env_path)))
 class Config:
     """Configuration for the Mindmap Generator application."""
     # SGLang Local Model Configuration
-    SGLANG_MODEL_PATH = config_loader.get('SGLANG_MODEL_PATH', 'Qwen/Qwen3-8B')
-    SGLANG_DEVICE = config_loader.get('SGLANG_DEVICE', 'cuda:0')
-    SGLANG_MEM_FRACTION = float(config_loader.get('SGLANG_MEM_FRACTION', '0.5'))
+    SGLANG_MODEL_PATH = config_loader.get('SGLANG_MODEL_PATH', 'Qwen/Qwen3-30B-A3B-Instruct-2507-FP8')
+    SGLANG_DEVICE = config_loader.get('SGLANG_DEVICE', 'cuda:1')
+    SGLANG_MEM_FRACTION = float(config_loader.get('SGLANG_MEM_FRACTION', '0.7'))
     SGLANG_MAX_TOKENS = 8192
     TOKEN_BUFFER = 500
 

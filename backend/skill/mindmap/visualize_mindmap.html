@@ -270,8 +270,10 @@
                             if (subtopic.details && subtopic.details.length > 0) {
                                 subtopic.details.forEach(detail => {
                                     subtopicNode.children.push({
-                                        name: detail.name || detail,
-                                        type: 'detail'
+                                        name: detail.text || detail.name || detail,  // text 필드 우선 사용
+                                        type: 'detail',
+                                        importance: detail.importance,
+                                        citations: detail.citations
                                     });
                                 });
                             }
@@ -297,7 +299,7 @@
         
         root.descendants().forEach(d => {
             d._children = d.children;
-            if (d.depth > 1) {
+            if (d.depth > 2) {  // depth 2(Subtopic)까지 표시, depth 3(Detail) 이상만 숨김
                 d.children = null;
             }
         });
@@ -414,7 +416,7 @@
         
         function collapseAll() {
             root.descendants().forEach(d => {
-                if (d.depth > 1 && d.children) {
+                if (d.depth > 2 && d.children) {  // depth 2까지는 유지
                     d._children = d.children;
                     d.children = null;
                 }

@@ -272,8 +272,10 @@ class MindMapGenerator:
             'request_timeout': 30,  # seconds
             'chunk_size': 8192,     # bytes for file operations
             'max_topics': 6,        # NotebookLM-style main topics
-            'max_subtopics': 3,     # Concise subtopics per topic
-            'max_details': 3,       # Concise details per subtopic
+            'min_subtopics': 2,     # Minimum subtopics per topic (depth 2)
+            'max_subtopics': 4,     # Maximum subtopics per topic
+            'min_details': 2,       # Minimum details per subtopic (depth 3)
+            'max_details': 4,       # Maximum details per subtopic
             'similarity_threshold': {
                 'topic': 78,
                 'subtopic': 74,
@@ -2734,7 +2736,7 @@ JSON 객체만 반환하세요."""
         segment_texts = [seg.text for seg in segments[:5]]  # Use up to 5 segments
         combined_text = "\n\n".join(segment_texts)
         
-        prompt = f"""토픽 "{topic['name']}"에 대해 2-3개의 서브토픽을 찾으세요.
+        prompt = f"""토픽 "{topic['name']}"에 대해 **최소 2개, 최대 4개**의 서브토픽을 찾으세요.
 
 텍스트:
 {combined_text[:1500]}
@@ -2744,10 +2746,13 @@ JSON 배열 형식으로 반환:
 - "summary": 짧은 문장 (최대 8단어)
 - "segment_ids": {[seg.segment_id for seg in segments[:5]]}에서 선택
 
+**중요: 반드시 최소 2개 이상의 서브토픽을 생성해야 합니다.**
+
 예시:
 [
   {{"name": "군사적 영향", "summary": "군대에 미치는 효과", "segment_ids": ["seg_001"]}},
-  {{"name": "사회적 혼란", "summary": "시민 소요 위험", "segment_ids": ["seg_002"]}}
+  {{"name": "사회적 혼란", "summary": "시민 소요 위험", "segment_ids": ["seg_002"]}},
+  {{"name": "경제적 파급", "summary": "재정 손실 발생", "segment_ids": ["seg_003"]}}
 ]
 
 JSON 배열만 반환하세요."""
@@ -2775,12 +2780,40 @@ JSON 배열만 반환하세요."""
                     }
                     subtopics.append(subtopic)
                     
+            # Ensure minimum depth: at least 2 subtopics
+            min_subtopics = self.config.get('min_subtopics', 2)
+            if len(subtopics) < min_subtopics:
+                logger.warning(f"Only {len(subtopics)} subtopics extracted for '{topic['name']}', minimum is {min_subtopics}. Generating fallback subtopics.")
+                # Add generic fallback subtopics to ensure depth
+                while len(subtopics) < min_subtopics:
+                    fallback_subtopic = {
+                        'name': f"{topic['name']} - 추가 정보 {len(subtopics) + 1}",
+                        'summary': '관련 세부 내용',
+                        'citations': topic.get('citations', [])[:1],
+                        'emoji': '',
+                        'importance': 'low',
+                        'details': []
+                    }
+                    subtopics.append(fallback_subtopic)
+                    
             logger.info(f"Extracted {len(subtopics)} subtopics for '{topic['name']}'")
             return subtopics
             
         except Exception as e:
             logger.error(f"Error extracting subtopics for {topic['name']}: {e}")
-            return []
+            # Return minimum fallback subtopics to maintain depth
+            min_subtopics = self.config.get('min_subtopics', 2)
+            fallback_subtopics = []
+            for i in range(min_subtopics):
+                fallback_subtopics.append({
+                    'name': f"{topic['name']} - 세부사항 {i+1}",
+                    'summary': '관련 내용',
+                    'citations': topic.get('citations', [])[:1],
+                    'emoji': '',
+                    'importance': 'low',
+                    'details': []
+                })
+            return fallback_subtopics
 
     async def _extract_details_from_segments(
         self,
@@ -2805,7 +2838,7 @@ JSON 배열만 반환하세요."""
         segment_texts = [seg.text for seg in segments[:3]]  # Use up to 3 segments
         combined_text = "\n\n".join(segment_texts)
         
-        prompt = f"""서브토픽 "{subtopic['name']}"에 대해 2-3개의 핵심 세부사항을 추출하세요.
+        prompt = f"""서브토픽 "{subtopic['name']}"에 대해 **최소 2개, 최대 4개**의 핵심 세부사항을 추출하세요.
 
 서브토픽 요약: {subtopic.get('summary', '')}
 
@@ -2817,10 +2850,13 @@ JSON 배열 형식으로 반환 (각 객체는):
 - "importance": "high", "medium", "low" 중 하나
 - "segment_ids": {[seg.segment_id for seg in segments]}에서 선택한 배열
 
+**중요: 반드시 최소 2개 이상의 세부사항을 생성해야 합니다.**
+
 예시:
 [
   {{"text": "Black Mamba는 51일 만에 1억 뷰 달성", "importance": "high", "segment_ids": ["seg_002"]}},
-  {{"text": "데뷔곡은 독특한 가상세계 컨셉 선보임", "importance": "medium", "segment_ids": ["seg_004"]}}
+  {{"text": "데뷔곡은 독특한 가상세계 컨셉 선보임", "importance": "medium", "segment_ids": ["seg_004"]}},
+  {{"text": "SM 엔터테인먼트의 신인 걸그룹", "importance": "medium", "segment_ids": ["seg_001"]}}
 ]
 
 JSON 배열만 반환하세요. 텍스트는 매우 간결하게."""
@@ -2845,12 +2881,34 @@ JSON 배열만 반환하세요. 텍스트는 매우 간결하게."""
                     }
                     details.append(detail)
                     
+            # Ensure minimum depth: at least 2 details
+            min_details = self.config.get('min_details', 2)
+            if len(details) < min_details:
+                logger.warning(f"Only {len(details)} details extracted for '{subtopic['name']}', minimum is {min_details}. Generating fallback details.")
+                # Add generic fallback details to ensure depth
+                while len(details) < min_details:
+                    fallback_detail = {
+                        'text': f"{subtopic['name']}에 대한 추가 정보 {len(details) + 1}",
+                        'importance': 'low',
+                        'citations': subtopic.get('citations', [])[:1]
+                    }
+                    details.append(fallback_detail)
+                    
             logger.info(f"Extracted {len(details)} details for '{subtopic['name']}'")
             return details
             
         except Exception as e:
             logger.error(f"Error extracting details for {subtopic['name']}: {e}")
-            return []
+            # Return minimum fallback details to maintain depth
+            min_details = self.config.get('min_details', 2)
+            fallback_details = []
+            for i in range(min_details):
+                fallback_details.append({
+                    'text': f"{subtopic['name']}의 세부 내용 {i+1}",
+                    'importance': 'low',
+                    'citations': subtopic.get('citations', [])[:1]
+                })
+            return fallback_details
 
     async def _extract_main_topics(self, content: str, topics_prompt: str, request_id: str) -> List[Dict[str, Any]]:
         """Extract main topics using LLM with more aggressive deduplication and content preservation.
@@ -4413,7 +4471,7 @@ async def process_text_file(filepath: str):
         output_files = {
             # str(output_dir / f"{base_filename}_mindmap.txt"): mindmap,
             str(output_dir / f"{base_filename}_mindmap.html"): interactive_html,
-            # str(output_dir / f"{base_filename}_mindmap_outline.md"): markdown_outline
+            str(output_dir / f"{base_filename}_mindmap_outline.md"): markdown_outline
         }
         # Save all outputs
         for filename, content in output_files.items():

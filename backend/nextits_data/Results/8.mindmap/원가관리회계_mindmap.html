@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>인터랙티브 마인드맵</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Malgun Gothic', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        #mindmap-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 8px 14px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: #555;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            transition: all 0.2s;
+        }
+        
+        .control-btn:hover {
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transform: translateY(-1px);
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 14px 18px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            max-width: 280px;
+        }
+        
+        .info-panel h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        
+        .info-panel p {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.5;
+        }
+        
+        .node {
+            cursor: pointer;
+        }
+        
+        .node circle {
+            stroke-width: 2.5px;
+            transition: all 0.3s;
+        }
+        
+        .node:hover circle {
+            stroke-width: 4px;
+            filter: brightness(1.1);
+        }
+        
+        .node text {
+            font-size: 13px;
+            font-weight: 500;
+            pointer-events: none;
+            fill: #333;
+        }
+        
+        .link {
+            fill: none;
+            stroke-width: 2px;
+            opacity: 0.6;
+            transition: all 0.3s;
+        }
+        
+        .link:hover {
+            opacity: 1;
+            stroke-width: 3px;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            max-width: 300px;
+            z-index: 2000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        .tooltip.show {
+            opacity: 1;
+        }
+        
+        .tooltip-title {
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+        
+        .tooltip-content {
+            line-height: 1.5;
+            color: #ddd;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .legend-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="mindmap-container"></div>
+    
+    <div class="controls">
+        <button class="control-btn" onclick="resetView()">🔄 초기화</button>
+        <button class="control-btn" onclick="expandAll()">➕ 전체 펼치기</button>
+        <button class="control-btn" onclick="collapseAll()">➖ 전체 접기</button>
+    </div>
+    
+    <div class="info-panel">
+        <h3>💡 사용 방법</h3>
+        <p>• 드래그: 화면 이동<br>• 스크롤: 확대/축소<br>• 노드 클릭: 하위 항목 펼치기/접기<br>• 노드 호버: 상세 정보 보기</p>
+    </div>
+    
+    <div class="legend">
+        <div class="legend-title">범례</div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #4A90E2;"></div>
+            <span>주제 (Topic)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #7B68EE;"></div>
+            <span>하위 주제 (Subtopic)</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background: #50C878;"></div>
+            <span>세부 사항 (Detail)</span>
+        </div>
+    </div>
+    
+    <div class="tooltip" id="tooltip"></div>
+    
+    <script>
+        const mindmapData = {
+  "topics": [
+    {
+      "name": "원가 관리 회계",
+      "summary": "제조 비용 통제와 분석",
+      "citations": "seg_003, seg_000, seg_010",
+      "subtopics": []
+    },
+    {
+      "name": "손익 분기점 분석",
+      "summary": "고정비와 변동비의 영향",
+      "citations": "seg_063, seg_062, seg_066",
+      "subtopics": []
+    },
+    {
+      "name": "제조 부문비 배부",
+      "summary": "제조 부문 간 간접비 배부 방법",
+      "citations": "seg_124, seg_125, seg_126",
+      "subtopics": [
+        {
+          "name": "보조 부문비 배부",
+          "citations": "seg_124, seg_125",
+          "details": []
+        }
+      ]
+    },
+    {
+      "name": "재공품 원가 계산 방법",
+      "summary": "월초 재공품 원가 계산 방법",
+      "citations": "seg_186, seg_187, seg_188",
+      "subtopics": []
+    },
+    {
+      "name": "전통적 원가 계산 및 비교",
+      "summary": "전통적 원가 계산과 활동 기준 원가 계산 비교",
+      "citations": "seg_248, seg_249, seg_250",
+      "subtopics": []
+    },
+    {
+      "name": "유휴 설비 대체 용도 고려",
+      "summary": "특별 주문 수락 시 임대 수익 상실 고려",
+      "citations": "seg_310, seg_311, seg_312",
+      "subtopics": []
+    }
+  ]
+};
+        
+        // 색상 스킴 - 깔끔하고 심플한 색상
+        const colors = {
+            root: '#2C3E50',
+            topic: '#4A90E2',
+            subtopic: '#7B68EE',
+            detail: '#50C878'
+        };
+        
+        // SVG 설정
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        const svg = d3.select('#mindmap-container')
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+        
+        // 줌 기능
+        const g = svg.append('g');
+        
+        const zoom = d3.zoom()
+            .scaleExtent([0.1, 4])
+            .on('zoom', (event) => {
+                g.attr('transform', event.transform);
+            });
+        
+        svg.call(zoom);
+        
+        // 데이터 변환
+        function transformData(data) {
+            const root = {
+                name: '문서 마인드맵',
+                type: 'root',
+                children: []
+            };
+            
+            if (data && data.topics) {
+                data.topics.forEach(topic => {
+                    const topicNode = {
+                        name: topic.name,
+                        type: 'topic',
+                        summary: topic.summary,
+                        citations: topic.citations,
+                        children: []
+                    };
+                    
+                    if (topic.subtopics && topic.subtopics.length > 0) {
+                        topic.subtopics.forEach(subtopic => {
+                            const subtopicNode = {
+                                name: subtopic.name,
+                                type: 'subtopic',
+                                citations: subtopic.citations,
+                                children: []
+                            };
+                            
+                            if (subtopic.details && subtopic.details.length > 0) {
+                                subtopic.details.forEach(detail => {
+                                    subtopicNode.children.push({
+                                        name: detail.text || detail.name || detail,  // text 필드 우선 사용
+                                        type: 'detail',
+                                        importance: detail.importance,
+                                        citations: detail.citations
+                                    });
+                                });
+                            }
+                            
+                            topicNode.children.push(subtopicNode);
+                        });
+                    }
+                    
+                    root.children.push(topicNode);
+                });
+            }
+            
+            return root;
+        }
+        
+        // 트리 레이아웃 - 좌→우 방향
+        const treeLayout = d3.tree()
+            .size([height - 100, width - 400])
+            .separation((a, b) => (a.parent == b.parent ? 1 : 1.5));
+        
+        const rootData = transformData(mindmapData);
+        const root = d3.hierarchy(rootData);
+        
+        root.descendants().forEach(d => {
+            d._children = d.children;
+            if (d.depth > 2) {  // depth 2(Subtopic)까지 표시, depth 3(Detail) 이상만 숨김
+                d.children = null;
+            }
+        });
+        
+        treeLayout(root);
+        
+        // 링크 그리기
+        const linkGroup = g.append('g').attr('class', 'links');
+        const nodeGroup = g.append('g').attr('class', 'nodes');
+        
+        function update(source) {
+            treeLayout(root);
+            
+            // 링크 업데이트
+            const links = linkGroup.selectAll('.link')
+                .data(root.links(), d => d.target.data.name);
+            
+            links.exit().remove();
+            
+            const linkEnter = links.enter()
+                .append('path')
+                .attr('class', 'link')
+                .attr('stroke', d => colors[d.target.data.type] || '#999');
+            
+            linkEnter.merge(links)
+                .attr('d', d3.linkHorizontal()
+                    .x(d => d.y)
+                    .y(d => d.x));
+            
+            // 노드 업데이트
+            const nodes = nodeGroup.selectAll('.node')
+                .data(root.descendants(), d => d.data.name);
+            
+            nodes.exit().remove();
+            
+            const nodeEnter = nodes.enter()
+                .append('g')
+                .attr('class', 'node')
+                .on('click', (event, d) => {
+                    if (d.children) {
+                        d._children = d.children;
+                        d.children = null;
+                    } else if (d._children) {
+                        d.children = d._children;
+                        d._children = null;
+                    }
+                    update(d);
+                })
+                .on('mouseover', (event, d) => showTooltip(event, d))
+                .on('mouseout', hideTooltip);
+            
+            nodeEnter.append('circle')
+                .attr('r', d => d.depth === 0 ? 10 : d.depth === 1 ? 8 : d.depth === 2 ? 6 : 5)
+                .attr('fill', d => colors[d.data.type] || '#999')
+                .attr('stroke', '#fff')
+                .attr('stroke-width', 2);
+            
+            nodeEnter.append('text')
+                .attr('dy', '0.31em')
+                .attr('x', d => d.children || d._children ? -12 : 12)
+                .attr('text-anchor', d => d.children || d._children ? 'end' : 'start')
+                .text(d => {
+                    const maxLength = 25;
+                    return d.data.name.length > maxLength 
+                        ? d.data.name.substring(0, maxLength) + '...' 
+                        : d.data.name;
+                })
+                .style('fill', '#333')
+                .style('font-size', d => d.depth === 0 ? '14px' : d.depth === 1 ? '13px' : '12px')
+                .style('font-weight', d => d.depth === 0 ? '600' : '500');
+            
+            nodeEnter.merge(nodes)
+                .attr('transform', d => `translate(${d.y},${d.x})`);
+        }
+        
+        // 툴팁
+        function showTooltip(event, d) {
+            const tooltip = document.getElementById('tooltip');
+            let content = `<div class="tooltip-title">${d.data.name}</div>`;
+            
+            if (d.data.summary) {
+                content += `<div class="tooltip-content">${d.data.summary}</div>`;
+            }
+            if (d.data.citations) {
+                content += `<div class="tooltip-content" style="margin-top: 6px; color: #aaa;">📎 ${d.data.citations}</div>`;
+            }
+            
+            tooltip.innerHTML = content;
+            tooltip.style.left = event.pageX + 15 + 'px';
+            tooltip.style.top = event.pageY + 15 + 'px';
+            tooltip.classList.add('show');
+        }
+        
+        function hideTooltip() {
+            document.getElementById('tooltip').classList.remove('show');
+        }
+        
+        // 컨트롤 함수
+        function resetView() {
+            svg.transition()
+                .duration(750)
+                .call(zoom.transform, d3.zoomIdentity.translate(80, height / 2).scale(1));
+        }
+        
+        function expandAll() {
+            root.descendants().forEach(d => {
+                if (d._children) {
+                    d.children = d._children;
+                    d._children = null;
+                }
+            });
+            update(root);
+        }
+        
+        function collapseAll() {
+            root.descendants().forEach(d => {
+                if (d.depth > 2 && d.children) {  // depth 2까지는 유지
+                    d._children = d.children;
+                    d.children = null;
+                }
+            });
+            update(root);
+        }
+        
+        // 초기 렌더링 - 좌측에서 시작
+        g.attr('transform', `translate(80,${height / 2})`);
+        update(root);
+    </script>
+</body>
+</html>
