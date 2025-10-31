@@ -71,9 +71,9 @@ class MindmapContentResponse(BaseModel):
 
 # === 백그라운드 작업 함수 ===
 async def generate_mindmap_task(task_id: str, filename: str, max_topics: int):
-    """백그라운드에서 마인드맵 생성 (원본 알고리즘 사용)"""
+    """백그라운드에서 마인드맵 생성 (subprocess 방식, max_topics 전달)"""
     try:
-        logger.info(f"[{task_id}] 마인드맵 생성 시작: {filename}")
+        logger.info(f"[{task_id}] 마인드맵 생성 시작: {filename} (max_topics={max_topics})")
         mindmap_tasks[task_id] = {
             "status": "processing",
             "message": "파일 읽는 중...",
@@ -107,7 +107,7 @@ async def generate_mindmap_task(task_id: str, filename: str, max_topics: int):
             "progress": 20
         })
         
-        # 별도 프로세스로 마인드맵 생성 스크립트 실행
+        # subprocess 방식으로 실행 (event loop 충돌 방지)
         import subprocess
         import json
         import tempfile
@@ -136,12 +136,12 @@ async def generate_mindmap_task(task_id: str, filename: str, max_topics: int):
                 str(script_path),
                 str(tmp_path),
                 "--request-id", task_id,
-                "--max-topics", str(max_topics),
+                "--max-topics", str(max_topics),  # max_topics 전달
                 "--output-json"  # JSON 형식으로 결과 출력
             ]
             
             # subprocess 실행 (stdout=JSON, stderr=로그)
-            logger.info(f"[{task_id}] 마인드맵 생성 프로세스 시작...")
+            logger.info(f"[{task_id}] 마인드맵 생성 프로세스 시작 (max_topics={max_topics})...")
             
             try:
                 process = subprocess.run(
@@ -179,10 +179,25 @@ async def generate_mindmap_task(task_id: str, filename: str, max_topics: int):
             logger.info(f"[{task_id}] stdout 길이: {len(process.stdout)}")
             logger.info(f"[{task_id}] stdout 앞부분: {process.stdout[:200]}")
             
-            # JSON 결과 파싱
+            # JSON 결과 파싱 (stdout에서 JSON 부분만 추출)
             try:
-                result = json.loads(process.stdout)
-            except json.JSONDecodeError as e:
+                # stdout에서 마지막 JSON 객체 찾기
+                stdout_lines = process.stdout.strip().split('\n')
+                json_line = None
+                
+                # 뒤에서부터 JSON 시작 찾기
+                for line in reversed(stdout_lines):
+                    if line.strip().startswith('{'):
+                        json_line = line.strip()
+                        break
+                
+                if not json_line:
+                    raise ValueError("stdout에서 JSON을 찾을 수 없습니다")
+                
+                result = json.loads(json_line)
+                logger.info(f"[{task_id}] JSON 파싱 성공")
+                
+            except (json.JSONDecodeError, ValueError) as e:
                 logger.error(f"[{task_id}] JSON 파싱 실패: {e}")
                 logger.error(f"[{task_id}] stdout 전체 내용:\n{process.stdout}")
                 logger.error(f"[{task_id}] stderr 전체 내용:\n{process.stderr}")
