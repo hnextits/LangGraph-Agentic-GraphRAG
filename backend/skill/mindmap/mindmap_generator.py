@@ -272,10 +272,8 @@ class MindMapGenerator:
             'request_timeout': 30,  # seconds
             'chunk_size': 8192,     # bytes for file operations
             'max_topics': 6,        # NotebookLM-style main topics
-            'min_subtopics': 2,     # Minimum subtopics per topic (depth 2)
-            'max_subtopics': 4,     # Maximum subtopics per topic
-            'min_details': 2,       # Minimum details per subtopic (depth 3)
-            'max_details': 4,       # Maximum details per subtopic
+            'max_subtopics': 4,     # Concise subtopics per topic
+            'max_details': 4,       # Concise details per subtopic
             'similarity_threshold': {
                 'topic': 78,
                 'subtopic': 74,
@@ -2280,12 +2278,13 @@ class MindMapGenerator:
         
         return result_mindmap
 
-    async def generate_mindmap(self, document_content: str, request_id: str) -> str:
+    async def generate_mindmap(self, document_content: str, request_id: str, max_topics: int = 8) -> str:
         """Generate NotebookLM-style mindmap using segment-based topic discovery.
         
         Args:
             document_content (str): The document content to analyze
             request_id (str): Unique identifier for request tracking
+            max_topics (int): Maximum number of topics to generate (default: 8)
             
         Returns:
             str: Complete Mermaid mindmap syntax with citations
@@ -2294,7 +2293,7 @@ class MindMapGenerator:
             MindMapGenerationError: If mindmap generation fails
         """
         try:
-            logger.info("Starting NotebookLM-style mindmap generation...", extra={"request_id": request_id})
+            logger.info(f"Starting NotebookLM-style mindmap generation (max_topics={max_topics})...", extra={"request_id": request_id})
             
             # Step 1: Segment the document and ingest into Weaviate
             document_name = f"doc_{request_id}"  # Use a unique name for the document
@@ -2306,8 +2305,8 @@ class MindMapGenerator:
             ]
             self.weaviate_service.ingest_segments(segments_for_ingestion, document_name)
 
-            # Step 2: Find semantic clusters using Weaviate
-            clusters = self.weaviate_service.find_semantic_clusters(document_name, num_topics=6)
+            # Step 2: Find semantic clusters using Weaviate (use max_topics parameter)
+            clusters = self.weaviate_service.find_semantic_clusters(document_name, num_topics=max_topics)
 
             if not clusters:
                 logger.warning("No semantic clusters found. Falling back to full-document extraction.")
@@ -2444,13 +2443,16 @@ class MindMapGenerator:
                 try:
                     # Generate subtopics from topic's segments
                     topic_segments = segment_processor.get_segments_for_cluster({
-                        'segment_ids': topic.get('citations', [])
+                        'segment_ids': topic.get('citations', [])  # citations는 이미 segment_ids 리스트
                     })
+                    
+                    logger.info(f"[DEBUG] Topic '{topic_name}' has {len(topic.get('citations', []))} citations, got {len(topic_segments)} segments")
                     
                     if self._llm_calls['subtopics'] < max_llm_calls['subtopics']:
                         subtopics = await self._extract_subtopics_from_segments(
                             topic, topic_segments, request_id
                         )
+                        logger.info(f"[DEBUG] Extracted {len(subtopics)} subtopics for '{topic_name}'")
                         
                         # Perform early redundancy check on subtopics
                         subtopics = await self._batch_redundancy_check(
@@ -2463,6 +2465,8 @@ class MindMapGenerator:
                         break
                             
                     topic['subtopics'] = []
+                    
+                    logger.info(f"[DEBUG] After redundancy check: {len(subtopics)} subtopics remain for '{topic_name}'")
                     
                     if subtopics:
                         completion_stats['total_subtopics'] += len(subtopics)
@@ -2508,7 +2512,7 @@ class MindMapGenerator:
                             try:
                                 # Extract details from subtopic's segments
                                 subtopic_segments = segment_processor.get_segments_for_cluster({
-                                    'segment_ids': subtopic.get('citations', [])
+                                    'segment_ids': subtopic.get('citations', [])  # citations는 이미 segment_ids 리스트
                                 })
                                 
                                 if self._llm_calls['details'] < max_llm_calls['details']:
@@ -2553,6 +2557,9 @@ class MindMapGenerator:
                                 continue
                         
                         topic['subtopics'] = list(processed_subtopics.values())
+                        logger.info(f"[DEBUG] Final: Topic '{topic_name}' has {len(topic['subtopics'])} subtopics")
+                    else:
+                        logger.warning(f"[DEBUG] No subtopics for '{topic_name}' after processing")
                     
                     processed_topics[topic_name] = topic
                         
@@ -2736,7 +2743,7 @@ JSON 객체만 반환하세요."""
         segment_texts = [seg.text for seg in segments[:5]]  # Use up to 5 segments
         combined_text = "\n\n".join(segment_texts)
         
-        prompt = f"""토픽 "{topic['name']}"에 대해 **최소 2개, 최대 4개**의 서브토픽을 찾으세요.
+        prompt = f"""토픽 "{topic['name']}"에 대해 2-4개의 서브토픽을 찾으세요.
 
 텍스트:
 {combined_text[:1500]}
@@ -2745,8 +2752,6 @@ JSON 배열 형식으로 반환:
 - "name": 3-5단어 (원문 언어 사용)
 - "summary": 짧은 문장 (최대 8단어)
 - "segment_ids": {[seg.segment_id for seg in segments[:5]]}에서 선택
-
-**중요: 반드시 최소 2개 이상의 서브토픽을 생성해야 합니다.**
 
 예시:
 [
@@ -2780,40 +2785,12 @@ JSON 배열만 반환하세요."""
                     }
                     subtopics.append(subtopic)
                     
-            # Ensure minimum depth: at least 2 subtopics
-            min_subtopics = self.config.get('min_subtopics', 2)
-            if len(subtopics) < min_subtopics:
-                logger.warning(f"Only {len(subtopics)} subtopics extracted for '{topic['name']}', minimum is {min_subtopics}. Generating fallback subtopics.")
-                # Add generic fallback subtopics to ensure depth
-                while len(subtopics) < min_subtopics:
-                    fallback_subtopic = {
-                        'name': f"{topic['name']} - 추가 정보 {len(subtopics) + 1}",
-                        'summary': '관련 세부 내용',
-                        'citations': topic.get('citations', [])[:1],
-                        'emoji': '',
-                        'importance': 'low',
-                        'details': []
-                    }
-                    subtopics.append(fallback_subtopic)
-                    
             logger.info(f"Extracted {len(subtopics)} subtopics for '{topic['name']}'")
             return subtopics
             
         except Exception as e:
             logger.error(f"Error extracting subtopics for {topic['name']}: {e}")
-            # Return minimum fallback subtopics to maintain depth
-            min_subtopics = self.config.get('min_subtopics', 2)
-            fallback_subtopics = []
-            for i in range(min_subtopics):
-                fallback_subtopics.append({
-                    'name': f"{topic['name']} - 세부사항 {i+1}",
-                    'summary': '관련 내용',
-                    'citations': topic.get('citations', [])[:1],
-                    'emoji': '',
-                    'importance': 'low',
-                    'details': []
-                })
-            return fallback_subtopics
+            return []
 
     async def _extract_details_from_segments(
         self,
@@ -2838,7 +2815,7 @@ JSON 배열만 반환하세요."""
         segment_texts = [seg.text for seg in segments[:3]]  # Use up to 3 segments
         combined_text = "\n\n".join(segment_texts)
         
-        prompt = f"""서브토픽 "{subtopic['name']}"에 대해 **최소 2개, 최대 4개**의 핵심 세부사항을 추출하세요.
+        prompt = f"""서브토픽 "{subtopic['name']}"에 대해 2-4개의 핵심 세부사항을 추출하세요.
 
 서브토픽 요약: {subtopic.get('summary', '')}
 
@@ -2849,8 +2826,6 @@ JSON 배열 형식으로 반환 (각 객체는):
 - "text": 간결한 한 문장 (10-15단어, 원문 언어 사용)
 - "importance": "high", "medium", "low" 중 하나
 - "segment_ids": {[seg.segment_id for seg in segments]}에서 선택한 배열
-
-**중요: 반드시 최소 2개 이상의 세부사항을 생성해야 합니다.**
 
 예시:
 [
@@ -2881,34 +2856,12 @@ JSON 배열만 반환하세요. 텍스트는 매우 간결하게."""
                     }
                     details.append(detail)
                     
-            # Ensure minimum depth: at least 2 details
-            min_details = self.config.get('min_details', 2)
-            if len(details) < min_details:
-                logger.warning(f"Only {len(details)} details extracted for '{subtopic['name']}', minimum is {min_details}. Generating fallback details.")
-                # Add generic fallback details to ensure depth
-                while len(details) < min_details:
-                    fallback_detail = {
-                        'text': f"{subtopic['name']}에 대한 추가 정보 {len(details) + 1}",
-                        'importance': 'low',
-                        'citations': subtopic.get('citations', [])[:1]
-                    }
-                    details.append(fallback_detail)
-                    
             logger.info(f"Extracted {len(details)} details for '{subtopic['name']}'")
             return details
             
         except Exception as e:
             logger.error(f"Error extracting details for {subtopic['name']}: {e}")
-            # Return minimum fallback details to maintain depth
-            min_details = self.config.get('min_details', 2)
-            fallback_details = []
-            for i in range(min_details):
-                fallback_details.append({
-                    'text': f"{subtopic['name']}의 세부 내용 {i+1}",
-                    'importance': 'low',
-                    'citations': subtopic.get('citations', [])[:1]
-                })
-            return fallback_details
+            return []
 
     async def _extract_main_topics(self, content: str, topics_prompt: str, request_id: str) -> List[Dict[str, Any]]:
         """Extract main topics using LLM with more aggressive deduplication and content preservation.
@@ -4434,7 +4387,7 @@ def generate_interactive_html(concepts: Dict[str, Any]) -> str:
     
     return html
 
-async def process_text_file(filepath: str):
+async def process_text_file(filepath: str, max_topics: int = 8):
     """Process a single text file and generate mindmap outputs."""
     logger = get_logger()
     try:
@@ -4450,8 +4403,8 @@ async def process_text_file(filepath: str):
         document_id = f"{base_filename}_{content_hash}_{timestamp}"
         # Initialize the mindmap generator
         generator = MindMapGenerator()
-        # Generate the mindmap with concepts
-        mindmap = await generator.generate_mindmap(content, request_id=document_id)
+        # Generate the mindmap with concepts (max_topics 전달)
+        mindmap = await generator.generate_mindmap(content, request_id=document_id, max_topics=max_topics)
         
         # Get concepts for interactive HTML (need to store during generation)
         concepts = getattr(generator, '_last_concepts', None)
@@ -4510,8 +4463,8 @@ async def main():
             # SGLang 로그도 억제
             os.environ['SGLANG_LOG_LEVEL'] = 'ERROR'
             
-            # 일반 모드로 실행 (파일 저장)
-            output_files = await process_text_file(input_file)
+            # 일반 모드로 실행 (파일 저장, max_topics 전달)
+            output_files = await process_text_file(input_file, max_topics=args.max_topics)
             
             # 파일 경로만 JSON으로 반환
             result = {
@@ -4525,9 +4478,9 @@ async def main():
             sys.stdout.write('\n')
             sys.stdout.flush()
         else:
-            # 일반 모드 (파일 출력)
-            logger.info(f"Generating mindmap for {input_file}")
-            output_files = await process_text_file(input_file)
+            # 일반 모드 (파일 출력, max_topics 전달)
+            logger.info(f"Generating mindmap for {input_file} (max_topics={args.max_topics})")
+            output_files = await process_text_file(input_file, max_topics=args.max_topics)
             
             # Print summary
             print("\nMindmap Generation Complete!")
@@ -4565,7 +4518,7 @@ async def generate_mindmap_for_api(
     Args:
         document_content: 문서 내용
         request_id: 요청 ID (선택)
-        max_topics: 최대 주제 수 (현재 미사용, 호환성 유지)
+        max_topics: 최대 주제 수 (default: 8)
     
     Returns:
         {
@@ -4585,10 +4538,11 @@ async def generate_mindmap_for_api(
         # 생성기 초기화
         generator = MindMapGenerator()
         
-        # 마인드맵 생성
+        # 마인드맵 생성 (max_topics 파라미터 전달)
         mermaid_result = await generator.generate_mindmap(
             document_content,
-            request_id=request_id or "api_request"
+            request_id=request_id or "api_request",
+            max_topics=max_topics
         )
         
         # 개념 추출 (마지막 생성 결과에서)

@@ -32,7 +32,9 @@ class SharedEmbeddingModel:
     def __init__(self, model_name="Qwen/Qwen3-Embedding-4B"):
         if self._model is None:
             self.model_name = model_name
-            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            # RAGConfig에서 GPU 분산 설정 가져오기
+            config = RAGConfig()
+            self.device = config.EMBEDDING_DEVICE if torch.cuda.is_available() else "cpu"
             logger.info(f"Loading shared SentenceTransformer model: {self.model_name} on device: {self.device}")
             try:
                 self.__class__._model = SentenceTransformer(self.model_name, device=self.device)

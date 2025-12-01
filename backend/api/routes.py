@@ -787,13 +787,23 @@ async def summarize_files(request_data: SummarizeRequest) -> SummarizeResponse:
                 combined_content += f"\n\n## 출처: {link}\n\n{data}\n"
         
         # generate_answer 호출하여 요약 생성 (내부에서 자동으로 청킹 처리)
-        logger.info(f"요약 생성 시작 - 총 컨텐츠 길이: {len(combined_content)} 문자")
-        try:
-            summary = generator.generate_answer(combined_content)
-            logger.info(f"요약 생성 완료 - 요약 길이: {len(summary)} 문자")
-        except Exception as e:
-            logger.error(f"요약 생성 중 오류 발생: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"요약 생성 중 오류가 발생했습니다: {str(e)}")
+        # 동기 함수를 별도 스레드에서 실행하여 이벤트 루프 블로킹 방지
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
+        
+        def run_generate_in_thread():
+            """별도 스레드에서 새 이벤트 루프 생성하여 실행"""
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
+            try:
+                return generator.generate_answer(combined_content)
+            finally:
+                new_loop.close()
+                asyncio.set_event_loop(None)
+        
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor() as executor:
+            summary = await loop.run_in_executor(executor, run_generate_in_thread)
         
         # 요약 결과 저장 디렉토리 설정
         summary_dir = os.path.join(parent_dir, 'nextits_data', 'Results', '6.summarize')
