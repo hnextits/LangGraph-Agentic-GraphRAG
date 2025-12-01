@@ -350,12 +350,6 @@ const LeftBox: React.FC<LeftBoxProps> = ({
       return;
     }
 
-    const isNotSupportSummary = checkedFilenames.some(file => file.toLowerCase().endsWith('pdf'));
-    if (isNotSupportSummary) {
-      setIsNotSupportSummaryModalOpen(true);
-      return;
-    }
-
     setIsSummaryLoading(true);
     setSummaryError(null);
 

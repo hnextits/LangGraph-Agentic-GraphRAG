@@ -228,6 +228,15 @@ def run_document_pipeline(task_id: str, title: str, link: str):
         tasks[task_id]['message'] = '문서 청킹 및 인덱싱 중...'
         if check_and_handle_pause(task_id): return
         
+        # GPU 메모리 정리 (임베딩 전)
+        try:
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                logger.info(f"[{task_id}] GPU 메모리 정리 완료")
+        except Exception as e:
+            logger.warning(f"[{task_id}] GPU 메모리 정리 실패: {e}")
+        
         original_cwd, original_sys_path, original_argv = os.getcwd(), list(sys.path), sys.argv
         try:
             notebooklm_path = str(BASE_DIR)
@@ -654,8 +663,8 @@ async def summarize_files(request_data: SummarizeRequest) -> SummarizeResponse:
         file_contents = []
         missing_files = []
         
-        # DOC_DIR과 OCR_RESULTS_DIR에서 파일 찾기
-        search_dirs = [DOC_DIR, OCR_RESULTS_DIR]
+        # DOC_DIR, OCR_RESULTS_DIR, STT_TEXT_DIR에서 파일 찾기
+        search_dirs = [OCR_RESULTS_DIR, STT_TEXT_DIR]
         available_files = {}
         for search_dir in search_dirs:
             if os.path.exists(search_dir):
@@ -702,13 +711,48 @@ async def summarize_files(request_data: SummarizeRequest) -> SummarizeResponse:
                 continue
                 
             try:
-                with open(file_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    file_contents.append({
-                        "title": file_name,
-                        "content": content
-                    })
-                logger.info(f"파일 로드 성공: {file_name}")
+                # 처리가 필요한 파일 타입 체크 (PDF, 오디오/비디오)
+                processed_file_extensions = ['.pdf', '.wav', '.mp3', '.ogg', '.flac', '.webm', '.mp4', '.mov', '.avi', '.wmv']
+                needs_processed_file = any(file_path.lower().endswith(ext) for ext in processed_file_extensions)
+                
+                if needs_processed_file:
+                    # PDF, 오디오/비디오 파일인 경우, OCR_RESULTS_DIR 또는 STT_TEXT_DIR에서 처리된 마크다운 파일 찾기
+                    base_name = os.path.splitext(os.path.basename(file_path))[0]
+                    
+                    # 여러 위치에서 처리된 결과 찾기
+                    processed_locations = [
+                        OCR_RESULTS_DIR / f"{base_name}.md",
+                        STT_TEXT_DIR / f"{base_name}.md"
+                    ]
+                    
+                    md_file_path = None
+                    for location in processed_locations:
+                        if location.exists():
+                            md_file_path = location
+                            break
+                    
+                    if md_file_path:
+                        with open(md_file_path, 'r', encoding='utf-8') as f:
+                            content = f.read()
+                            file_contents.append({
+                                "title": file_name,
+                                "content": content
+                            })
+                        logger.info(f"처리된 파일 로드 성공: {file_name} -> {md_file_path}")
+                    else:
+                        logger.error(f"파일 ({file_name})의 처리 결과를 찾을 수 없습니다.")
+                        logger.info(f"확인한 위치: {[str(loc) for loc in processed_locations]}")
+                        logger.info(f"파일을 먼저 처리해야 합니다. 원본 파일 경로: {file_path}")
+                        missing_files.append(file_name)
+                else:
+                    # 텍스트 파일인 경우 일반적으로 읽기
+                    with open(file_path, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        file_contents.append({
+                            "title": file_name,
+                            "content": content
+                        })
+                    logger.info(f"파일 로드 성공: {file_name}")
             except Exception as e:
                 logger.error(f"파일 읽기 오류 ({file_name}): {str(e)}")
         
@@ -743,7 +787,13 @@ async def summarize_files(request_data: SummarizeRequest) -> SummarizeResponse:
                 combined_content += f"\n\n## 출처: {link}\n\n{data}\n"
         
         # generate_answer 호출하여 요약 생성 (내부에서 자동으로 청킹 처리)
-        summary = generator.generate_answer(combined_content)
+        logger.info(f"요약 생성 시작 - 총 컨텐츠 길이: {len(combined_content)} 문자")
+        try:
+            summary = generator.generate_answer(combined_content)
+            logger.info(f"요약 생성 완료 - 요약 길이: {len(summary)} 문자")
+        except Exception as e:
+            logger.error(f"요약 생성 중 오류 발생: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"요약 생성 중 오류가 발생했습니다: {str(e)}")
         
         # 요약 결과 저장 디렉토리 설정
         summary_dir = os.path.join(parent_dir, 'nextits_data', 'Results', '6.summarize')

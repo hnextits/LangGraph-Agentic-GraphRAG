@@ -207,9 +207,14 @@ class AnswerGenerator:
             # 각 청크를 개별적으로 요약
             chunk_summaries = []
             for i, chunk in enumerate(chunks):
-                logger.info(f"청크 {i+1}/{len(chunks)} 요약 중... (토큰 수: {count_tokens(chunk)})")
-                chunk_summary = self._generate_single_answer(chunk, max_tokens=4096)
-                chunk_summaries.append(chunk_summary)
+                logger.info(f"청크 {i+1}/{len(chunks)} 요약 시작... (토큰 수: {count_tokens(chunk)})")
+                try:
+                    chunk_summary = self._generate_single_answer(chunk, max_tokens=4096)
+                    chunk_summaries.append(chunk_summary)
+                    logger.info(f"청크 {i+1}/{len(chunks)} 요약 완료 (요약 길이: {len(chunk_summary)} 문자)")
+                except Exception as e:
+                    logger.error(f"청크 {i+1}/{len(chunks)} 요약 실패: {str(e)}")
+                    raise Exception(f"청크 {i+1} 요약 중 오류 발생: {str(e)}")
             
             # 청크 요약들을 다시 합쳐서 최종 요약 생성
             combined_summaries = "\n\n---\n\n".join(chunk_summaries)
@@ -305,8 +310,14 @@ Conclusion/Implications: What the document ultimately conveys or recommends.
             try:
                 current_loop = asyncio.get_running_loop()
                 # 이미 실행 중인 루프가 있으면 ThreadPoolExecutor 사용
+                # 타임아웃 설정: 큰 파일의 경우 최대 10분
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    result = executor.submit(run_generate_in_thread).result()
+                    future = executor.submit(run_generate_in_thread)
+                    try:
+                        result = future.result(timeout=600)  # 10분 타임아웃
+                    except concurrent.futures.TimeoutError:
+                        logger.error("텍스트 생성이 타임아웃되었습니다 (10분 초과)")
+                        raise Exception("텍스트 생성이 너무 오래 걸립니다. 파일 크기를 줄이거나 나누어서 요약해주세요.")
             except RuntimeError:
                 # 실행 중인 루프가 없으면 직접 호출
                 result = self.engine.generate(prompt=prompt, sampling_params=sampling_params)
