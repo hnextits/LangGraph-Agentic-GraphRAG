@@ -1,10 +1,28 @@
-from decouple import Config as DecoupleConfig, RepositoryEnv
 import os
+import logging
 from pathlib import Path
+from decouple import Config as DecoupleConfig, RepositoryEnv, config as decouple_config
+
+logger = logging.getLogger(__name__)
+
+class _EnvFallback:
+    """decouple.Config 대체용: 시스템 환경변수만 조회"""
+    def __call__(self, key, default=None, cast=None):
+        if cast is None:
+            return decouple_config(key, default=default)
+        return decouple_config(key, default=default, cast=cast)
+
+    def get(self, key, default=None):
+        return decouple_config(key, default=default)
 
 # .env 파일 경로를 현재 파일 기준으로 설정
 env_path = Path(__file__).parent / '.env'
-config_loader = DecoupleConfig(RepositoryEnv(str(env_path)))
+
+if env_path.exists():
+    config_loader = DecoupleConfig(RepositoryEnv(str(env_path)))
+else:
+    logger.warning("mindmap .env 파일을 찾을 수 없습니다. 시스템 환경변수를 사용합니다: %s", env_path)
+    config_loader = _EnvFallback()
 
 class Config:
     """Configuration for the Mindmap Generator application."""

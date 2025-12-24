@@ -109,17 +109,22 @@ def get_logger():
 logger = get_logger()
 
 # 환경 감지 및 nest_asyncio 조건부 적용
-try:
-    current_loop = asyncio.get_event_loop()
-    loop_type = str(type(current_loop))
-    
-    if 'uvloop' in loop_type:
-        logger.info("uvloop 환경 감지 - nest_asyncio 스킵")
-    else:
-        nest_asyncio.apply()
-        logger.info("일반 asyncio 환경 - nest_asyncio 적용")
-except Exception as e:
-    logger.warning(f"이벤트 루프 감지 실패: {e}")
+ENABLE_NEST_ASYNCIO = __name__ == "__main__" or os.environ.get("MINDMAP_ENABLE_NEST_ASYNCIO") == "1"
+
+if ENABLE_NEST_ASYNCIO:
+    try:
+        current_loop = asyncio.get_event_loop()
+        loop_type = str(type(current_loop))
+        
+        if 'uvloop' in loop_type:
+            logger.info("uvloop 환경 감지 - nest_asyncio 스킵")
+        else:
+            nest_asyncio.apply()
+            logger.info("일반 asyncio 환경 - nest_asyncio 적용")
+    except Exception as e:
+        logger.warning(f"이벤트 루프 감지 실패: {e}")
+else:
+    logger.info("nest_asyncio 비활성화 - FastAPI/uvicorn 환경 가정")
 
 
 class DocumentOptimizer:
