@@ -351,15 +351,12 @@ def run_processing_pipeline(task_id: str, file_path: str):
         tasks[task_id].update({'status': 'failed', 'error': str(e)})
 
 
-# 요약 생성기 인스턴스 (싱글톤으로 관리)
-answer_generator = None
-
-def get_answer_generator():
-    global answer_generator
-    if answer_generator is None:
-        answer_generator = AnswerGenerator()
-        logger.info("AnswerGenerator 인스턴스 생성 완료")
-    return answer_generator
+def build_answer_generator():
+    """LazyModelManager용 AnswerGenerator 빌더."""
+    if AnswerGenerator is None:
+        raise RuntimeError("AnswerGenerator 모듈을 사용할 수 없습니다.")
+    logger.info("Lazy builder를 통해 AnswerGenerator 인스턴스를 생성합니다.")
+    return AnswerGenerator()
 
 
 async def process_summarize_files(task_id: str, filenames: List[str]):
@@ -1114,9 +1111,9 @@ async def chat(query: ChatQuery, request: Request, background_tasks: BackgroundT
     logger.info(f"[Task {task_id}] 채팅 작업 시작: '{query.query}'")
     logger.info("[Task %s] 요청으로 전달된 sources(raw): %s", task_id, query.sources)
 
-    rag_pipeline = getattr(request.app.state, 'rag_pipeline', None)
-    if rag_pipeline is None:
-        raise HTTPException(status_code=503, detail="RAG 파이프라인을 사용할 수 없습니다.")
+    model_manager = getattr(request.app.state, "model_manager", None)
+    if model_manager is None:
+        raise HTTPException(status_code=503, detail="모델 매니저를 초기화하지 못했습니다.")
 
     # app.state의 tasks 딕셔너리에 작업 상태 초기화
     tasks = request.app.state.tasks
@@ -1131,18 +1128,39 @@ async def chat(query: ChatQuery, request: Request, background_tasks: BackgroundT
     logger.info("[Task %s] 변환된 document_uuid 목록: %s", task_id, resolved_sources)
     source_filter_requested = bool(query.sources)
 
-    background_tasks.add_task(
-        run_rag_in_background,
-        task_id=task_id,
-        query=query.query,
-        sources=resolved_sources,
-        source_filter_requested=source_filter_requested,
-        rag_pipeline=rag_pipeline,
-        cancellation_event=cancellation_event,
-        tasks_dict=tasks,  # app.state.tasks를 전달
-        running_tasks_dict=request.app.state.running_tasks, # app.state.running_tasks를 전달
-        app_state=request.app.state  # app.state 전체를 전달
-    )
+    try:
+        rag_pipeline = model_manager.acquire("rag_pipeline")
+    except Exception as exc:
+        logger.error("RAG 파이프라인을 로드하지 못했습니다: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail="RAG 파이프라인을 초기화하지 못했습니다.")
+
+    try:
+        generator = getattr(rag_pipeline, "generator", None)
+        ensure_loader = getattr(generator, "ensure_model_loaded", None)
+        if callable(ensure_loader):
+            ensure_loader()
+    except Exception as exc:
+        logger.error("RAG 생성기 초기화 중 오류가 발생했습니다: %s", exc, exc_info=True)
+        model_manager.release("rag_pipeline")
+        raise HTTPException(status_code=500, detail="답변 생성기를 초기화하지 못했습니다.")
+
+    def schedule_rag_task():
+        try:
+            run_rag_in_background(
+                task_id=task_id,
+                query=query.query,
+                sources=resolved_sources,
+                source_filter_requested=source_filter_requested,
+                rag_pipeline=rag_pipeline,
+                cancellation_event=cancellation_event,
+                tasks_dict=tasks,
+                running_tasks_dict=request.app.state.running_tasks,
+                app_state=request.app.state,
+            )
+        finally:
+            model_manager.release("rag_pipeline")
+
+    background_tasks.add_task(schedule_rag_task)
 
     return ChatResponse(task_id=task_id, message="채팅 작업이 시작되었습니다.")
 

@@ -41,13 +41,15 @@ class TextSearcher:
             
         logger.info(f"텍스트 임베딩 모델이 {self.device}에 로드됩니다.")
         
-        # 공유 임베딩 모델 초기화
+        # 공유 임베딩 모델은 Lazy 로딩
         from shared_embedding import SharedEmbeddingModel
+        from query_rewriter import QueryRewriter
+        from parallel_search import ParallelSearcher
         self.shared_embedding = SharedEmbeddingModel()
         
-        # 개선된 텍스트 리랭커 초기화 (클래스 레벨에서 관리)
+        # 개선된 텍스트 리랭커는 Lazy 로딩
         self.reranker = None
-        self._initialize_reranker()
+        self._reranker_lock = threading.Lock()
         
         # 메모리 정리
         if torch.cuda.is_available():
@@ -64,31 +66,31 @@ class TextSearcher:
         self.class_name = config.WEAVIATE_TEXT_CLASS
         logger.info(f"Weaviate 텍스트 검색기 초기화 완료 (클래스: {self.class_name})")
     
-    def _initialize_reranker(self):
-        """개선된 텍스트 리랭커를 초기화합니다."""
-        try:
-            from rag_text.text_reranker_improved_2 import ImprovedTextReranker
-            
-            # config에서 설정값 가져오기
-            config = RAGConfig()
-            
-            # 성능 최적화된 설정으로 리랭커 초기화
-            self.reranker = ImprovedTextReranker(
-                model_name=config.RERANKER_MODEL_NAME,  # config에서 모델 이름 가져오기
-                max_length=8192,  # 적절한 길이 제한
-                batch_size=config.RERANKER_BATCH_SIZE  # config에서 배치 크기 가져오기
-            )
-            logger.info(f"개선된 텍스트 리랭커 초기화 완료 - 모델: {config.RERANKER_MODEL_NAME}")
-        except Exception as e:
-            logger.error(f"개선된 텍스트 리랭커 초기화 실패: {e}")
-            logger.warning("기존 TextReranker로 폴백합니다.")
+    def _ensure_reranker(self):
+        """필요 시 리랭커를 Lazy 로드합니다."""
+        if self.reranker is not None:
+            return
+        with self._reranker_lock:
+            if self.reranker is not None:
+                return
             try:
-                from rag_text.text_reranker import TextReranker
-                self.reranker = TextReranker()
-                logger.info("기존 TextReranker로 폴백 완료")
-            except Exception as fallback_error:
-                logger.error(f"기존 TextReranker 폴백도 실패: {fallback_error}")
-                self.reranker = None
+                from rag_text.text_reranker_improved_2 import ImprovedTextReranker
+                config = RAGConfig()
+                self.reranker = ImprovedTextReranker(
+                    model_name=config.RERANKER_MODEL_NAME,
+                    max_length=8192,
+                    batch_size=config.RERANKER_BATCH_SIZE,
+                )
+                logger.info("개선된 텍스트 리랭커 Lazy 로딩 완료")
+            except Exception as e:
+                logger.error(f"개선된 텍스트 리랭커 로드 실패: {e}")
+                try:
+                    from rag_text.text_reranker import TextReranker
+                    self.reranker = TextReranker()
+                    logger.info("기존 TextReranker로 폴백 완료")
+                except Exception as fallback_error:
+                    logger.error(f"기존 TextReranker 폴백도 실패: {fallback_error}")
+                    self.reranker = None
 
     def generate_embedding(self, text: str) -> np.ndarray:
         """
@@ -97,7 +99,7 @@ class TextSearcher:
         """
         try:
             # 공유 임베딩 모델 사용 확인
-            if not self.shared_embedding.is_loaded():
+            if not self.shared_embedding.is_loaded:
                 logger.error("공유 임베딩 모델이 로드되지 않았습니다.")
                 raise RuntimeError("공유 임베딩 모델이 로드되지 않았습니다.")
             
@@ -229,55 +231,50 @@ class TextSearcher:
             logger.info(f"쿼리 '{query}'에 대한 검색 완료, 결과 수: {len(results)}")
             
             # 리랭킹 적용
-            if rerank and results and self.reranker:
-                try:
-                    if rerank_top_k is None:
-                        rerank_top_k = top_k
+            if rerank and results:
+                self._ensure_reranker()
+                if self.reranker:
+                    try:
+                        if rerank_top_k is None:
+                            rerank_top_k = top_k
+                        
+                        logger.info(f"개선된 리랭커로 재정렬 시작 (top_k={rerank_top_k})")
+                        
+                        config = RAGConfig()
+                        
+                        if cancellation_event and cancellation_event.is_set():
+                            raise InterruptedError("Operation cancelled before reranking")
+                        
+                        reranked_results = self.reranker.rerank(
+                            query, 
+                            results, 
+                            top_k=rerank_top_k, 
+                            min_score=config.RELEVANCE_THRESHOLD, 
+                            cancellation_event=cancellation_event
+                        )
+                        
+                        if hasattr(self.reranker, 'get_statistics'):
+                            stats = self.reranker.get_statistics()
+                            cache_hit_rate = stats.get('cache_hit_rate', 0)
+                            logger.info(f"리랭킹 완료 - 캐시 적중률: {cache_hit_rate:.1f}%")
+                        
+                        results = reranked_results
+                        logger.info(f"쿼리 '{query}'에 대한 개선된 리랭킹 완료, 결과 수: {len(results)}")
+                        
+                        logger.info(f"리랭킹 적용된 검색 결과 (최대 5개):")
+                        for i, result in enumerate(results[:5]):
+                            title = result.get('title', '제목 없음')
+                            page_num_str = f"(페이지 {result.get('page_num', 'N/A')})" if 'page_num' in result else ''
+                            logger.info(f"{i+1}. {title} {page_num_str} - 리랭크 점수: {result.get('score', 0):.4f}")
+                            logger.info(f"   ID: {result.get('id', 'N/A')}, 인덱스: {result.get('index', 'N/A')}")
+                            text_preview = result.get('text', '')[:100] + '...' if len(result.get('text', '')) > 100 else result.get('text', '')
+                            logger.info(f"   텍스트: {text_preview}")
                     
-                    # 개선된 리랭커 사용
-                    logger.info(f"개선된 리랭커로 재정렬 시작 (top_k={rerank_top_k})")
-                    
-                    # config에서 설정값 가져오기
-                    config = RAGConfig()
-                    
-                    # 취소 확인
-                    if cancellation_event and cancellation_event.is_set():
-                        raise InterruptedError("Operation cancelled before reranking")
-                    
-                    # ImprovedTextReranker의 rerank 메서드 호출
-                    reranked_results = self.reranker.rerank(
-                        query, 
-                        results, 
-                        top_k=rerank_top_k, 
-                        min_score=config.RELEVANCE_THRESHOLD, 
-                        cancellation_event=cancellation_event
-                    )
-                    
-                    # 리랭킹 통계 로깅
-                    if hasattr(self.reranker, 'get_statistics'):
-                        stats = self.reranker.get_statistics()
-                        cache_hit_rate = stats.get('cache_hit_rate', 0)
-                        logger.info(f"리랭킹 완료 - 캐시 적중률: {cache_hit_rate:.1f}%")
-                    
-                    results = reranked_results
-                    logger.info(f"쿼리 '{query}'에 대한 개선된 리랭킹 완료, 결과 수: {len(results)}")
-                    
-                    # 리랭킹 결과 상세 로그 출력
-                    logger.info(f"리랭킹 적용된 검색 결과 (최대 5개):")
-                    for i, result in enumerate(results[:5]):
-                        title = result.get('title', '제목 없음')
-                        page_num_str = f"(페이지 {result.get('page_num', 'N/A')})" if 'page_num' in result else ''
-                        logger.info(f"{i+1}. {title} {page_num_str} - 리랭크 점수: {result.get('score', 0):.4f}")
-                        logger.info(f"   ID: {result.get('id', 'N/A')}, 인덱스: {result.get('index', 'N/A')}")
-                        text_preview = result.get('text', '')[:100] + '...' if len(result.get('text', '')) > 100 else result.get('text', '')
-                        logger.info(f"   텍스트: {text_preview}")
-                
-                except Exception as e:
-                    logger.error(f"개선된 리랭킹 중 오류 발생: {e}")
-                    logger.warning("리랭킹 없이 원본 결과를 반환합니다.")
-            
-            elif rerank and results and not self.reranker:
-                logger.warning("리랭커가 초기화되지 않아 리랭킹을 건너뜁니다.")
+                    except Exception as e:
+                        logger.error(f"개선된 리랭킹 중 오류 발생: {e}")
+                        logger.warning("리랭킹 없이 원본 결과를 반환합니다.")
+                else:
+                    logger.warning("리랭커가 초기화되지 않아 리랭킹을 건너뜁니다.")
             
             if allowed_document_uuids:
                 before_filter_count = len(results)
@@ -290,10 +287,23 @@ class TextSearcher:
                     )
 
             return results[:top_k]
-            
-        except Exception as e:
-            logger.error(f"Weaviate 검색 중 오류 발생: {e}")
-            return []
+        except Exception:
+            logger.exception("텍스트 검색 중 예기치 않은 오류가 발생했습니다.")
+            raise
+
+    def cleanup(self):
+        """GPU 리소스를 정리합니다."""
+        try:
+            if self.reranker and hasattr(self.reranker, "cleanup"):
+                self.reranker.cleanup()
+            self.reranker = None
+        except Exception as exc:
+            logger.error(f"텍스트 리랭커 정리 중 오류: {exc}")
+        if hasattr(self.shared_embedding, "cleanup"):
+            try:
+                self.shared_embedding.cleanup()
+            except Exception as exc:
+                logger.error(f"공유 임베딩 정리 중 오류: {exc}")
 
 if __name__ == "__main__":
     # 검색 테스트

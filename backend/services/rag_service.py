@@ -9,56 +9,71 @@ from utils.helpers import process_response_with_images, encode_image_to_base64
 
 logger = logging.getLogger(__name__)
 
-def initialize_rag_pipeline():
-    """
-    애플리케이션 시작 시 RAG 파이프라인을 초기화하고 인스턴스를 반환합니다.
-    """
-    logger.info("RAG 파이프라인 초기화를 시작합니다...")
-    
-    # RAG 시스템의 실제 경로를 동적으로 설정합니다.
-    # 현재 파일의 위치를 기준으로 'backend' 디렉토리를 찾고, 그 하위의 'notebooklm' 경로를 구성합니다.
+def _load_rag_module():
+    """notebooklm 경로를 sys.path에 추가하고 RAGPipeline 클래스를 반환."""
     current_file_path = os.path.abspath(__file__)
     backend_dir = os.path.dirname(os.path.dirname(current_file_path))
-    rag_path = os.path.join(backend_dir, 'notebooklm')
-
+    rag_path = os.path.join(backend_dir, "notebooklm")
 
     if not os.path.isdir(rag_path):
-        logger.error(f"RAG 파이프라인 디렉터리를 찾을 수 없습니다: {rag_path}")
-        return None
+        raise FileNotFoundError(f"RAG 파이프라인 디렉터리를 찾을 수 없습니다: {rag_path}")
 
     original_cwd = os.getcwd()
     original_sys_path = list(sys.path)
-    
-    # config 모듈 충돌을 피하기 위해 캐시를 관리합니다.
-    original_config_module = sys.modules.get('config')
+    original_config_module = sys.modules.get("config")
 
     try:
-        # RAG 파이프라인의 config를 로드하기 전에 캐시된 config를 제거합니다.
-        if 'config' in sys.modules:
-            del sys.modules['config']
+        if "config" in sys.modules:
+            del sys.modules["config"]
 
         sys.path.insert(0, rag_path)
         os.chdir(rag_path)
 
-        from rag_pipeline import RAGPipeline
-        pipeline_instance = RAGPipeline()
-        logger.info("RAG 파이프라인 인스턴스 생성 성공!")
-        return pipeline_instance
+        from rag_pipeline import RAGPipeline  # pylint: disable=import-error
 
-    except Exception as e:
-        logger.error(f"RAG 파이프라인 초기화 중 예외 발생: {e}", exc_info=True)
-        return None
+        return RAGPipeline
     finally:
         os.chdir(original_cwd)
         sys.path = original_sys_path
-        
-        # 원래의 config 모듈이 있었다면 복원합니다.
-        if 'config' in sys.modules:
-            del sys.modules['config'] # rag의 config를 제거
-        if original_config_module:
-            sys.modules['config'] = original_config_module
 
-        logger.info("작업 디렉터리와 시스템 경로를 복원했습니다.")
+        if "config" in sys.modules:
+            del sys.modules["config"]
+        if original_config_module:
+            sys.modules["config"] = original_config_module
+
+
+def build_rag_pipeline():
+    """LazyModelManager용 RAGPipeline 빌더."""
+    logger.info("Lazy builder를 통해 RAG 파이프라인을 생성합니다.")
+    try:
+        pipeline_cls = _load_rag_module()
+        return pipeline_cls()
+    except Exception:
+        logger.exception("RAG 파이프라인 빌드 실패")
+        raise
+
+
+def cleanup_rag_pipeline(pipeline):
+    """RAGPipeline 인스턴스 정리를 수행합니다."""
+    logger.info("RAG 파이프라인 리소스를 정리합니다.")
+
+    try:
+        cleanup_fn = getattr(pipeline, "cleanup", None)
+        if callable(cleanup_fn):
+            cleanup_fn()
+        else:
+            generator = getattr(pipeline, "generator", None)
+            if generator and hasattr(generator, "cleanup_model"):
+                generator.cleanup_model()
+
+            refiner = getattr(pipeline, "refiner", None)
+            if refiner and hasattr(refiner, "cleanup_model"):
+                refiner.cleanup_model()
+            router = getattr(pipeline, "router", None)
+            if router and hasattr(router, "cleanup"):
+                router.cleanup()
+    except Exception:
+        logger.exception("RAG 파이프라인 정리 중 오류 발생")
 
 def process_markdown_tables(text):
     """

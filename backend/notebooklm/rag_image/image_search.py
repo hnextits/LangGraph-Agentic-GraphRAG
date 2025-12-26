@@ -20,7 +20,7 @@ from PIL import Image
 import weaviate
 
 from config import RAGConfig
-from shared_embedding import shared_embedding
+from shared_embedding import SharedEmbeddingModel
 from rag_image.image_reranker import RAGReranker
 from weaviate_utils import create_schema
 
@@ -48,35 +48,16 @@ class ImageSearcher:
         
         logger.info(f"디바이스 설정: {self.device}")
         
-        # 공유 임베딩 모델 사용
-        from shared_embedding import shared_embedding
-        self.shared_embedding = shared_embedding
+        # 공유 임베딩 모델은 Lazy 로딩
+        self.shared_embedding = SharedEmbeddingModel()
+        
+        # 리랭커 Lazy 로딩
+        self.reranker = None
+        self._reranker_lock = threading.Lock()
         
         # 메모리 정리
-        torch.cuda.empty_cache()
-        
-        # 공유 임베딩 모델을 사용하므로 별도의 모델 로드는 필요 없음
-        # 메모리 최적화를 위해 주석 처리
-        self.tokenizer = None
-        self.model = None
-        
-        # 공유 임베딩 모델이 제대로 로드되었는지 확인
-        if self.shared_embedding.is_loaded:
-            logger.info(f"공유 임베딩 모델 사용 중: {self.shared_embedding.model_name} (디바이스: {self.shared_embedding.device})")
-        else:
-            logger.error("공유 임베딩 모델이 로드되지 않았습니다.")
-        
-        # 리랭커 초기화
-        self.reranker = None
-        if self.use_reranker:
-            try:
-                self.reranker = RAGReranker()
-                logger.info("리랭커 초기화 완료")
-            except Exception as e:
-                logger.error(f"리랭커 초기화 중 오류 발생: {str(e)}")
-                import traceback
-                logger.error(traceback.format_exc())
-                self.reranker = None
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         
         # Weaviate 클라이언트 초기화
         self.client = config.get_weaviate_client()
@@ -92,23 +73,36 @@ class ImageSearcher:
     def generate_embedding(self, text: str) -> np.ndarray:
         """이미지에 대한 임베딩을 생성합니다. 공유 임베딩 모델을 사용합니다."""
         try:
-            # 공유 임베딩 모델 사용
             if not self.shared_embedding.is_loaded:
-                logger.error("공유 임베딩 모델이 로드되지 않았습니다.")
-                return np.random.rand(self.dimension).astype('float32')
-            
-            # 공유 임베딩 모델을 통한 임베딩 생성
+                logger.info("공유 임베딩 모델이 아직 로드되지 않아 지금 로드합니다.")
             embedding = self.shared_embedding.generate_embedding(text)
-            
+            if embedding is None:
+                raise RuntimeError("임베딩 생성 실패")
             if len(embedding) != self.dimension:
                 logger.warning(f"임베딩 차원이 예상과 다릅니다: {len(embedding)} vs {self.dimension}")
-            
             return embedding.astype('float32')
         except Exception as e:
             logger.error(f"공유 임베딩 모델 임베딩 생성 중 오류 발생: {str(e)}")
             import traceback
             logger.error(traceback.format_exc())
             return np.random.rand(self.dimension).astype('float32')  # 오류 발생 시 랜덤 벡터로 대체
+
+    def _ensure_reranker(self):
+        if not self.use_reranker:
+            return
+        if self.reranker is not None:
+            return
+        with self._reranker_lock:
+            if self.reranker is not None:
+                return
+            try:
+                self.reranker = RAGReranker()
+                logger.info("이미지 리랭커 Lazy 로딩 완료")
+            except Exception as e:
+                logger.error(f"리랭커 초기화 중 오류 발생: {str(e)}")
+                import traceback
+                logger.error(traceback.format_exc())
+                self.reranker = None
 
     def _build_uuid_where_filter(self, allowed_document_uuids: Set[str]) -> Optional[Dict[str, Any]]:
         """Weaviate where 필터를 구성하여 document_uuid로 제한합니다."""
@@ -366,6 +360,23 @@ class ImageSearcher:
             import traceback
             logger.error(traceback.format_exc())
             return []
+
+    def cleanup(self):
+        """GPU 리소스를 정리합니다."""
+        if self.reranker and hasattr(self.reranker, "cleanup"):
+            try:
+                self._ensure_reranker()
+                if self.reranker:
+                    self.reranker.cleanup()
+            except Exception as exc:
+                logger.error(f"이미지 리랭커 정리 중 오류: {exc}")
+        self.reranker = None
+
+        if hasattr(self.shared_embedding, "cleanup"):
+            try:
+                self.shared_embedding.cleanup()
+            except Exception as exc:
+                logger.error(f"공유 임베딩 정리 중 오류: {exc}")
 
 if __name__ == "__main__":
     print("이미지 검색기 스크립트 시작")

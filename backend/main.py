@@ -42,7 +42,10 @@ from api.routes import router as api_router
 from api.pause_api import router as pause_router
 # from api.chat import router as chat_router
 from api.mindmap_routes import router as mindmap_router
-from services.rag_service import initialize_rag_pipeline
+from services.model_manager import LazyModelManager
+from services.rag_service import build_rag_pipeline, cleanup_rag_pipeline
+
+model_manager = LazyModelManager()
 
 # FastAPI 앱 초기화
 app = FastAPI()
@@ -73,26 +76,34 @@ def startup_event():
     app.state.task_cache_timestamps = {}
     logger.info("실행 작업 관리자(running_tasks)가 초기화되었습니다.")
 
-    logger.info("RAG 파이프라인 초기화를 시작합니다...")
-    app.state.rag_pipeline = initialize_rag_pipeline()
-    if app.state.rag_pipeline:
-        logger.info("RAG 파이프라인이 성공적으로 초기화되어 app.state.rag_pipeline에 할당되었습니다.")
-    else:
-        logger.error("RAG 파이프라인 초기화에 실패했습니다.")
-    
-    # AnswerGenerator를 메인 스레드에서 미리 초기화하고 모델 로드 (마인드맵 생성을 위해)
-    logger.info("AnswerGenerator 초기화를 시작합니다...")
-    try:
-        from api.routes import get_answer_generator
-        app.state.answer_generator = get_answer_generator()
-        # 모델을 메인 스레드에서 미리 로드
-        if app.state.answer_generator.load_model():
-            logger.info("AnswerGenerator 모델이 성공적으로 로드되었습니다.")
-        else:
-            logger.error("AnswerGenerator 모델 로드 실패")
-    except Exception as e:
-        logger.error(f"AnswerGenerator 초기화 실패: {e}")
-        app.state.answer_generator = None
+    def register_models():
+        from api.routes import build_answer_generator
+        from skill.mindmap.mindmap_generator import MindMapGenerator
+
+        if "rag_pipeline" not in model_manager._models:
+            model_manager.register(
+                "rag_pipeline",
+                build_rag_pipeline,
+                cleanup_rag_pipeline,
+                idle_timeout=20,
+            )
+        if "answer_generator" not in model_manager._models:
+            model_manager.register(
+                "answer_generator",
+                build_answer_generator,
+                lambda gen: getattr(gen, "cleanup_model", lambda: None)(),
+                idle_timeout=20,
+            )
+        if "mindmap_generator" not in model_manager._models:
+            model_manager.register(
+                "mindmap_generator",
+                MindMapGenerator,
+                lambda gen: getattr(gen, "shutdown", lambda: None)(),
+                idle_timeout=20,
+            )
+
+    register_models()
+    app.state.model_manager = model_manager
 
 # CORS 미들웨어 설정
 app.add_middleware(

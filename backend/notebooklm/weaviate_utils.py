@@ -260,7 +260,7 @@ def _collect_document_uuids(
         logger.debug(f"파일 경로로 UUID 검색 시도: '{path}'")
         try:
             response = collection.query.fetch_objects(
-                filters=Filter.by_property("metadata").contains_any(["file_path", path]),
+                filters=Filter.by_property("metadata.file_path").equal(path),
                 limit=10,
                 return_properties=["document_uuid"]
             )
@@ -274,7 +274,16 @@ def _collect_document_uuids(
             if uuids:
                 break
         except Exception as query_err:
-            logger.warning(f"metadata.file_path='{path}' 조회 중 오류: {query_err}", exc_info=True)
+            error_msg = str(query_err)
+            if "data type \"object\" not supported" in error_msg:
+                logger.debug(
+                    "metadata.file_path='%s' 조회는 nested object 타입이라 GRPC 필터가 지원되지 않아 "
+                    "source/chunk 기반 검색으로 건너뜁니다. 원문: %s",
+                    path,
+                    error_msg,
+                )
+            else:
+                logger.warning(f"metadata.file_path='{path}' 조회 중 오류: {query_err}", exc_info=True)
 
     # source 필드로 검색
     if not uuids:

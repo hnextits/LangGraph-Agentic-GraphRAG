@@ -203,6 +203,21 @@ class QueryRewriter:
             logger.error(f"쿼리 생성 중 오류 발생: {e}")
             return [query] # 오류 발생 시 원본 쿼리만 반환
 
+    def cleanup(self):
+        """로딩된 모델과 토크나이저를 메모리에서 해제합니다."""
+        try:
+            if self.model is not None:
+                del self.model
+                self.model = None
+            if self.tokenizer is not None:
+                del self.tokenizer
+                self.tokenizer = None
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            logger.info("QueryRewriter 리소스 정리를 완료했습니다.")
+        except Exception as exc:
+            logger.error(f"QueryRewriter 정리 중 오류: {exc}")
+
 # --- 사용 예시 ---
 if __name__ == '__main__':
     # QueryRewriter 인스턴스 생성

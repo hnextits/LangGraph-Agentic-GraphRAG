@@ -29,11 +29,8 @@ class SGLangGenerator:
         self.runtime = None
         self.model_loaded = False
         self.tokenizer = None  # 임시 토크나이저 속성 추가
-        
-        # 모델 로드
-        self._load_model()
-        
-        logger.info("Generator 초기화 및 모델 로딩 완료")
+        self.engine = None
+        logger.info("Generator 초기화 완료 (모델은 최초 요청 시 로드)")
 
     def _load_model(self):
         """SGLang Engine 초기화"""
@@ -86,6 +83,38 @@ class SGLangGenerator:
             self.model_loaded = False
             raise
 
+    def _ensure_model_loaded(self):
+        """
+        모델이 로드되지 않았다면 로드합니다.
+        """
+        if not self.model_loaded or self.engine is None:
+            self._load_model()
+
+    def ensure_model_loaded(self):
+        """외부에서 호출 가능한 공개 메서드."""
+        self._ensure_model_loaded()
+
+    def cleanup_model(self):
+        """SGLang 엔진과 GPU 리소스를 정리"""
+        try:
+            if self.engine is not None:
+                shutdown = getattr(self.engine, "shutdown", None)
+                if callable(shutdown):
+                    shutdown()
+                self.engine = None
+            self.model_loaded = False
+
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except Exception:  # pragma: no cover
+                logger.exception("GPU 캐시 정리 중 오류")
+
+            logger.info("SGLangGenerator 리소스 정리 완료")
+        except Exception as exc:  # pragma: no cover
+            logger.error("SGLangGenerator cleanup 실패: %s", exc, exc_info=True)
+
     def generate_response(
         self,
         query: str,
@@ -97,9 +126,7 @@ class SGLangGenerator:
         검색 결과를 기반으로 답변 생성
         """
         try:
-            # 모델 로드 확인
-            if not self.model_loaded:
-                raise RuntimeError("모델이 로드되지 않았습니다.")
+            self._ensure_model_loaded()
             
             # 기존 로직과 동일
             filtered_results = copy.deepcopy(results)
@@ -276,9 +303,8 @@ class SGLangGenerator:
     
     def _generate_text_sglang(self, system_prompt: str, user_prompt: str, cancellation_event: Optional[threading.Event] = None) -> str:
         """SGLang Engine을 사용하여 텍스트 생성"""
-        if not self.model_loaded:
-            raise Exception("SGLang Engine이 초기화되지 않았습니다.")
-        
+        self._ensure_model_loaded()
+
         try:
             logger.info("SGLang Engine으로 텍스트 생성 시작")
             

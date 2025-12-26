@@ -59,6 +59,24 @@ class RAGPipeline:
         
         logger.info("RAG 파이프라인 초기화 완료")
     
+    def cleanup(self):
+        """파이프라인이 사용하는 모든 리소스를 정리합니다."""
+        try:
+            if self.generator and hasattr(self.generator, "cleanup_model"):
+                self.generator.cleanup_model()
+        except Exception:
+            logger.exception("Generator 정리 중 오류 발생")
+        try:
+            if self.refiner and hasattr(self.refiner, "cleanup_model"):
+                self.refiner.cleanup_model()
+        except Exception:
+            logger.exception("Refiner 정리 중 오류 발생")
+        try:
+            if self.router and hasattr(self.router, "cleanup"):
+                self.router.cleanup()
+        except Exception:
+            logger.exception("Router 정리 중 오류 발생")
+    
     def _process_image_document(self, img_doc: Dict[str, Any], processed_images: List[Dict[str, Any]], image_paths: List[str]) -> None:
         """
         단일 이미지 문서를 처리하여 base64로 변환합니다.

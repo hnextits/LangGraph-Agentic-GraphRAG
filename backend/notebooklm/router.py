@@ -60,6 +60,25 @@ class RAGRouter:
         self.parallel_searcher = ParallelSearcher(self.rag_config, self.searchers, self.query_rewriter)
         
         logger.info("RAGRouter 초기화 완료 (QueryRewriter 포함)")
+
+    def cleanup(self):
+        """라우터가 로드한 모든 서브 컴포넌트를 정리합니다."""
+        for name, searcher in list(self.searchers.items()):
+            cleanup_fn = getattr(searcher, "cleanup", None)
+            if callable(cleanup_fn):
+                try:
+                    cleanup_fn()
+                    logger.info("검색기 정리 완료: %s", name)
+                except Exception:
+                    logger.exception("검색기 정리 중 오류 발생: %s", name)
+        self.searchers.clear()
+
+        if self.query_rewriter and hasattr(self.query_rewriter, "cleanup"):
+            try:
+                self.query_rewriter.cleanup()
+                logger.info("QueryRewriter 정리 완료")
+            except Exception:
+                logger.exception("QueryRewriter 정리 중 오류 발생")
     
     def _load_config(self) -> Dict[str, Any]:
         """
