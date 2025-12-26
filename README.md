@@ -22,6 +22,12 @@ NextITSLM SGLang은 RAG (Retrieval-Augmented Generation) 기술을 기반으로 
 
 ## 시스템 아키텍처
 
+> #### 최근 업데이트: Lazy Loading & GPU Cleanup
+> - FastAPI `main.py`에서 `LazyModelManager`가 Answer/RAG/Mindmap 모델을 `idle_timeout=20s`로 등록합니다.
+> - `LazyModelManager.acquire/release` 호출 후 참조 카운트가 0이 되면 20초 뒤 자동 언로드되며, `cleanup_rag_pipeline()`이 RAGRouter·검색기·QueryRewriter·SharedEmbedding·리랭커까지 정리합니다.
+> - `/api/v1/chat` 요청이 끝난 뒤 로그에 `LazyModel[...] 언로드 진행`, `RAG 파이프라인 리소스를 정리합니다.` 메시지가 보이면 GPU 메모리가 회수된 것입니다.
+> - GPU 상태 확인 절차: (1) 요청 실행 → (2) 20초 대기 → (3) 로그 확인 → (4) `nvidia-smi`로 메모리 감소 여부 확인.
+
 NextITS LMS GL은 모듈화된 3-Tier 아키텍처로 설계되었습니다.
 
 
@@ -93,7 +99,7 @@ nextitslm/
 ### 1. 메인 애플리케이션 (`main.py`)
 - **FastAPI 서버**: 비동기 웹 서버 프레임워크
 - **CORS 미들웨어**: 크로스 오리진 요청 처리
-- **RAG 파이프라인 초기화**: 서버 시작 시 RAG 시스템 자동 로드
+- **LazyModelManager 초기화**: RAG/Answer/Mindmap 빌더를 lazy 등록하고 GPU 리소스를 자동 회수 (`idle_timeout=20s`)
 - **API 라우터 통합**: 모든 엔드포인트를 중앙에서 관리
 
 ### 2. RAG 시스템 (`notebooklm/`)
@@ -258,6 +264,8 @@ npm start
 - **병렬 검색**: 텍스트/이미지 검색 실행
 - **캐싱**: 작업 상태 1시간 캐시 유지
 - **비동기 처리**: 백그라운드 작업 처리
+- **Lazy Loading**: `LazyModelManager`가 RAG/Answer/Mindmap 모델을 요청 시점에만 로드
+- **GPU Cleanup**: `cleanup_rag_pipeline()` → `RAGPipeline.cleanup()` → Router/Searcher/QueryRewriter/SharedEmbedding/리랭커까지 모두 해제
 - **벡터 검색 최적화**: Weaviate 인덱싱 최적화
 - **리소스 관리**: 메모리 효율적 사용
 
@@ -290,6 +298,11 @@ npm start
 - **성능 메트릭**: 응답 시간, 메모리 사용량 추적
 - **오류 추적**: 예외 상황 자동 로깅 및 알림
 - **작업 상태**: 비동기 작업 진행 상황 실시간 모니터링
+- **GPU 상태 확인 절차**
+  1. `/api/v1/chat` 등 RAG 요청 수행 후 응답 완료까지 대기
+  2. 20초 동안 추가 요청이 없으면 LazyModelManager가 모델 언로드 (로그 확인)
+  3. `nvidia-smi`로 GPU 사용량을 재확인하여 메모리가 회수되었는지 검증
+  4. 필요 시 `request.app.state.model_manager.acquire()`/`release()` 사용 구간을 점검하여 참조 누수가 없는지 확인
 
 ## 보안 및 안정성
 
