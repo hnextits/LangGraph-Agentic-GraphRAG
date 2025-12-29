@@ -28,7 +28,7 @@ NextITSLM SGLang은 RAG (Retrieval-Augmented Generation) 기술을 기반으로 
 > - `/api/v1/chat` 요청이 끝난 뒤 로그에 `LazyModel[...] 언로드 진행`, `RAG 파이프라인 리소스를 정리합니다.` 메시지가 보이면 GPU 메모리가 회수된 것입니다.
 > - GPU 상태 확인 절차: (1) 요청 실행 → (2) 20초 대기 → (3) 로그 확인 → (4) `nvidia-smi`로 메모리 감소 여부 확인.
 
-NextITS LMS GL은 모듈화된 3-Tier 아키텍처로 설계되었습니다.
+NextITSLM SGL은 모듈화된 3-Tier 아키텍처로 설계되었습니다.
 
 
 ```
