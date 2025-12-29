@@ -17,7 +17,8 @@ interface UploadingFile {
   error?: string;
 }
 
-const SUPPORTED_FORMAT_MESSAGE = '지원 형식: TXT, PDF, DOC, DOCX, MD, JPG, PNG, MP4, MOV, AVI, MKV, WEBM, MP3, WAV, M4A, FLAC';
+const SUPPORTED_FORMAT_MESSAGE =
+  '지원 형식: TXT, PDF, DOC, DOCX, HWP, HWPX, PPT, PPTX, XLS, XLSX, CSV, MD, JPG, PNG, MP4, MOV, AVI, MKV, WEBM, MP3, WAV, M4A, FLAC';
 
 const formatFileSize = (size: number) => {
   if (size >= 1024 * 1024) {
@@ -56,6 +57,13 @@ const FileUploadBox: React.FC<FileUploadBoxProps> = ({ isOpen, onClose, onFilesA
       'application/pdf': ['.pdf'],
       'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/vnd.hancom.hwp': ['.hwp'],
+      'application/vnd.hancom.hwpx': ['.hwpx'],
+      'application/vnd.ms-powerpoint': ['.ppt'],
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
+      'application/vnd.ms-excel': ['.xls'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'text/csv': ['.csv'],
       'image/jpeg': ['.jpg', '.jpeg'],
       'image/png': ['.png'],
       'video/mp4': ['.mp4'],

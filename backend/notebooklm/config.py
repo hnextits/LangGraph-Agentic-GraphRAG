@@ -287,12 +287,7 @@ class RAGConfig:
         
         #############################################
         # 7-1. Search 시스템 설정
-        #############################################
-        # 경로 설정
-        self.SEARCH_DATA_DIR = self.PROJECT_ROOT / "backend" / "search_data"
-        self.CRAWLING_DATA_DIR = self.SEARCH_DATA_DIR / "crawling"
-        self.SEARCH_RESULTS_DIR = self.SEARCH_DATA_DIR / "results"
-        
+        #############################################      
         # Google Search API 설정
         self.ENABLE_GOOGLE_SEARCH = True
         self.GOOGLE_API_KEY = "REMOVED_SECRET"
@@ -313,7 +308,6 @@ class RAGConfig:
         self.CRAWL_DELAY = 1.0  # 크롤링 간 대기 시간 (초)
         
         # Search 디렉토리 생성
-        self._ensure_search_directories()
         
         #############################################
         # 8. 프롬프트 설정
@@ -463,18 +457,7 @@ class RAGConfig:
         os.environ['CUDA_LAUNCH_BLOCKING'] = '0'
         
         logger.info("메모리 최적화 설정 완료")
-    
-    def _ensure_search_directories(self):
-        """Search 시스템 디렉토리 생성"""
-        directories = [
-            self.SEARCH_DATA_DIR,
-            self.CRAWLING_DATA_DIR,
-            self.SEARCH_RESULTS_DIR
-        ]
-        
-        for directory in directories:
-            os.makedirs(directory, exist_ok=True)
-            logger.debug(f"Search 디렉토리 확인: {directory}")
+
     
     @classmethod
     def load_embedding_model(cls, model_name=None, device=None, use_fp16=True, cache_dir=None):

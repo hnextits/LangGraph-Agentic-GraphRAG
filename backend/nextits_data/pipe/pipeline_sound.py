@@ -251,8 +251,8 @@ def run_sound_pipeline(audio_path, markdown_dir=None):
     print(f"오디오 길이 대비 처리 속도: {audio_duration / total_time:.2f} 배속")
     print(f"{'=' * 50}")
 
-    # 1. 화자 정보 포함 마크다운 저장 (3.OCR_results - 클릭 시 표시용)
-    ocr_results_dir = Path(__file__).parent.parent / 'Results' / '3.OCR_results'
+    # 1. 화자 정보 포함 마크다운 저장 (4.OCR_results - 클릭 시 표시용)
+    ocr_results_dir = Path(__file__).parent.parent / 'Results' / '4.OCR_results'
     ocr_results_dir.mkdir(parents=True, exist_ok=True)
     markdown_output = ocr_results_dir / f"{Path(audio_path).stem}.md"
 

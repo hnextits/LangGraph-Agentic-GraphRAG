@@ -33,9 +33,11 @@ target/
 /backend/nextits_data/Results/2.LayoutDetection/IMG/*
 /backend/nextits_data/Results/3.Crop_image/IMG/*
 /backend/nextits_data/Results/3.Crop_image/PDF/*
-/backend/nextits_data/Results/3.OCR_results/*
+/backend/nextits_data/Results/4.OCR_results/*
 /backend/nextits_data/Results/5.Completion_results/*
 /backend/nextits_data/UVDoc/data/doc3D/*
 /backend/nextits_data/UVDoc/data/UVDoc/*
 /backend/nextits_data/temp/*
+/backend/nextits_data/pipe/parser/test_result
+/backend/nextits_data/pipe/parser/test_doc
 

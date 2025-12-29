@@ -25,11 +25,27 @@ class Config:
     CROP_OUTPUT_DIR = BASE_DIR / "nextits_data" / "Results" / "3.Crop_image"
     METADATA_OUTPUT_DIR = BASE_DIR / "nextits_data" / "Results" / "5.Completion_results" / "image"
     
-    # 처리 옵션
-    SKIP_EXISTING = True  # 이미 처리된 파일 건너뛰기
+    # 처리 옵션 (필요 시 설정에서 수정 가능)
+    SKIP_EXISTING = True
+    RESUME = True
+    ADD_NUMBERING = True
+    MIN_WIDTH = 200
+    MIN_HEIGHT = 200
+    MAX_WIDTH = 800
+    MAX_HEIGHT = 850
 
 
-def run_img_croplayoutimg(input_dir=None, output_dir=None, skip_existing=True):
+def run_img_croplayoutimg(
+    input_dir=None,
+    output_dir=None,
+    skip_existing=True,
+    resume=True,
+    add_numbering=True,
+    min_width=None,
+    min_height=None,
+    max_width=None,
+    max_height=None,
+):
     """
     이미지 크롭 스크립트(img_croplayoutimg.py)를 실행하는 함수
     
@@ -63,9 +79,23 @@ def run_img_croplayoutimg(input_dir=None, output_dir=None, skip_existing=True):
         f'--output_dir={output_dir}'
     ]
     
-    # skip_existing가 False일 때만 --no_skip_existing 플래그를 추가합니다.
-    if not skip_existing:
+    # 세부 옵션 전달
+    # img_croplayoutimg.py는 skip/resume/add_numbering 기본값이 True이므로
+    # False일 때만 비활성화 플래그를 전달한다.
+    if skip_existing is False:
         cmd.append('--no_skip_existing')
+    if resume is False:
+        cmd.append('--no_resume')
+    if add_numbering is False:
+        cmd.append('--no_add_numbering')
+    if min_width is not None:
+        cmd.append(f'--min_width={min_width}')
+    if min_height is not None:
+        cmd.append(f'--min_height={min_height}')
+    if max_width is not None:
+        cmd.append(f'--max_width={max_width}')
+    if max_height is not None:
+        cmd.append(f'--max_height={max_height}')
     
     # 스크립트 실행
     logger.info("이미지 크롭 스크립트 실행 중...")
@@ -155,7 +185,17 @@ def main():
     parser.add_argument("--metadata_output", type=str, help="병합된 메타데이터를 저장할 출력 디렉토리")
     
     # 처리 옵션 인자
-    parser.add_argument("--skip_existing", action="store_true", help="이미 처리된 파일 건너뛰기")
+    parser.add_argument("--skip_existing", dest="skip_existing", action="store_true", help="이미 처리된 파일 건너뛰기")
+    parser.add_argument("--no_skip_existing", dest="skip_existing", action="store_false", help="이미 처리된 파일도 다시 처리")
+    parser.add_argument("--resume", dest="resume", action="store_true", help="중단된 위치부터 이어서 처리")
+    parser.add_argument("--no_resume", dest="resume", action="store_false", help="항상 처음부터 처리")
+    parser.add_argument("--add_numbering", dest="add_numbering", action="store_true", help="메타데이터에 넘버링 추가")
+    parser.add_argument("--no_add_numbering", dest="add_numbering", action="store_false", help="메타데이터 넘버링 비활성화")
+    parser.add_argument("--min_width", type=int, help="크롭할 최소 바운딩 박스 너비")
+    parser.add_argument("--min_height", type=int, help="크롭할 최소 바운딩 박스 높이")
+    parser.add_argument("--max_width", type=int, help="크롭할 최대 바운딩 박스 너비")
+    parser.add_argument("--max_height", type=int, help="크롭할 최대 바운딩 박스 높이")
+    parser.set_defaults(skip_existing=None, resume=None, add_numbering=None)
     
     args = parser.parse_args()
     
@@ -163,8 +203,14 @@ def main():
     layout_input_dir = args.layout_input or str(Config.LAYOUT_INPUT_DIR)
     crop_output_dir = args.crop_output or str(Config.CROP_OUTPUT_DIR)
     metadata_output_dir = args.metadata_output or str(Config.METADATA_OUTPUT_DIR)
-    skip_existing = args.skip_existing or Config.SKIP_EXISTING
-    
+    skip_existing = Config.SKIP_EXISTING if args.skip_existing is None else args.skip_existing
+    resume = Config.RESUME if args.resume is None else args.resume
+    add_numbering = Config.ADD_NUMBERING if args.add_numbering is None else args.add_numbering
+    min_width = args.min_width if args.min_width is not None else Config.MIN_WIDTH
+    min_height = args.min_height if args.min_height is not None else Config.MIN_HEIGHT
+    max_width = args.max_width if args.max_width is not None else Config.MAX_WIDTH
+    max_height = args.max_height if args.max_height is not None else Config.MAX_HEIGHT
+
     # 출력 디렉토리 생성
     os.makedirs(crop_output_dir, exist_ok=True)
     os.makedirs(metadata_output_dir, exist_ok=True)
@@ -179,7 +225,13 @@ def main():
     crop_success = run_img_croplayoutimg(
         input_dir=layout_input_dir,
         output_dir=crop_output_dir,
-        skip_existing=skip_existing
+        skip_existing=skip_existing,
+        resume=resume,
+        add_numbering=add_numbering,
+        min_width=min_width,
+        min_height=min_height,
+        max_width=max_width,
+        max_height=max_height,
     )
     
     if not crop_success:

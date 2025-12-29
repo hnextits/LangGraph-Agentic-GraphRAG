@@ -255,8 +255,8 @@ def crawling_web(result: dict, output_dir: str) -> str:
     # 디렉토리 생성
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     
-    # 3.OCR_results 디렉토리 경로 설정
-    ocr_results_dir = Path(output_dir).parent / 'Results' / '3.OCR_results'
+    # 4.OCR_results 디렉토리 경로 설정
+    ocr_results_dir = Path(output_dir).parent / 'Results' / '4.OCR_results'
     ocr_results_dir.mkdir(parents=True, exist_ok=True)
     ocr_results_path = ocr_results_dir / f"{safe_filename}.md"
     
@@ -296,7 +296,7 @@ def crawling_web(result: dict, output_dir: str) -> str:
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(markdown_content)
         
-        # 3.OCR_results 디렉토리에도 복사
+        # 4.OCR_results 디렉토리에도 복사
         shutil.copy2(output_path, ocr_results_path)
         print(f"검색 결과 저장: {output_path}")
         print(f"검색 결과 복사: {ocr_results_path}")
@@ -314,7 +314,7 @@ def crawling_web(result: dict, output_dir: str) -> str:
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(markdown_content)
         
-        # 3.OCR_results 디렉토리에도 복사
+        # 4.OCR_results 디렉토리에도 복사
         shutil.copy2(output_path, ocr_results_path)
         print(f"검색 결과 저장 (오류 포함): {output_path}")
         print(f"검색 결과 복사 (오류 포함): {ocr_results_path}")

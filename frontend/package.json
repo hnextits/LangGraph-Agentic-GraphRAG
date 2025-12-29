@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 6001",
+    "dev": "next dev -p 6004",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -24,6 +24,7 @@
     "react-dropzone": "^14.2.3",
     "react-markdown": "^8.0.7",
     "react-syntax-highlighter": "^15.6.3",
+    "rehype-raw": "^6.1.1",
     "remark-emoji": "^5.0.2",
     "remark-gfm": "^3.0.1",
     "styled-components": "^6.1.19",

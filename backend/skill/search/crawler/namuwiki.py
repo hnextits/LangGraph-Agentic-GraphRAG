@@ -119,7 +119,7 @@ def crawl_namuwiki_page(url: str, output_dir: str = "./"):
             f.write(final_content)
         
         # OCR 결과 디렉토리에도 동일한 파일 저장
-        ocr_results_dir = os.path.join(os.path.dirname(output_dir), 'Results', '3.OCR_results')
+        ocr_results_dir = os.path.join(os.path.dirname(output_dir), 'Results', '4.OCR_results')
         os.makedirs(ocr_results_dir, exist_ok=True)
         ocr_file_path = os.path.join(ocr_results_dir, f"{safe_title}_나무.md")
         

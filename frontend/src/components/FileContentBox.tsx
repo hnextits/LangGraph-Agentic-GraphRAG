@@ -3,14 +3,16 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 
 interface FileContentBoxProps {
   content: string;
+  forceMarkdown?: boolean;
 }
 
-const FileContentBox: React.FC<FileContentBoxProps> = ({ content }) => {
+const FileContentBox: React.FC<FileContentBoxProps> = ({ content, forceMarkdown = false }) => {
   const [fileType, setFileType] = useState<'text' | 'markdown' | 'code' | 'image'>('text');
   const [language, setLanguage] = useState<string>('');
   
@@ -18,7 +20,18 @@ const FileContentBox: React.FC<FileContentBoxProps> = ({ content }) => {
     // 파일 내용 분석하여 타입 결정
     if (content.startsWith('data:image')) {
       setFileType('image');
-    } else if (content.match(/^```[a-z]*\n/m) || content.includes('# ') || content.includes('## ') || content.includes('- ') || content.includes('* ')) {
+    } else if (
+      forceMarkdown ||
+      content.match(/^```[a-z]*\n/m) ||
+      content.includes('# ') ||
+      content.includes('## ') ||
+      content.includes('- ') ||
+      content.includes('* ') ||
+      content.includes('<table') ||
+      content.includes('<tr') ||
+      content.includes('<td') ||
+      content.trim().startsWith('###')
+    ) {
       setFileType('markdown');
     } else if (content.includes('function ') || content.includes('class ') || content.includes('import ') || content.includes('from ') || content.includes('def ')) {
       setFileType('code');
@@ -34,7 +47,7 @@ const FileContentBox: React.FC<FileContentBoxProps> = ({ content }) => {
     } else {
       setFileType('text');
     }
-  }, [content]);
+  }, [content, forceMarkdown]);
 
   // 이미지 파일 렌더링
   if (fileType === 'image') {
@@ -48,9 +61,10 @@ const FileContentBox: React.FC<FileContentBoxProps> = ({ content }) => {
   // 마크다운 렌더링 (CenterBox와 동일한 스타일)
   if (fileType === 'markdown') {
     return (
-      <div className="p-4 prose prose-sm max-w-none dark:prose-invert markdown-content">
+      <div className="p-4 prose prose-sm max-w-none dark:prose-invert markdown-content markdown-body message">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw]}
           components={{
             table: ({ node, ...props }) => (
               <div className="table-container overflow-x-auto my-2">

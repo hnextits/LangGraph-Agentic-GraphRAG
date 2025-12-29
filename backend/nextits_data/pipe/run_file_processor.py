@@ -9,13 +9,27 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
+# 파서 모듈 상대 경로 우선 추가
+_PIPE_DIR = Path(__file__).parent
+if str(_PIPE_DIR) not in sys.path:
+    sys.path.insert(0, str(_PIPE_DIR))
+
 from pipeline_sound import run_sound_pipeline
+from parser import convert_to_pdf, is_office_file, SUPPORTED_OFFICE_EXTENSIONS
 
 load_dotenv()
 
 # 디렉토리 설정
 # LAYOUT_DIR = "/home/nextits2/.conda/envs/workbox/image_test/nextits_data/Results/2.LayoutDetection"
 CONVERTED = os.getenv("CONVERTED")
+
+
+def log_stage_event(stage: str, status: str, message: str = ""):
+    """단계별 진행 상황을 일관되게 출력"""
+    prefix = f"[PIPELINE][{stage}] {status}"
+    if message:
+        prefix += f" - {message}"
+    print(prefix)
 
 
 def is_pdf_file(file_path: str) -> bool:
@@ -125,7 +139,22 @@ def process_file(file_path: str, skip_existing: bool = True, resume: bool = True
         print(f"PDF 파일 감지: {file_path}")
         # PDF 처리 알고리즘 실행 (udp_pdftopng_300dpi.py)
         process_pdf_file(file_path, skip_existing=skip_existing, resume=resume)
-        
+
+    elif is_office_document(file_path):
+        file_type = "Office"
+        print(f"Office/HWP 파일 감지: {file_path}")
+        # Office → PDF 변환 후 PDF 파이프라인 재사용
+        pdf_output_dir = Path(__file__).parent.parent / 'Results' / '0.Office_converted_pdf'
+        pdf_output_dir.mkdir(parents=True, exist_ok=True)
+
+        converted_pdf = convert_to_pdf(file_path, output_dir=str(pdf_output_dir))
+        if converted_pdf:
+            print(f"변환된 PDF로 처리 진행: {converted_pdf}")
+            process_pdf_file(converted_pdf, skip_existing=skip_existing, resume=resume)
+            file_type = "PDF"
+        else:
+            print(f"Office → PDF 변환 실패: {file_path}")
+
     elif is_image_file(file_path):
         file_type = "이미지"
         print(f"이미지 파일 감지: {file_path}")
@@ -141,6 +170,12 @@ def process_file(file_path: str, skip_existing: bool = True, resume: bool = True
         print(f"지원되지 않는 파일 유형: {file_path}")
     
     return file_type
+
+def is_office_document(file_path: str) -> bool:
+    """
+    Office/HWP/HWPX 파일인지 확인합니다.
+    """
+    return is_office_file(file_path)
 
 def process_image_file(file_path: str, skip_existing: bool = True, resume: bool = True):
     """
@@ -158,6 +193,7 @@ def process_image_file(file_path: str, skip_existing: bool = True, resume: bool 
         script_path = Path(__file__).parent.parent / 'UVDoc/demo.py'
         if not script_path.exists():
             print(f"오류: 이미지 처리 스크립트를 찾을 수 없습니다: {script_path}")
+            log_stage_event("IMAGE_UNWARP", "FAILED", "스크립트 없음")
             return False
         
         # 기본 출력 디렉토리
@@ -177,6 +213,7 @@ def process_image_file(file_path: str, skip_existing: bool = True, resume: bool 
         # 이미 처리된 파일이 있는지 확인
         if skip_existing and os.path.exists(output_file):
             print(f"이미 처리된 파일이 존재합니다: {output_file}. 건너뜁니다.")
+            log_stage_event("IMAGE_UNWARP", "SKIPPED", f"{image_name}")
             return True
         
         # 원본 이미지 복사
@@ -198,7 +235,6 @@ def process_image_file(file_path: str, skip_existing: bool = True, resume: bool 
         print(f"이미지 왕곡 보정 중... (출력 디렉토리: {image_folder})")
         result = subprocess.run(
             [sys.executable, str(script_path), '--ckpt-path', str(model_path), '--img-path', str(original_copy)],
-            capture_output=True,
             text=True,
             check=False
         )
@@ -213,16 +249,20 @@ def process_image_file(file_path: str, skip_existing: bool = True, resume: bool 
                 if expected_output != str(output_file):
                     shutil.move(expected_output, output_file)
                 print(f"이미지 처리 성공: {file_path} -> {output_file}")
+                log_stage_event("IMAGE_UNWARP", "SUCCESS", f"{image_name}")
                 return True
             else:
                 print(f"오류: 처리된 파일을 찾을 수 없습니다: {expected_output}")
+                log_stage_event("IMAGE_UNWARP", "FAILED", "출력 파일 없음")
                 return False
         else:
             print(f"이미지 처리 실패: {result.stderr}")
+            log_stage_event("IMAGE_UNWARP", "FAILED", "스크립트 실행 오류")
             return False
             
     except Exception as e:
         print(f"이미지 처리 중 오류 발생: {str(e)}")
+        log_stage_event("IMAGE_UNWARP", "FAILED", str(e))
         import traceback
         traceback.print_exc()
         return False
@@ -231,14 +271,14 @@ def process_sound_file(file_path: str, skip_existing: bool = True, resume: bool 
     """음성 또는 영상 파일을 STT 파이프라인에 전달하고 결과를 저장합니다.
     
     저장 위치:
-    - 3.OCR_results: 화자 정보 포함 (클릭 시 표시용)
+    - 4.OCR_results: 화자 정보 포함 (클릭 시 표시용)
     - 7.stt: 텍스트만 (임베딩용)
     """
     try:
         print(f"음성/영상 파일 처리 중: {file_path}")
 
-        # 3.OCR_results와 7.stt 디렉토리에서 이미 처리된 파일 확인
-        ocr_results_dir = Path(__file__).parent.parent / 'Results' / '3.OCR_results'
+        # 4.OCR_results와 7.stt 디렉토리에서 이미 처리된 파일 확인
+        ocr_results_dir = Path(__file__).parent.parent / 'Results' / '4.OCR_results'
         stt_dir = Path(__file__).parent.parent / 'Results' / '7.stt'
         ocr_results_dir.mkdir(parents=True, exist_ok=True)
         stt_dir.mkdir(parents=True, exist_ok=True)
@@ -250,6 +290,7 @@ def process_sound_file(file_path: str, skip_existing: bool = True, resume: bool 
             print(f"이미 처리된 음성/영상 결과가 존재하여 건너뜁니다:")
             print(f"  - 화자 정보 포함: {ocr_path}")
             print(f"  - 텍스트만: {stt_path}")
+            log_stage_event("STT", "SKIPPED", Path(file_path).stem)
             return True
 
         # STT 파이프라인 실행 (markdown_dir 없이)
@@ -262,10 +303,12 @@ def process_sound_file(file_path: str, skip_existing: bool = True, resume: bool 
         print(f"음성/영상 처리 완료:")
         print(f"  - 화자 정보 포함: {result['markdown_path']}")
         print(f"  - 텍스트만: {result['text_path']}")
+        log_stage_event("STT", "SUCCESS", Path(file_path).stem)
         return True
 
     except Exception as e:
         print(f"음성/영상 처리 중 오류 발생: {str(e)}")
+        log_stage_event("STT", "FAILED", str(e))
         import traceback
         traceback.print_exc()
         return False
@@ -323,6 +366,7 @@ def process_pdf_file(file_path: str, skip_existing: bool = True, resume: bool = 
                     print(f"이미 처리된 PDF 파일입니다: {file_path}")
                     print(f"기존 PNG 파일 수: {len(existing_pngs)}개")
                     print(f"출력 디렉토리: {pdf_output_dir}")
+                    log_stage_event("PDF_TO_PNG", "SKIPPED", f"{file_path} ({len(existing_pngs)} png)")
                     return True
         
         print(f"PDF를 PNG로 변환 중... (출력 디렉토리: {pdf_output_dir})")
@@ -349,13 +393,16 @@ def process_pdf_file(file_path: str, skip_existing: bool = True, resume: bool = 
             print(f"PDF 변환 성공: {file_path}")
             print(f"출력 디렉토리: {pdf_output_dir}")
             print(f"생성된 파일 수: {len(result_files)}개")
+            log_stage_event("PDF_TO_PNG", "SUCCESS", f"{file_path} ({len(result_files)} png)")
             return result_files
         else:
             print(f"PDF 변환 실패: 결과 파일이 없습니다.")
+            log_stage_event("PDF_TO_PNG", "FAILED", "결과 파일 없음")
             return False
             
     except Exception as e:
         print(f"PDF 처리 중 오류 발생: {str(e)}")
+        log_stage_event("PDF_TO_PNG", "FAILED", str(e))
         import traceback
         traceback.print_exc()
         return False
@@ -379,6 +426,7 @@ def run_layout_detection(input_dir=None, output_dir=None, skip_existing=True, re
         script_path = Path(__file__).parent / 'main_pipe/udp_layoutdetection.py'
         if not script_path.exists():
             print(f"오류: 레이아웃 감지 스크립트를 찾을 수 없습니다: {script_path}")
+            log_stage_event("LAYOUT_DETECTION", "FAILED", "스크립트 없음")
             return False
         
         # 기본 디렉토리 설정 (인자로 전달되지 않은 경우)
@@ -408,7 +456,6 @@ def run_layout_detection(input_dir=None, output_dir=None, skip_existing=True, re
         
         result = subprocess.run(
             cmd,
-            capture_output=True,
             text=True,
             check=False
         )
@@ -418,31 +465,62 @@ def run_layout_detection(input_dir=None, output_dir=None, skip_existing=True, re
             print("레이아웃 감지 성공!")
             if result.stdout:
                 print(result.stdout)
+            log_stage_event("LAYOUT_DETECTION", "SUCCESS")
             return True
         else:
             print(f"레이아웃 감지 실패: {result.stderr}")
+            log_stage_event("LAYOUT_DETECTION", "FAILED", result.stderr.strip())
             return False
             
     except Exception as e:
         print(f"레이아웃 감지 중 오류 발생: {str(e)}")
+        log_stage_event("LAYOUT_DETECTION", "FAILED", str(e))
         return False
 
-def run_image_pipeline():
+def run_image_pipeline(
+    skip_existing: bool = True,
+    resume: bool = True,
+    add_numbering: bool = True,
+    min_width: int = 200,
+    min_height: int = 200,
+    max_width: int = 800,
+    max_height: int = 850,
+):
     """
     이미지 파이프라인 스크립트(pipeline_image.py)를 실행하는 함수
     """
     try:
         print("\n===== 이미지 파이프라인 실행 중... =====\n")
         pipeline_script = Path(__file__).parent / 'pipeline_image.py'
-        if pipeline_script.exists():
-            subprocess.run([sys.executable, str(pipeline_script)], check=True)
-            print("\n===== 이미지 파이프라인 완료 =====\n")
-            return True
-        else:
+        if not pipeline_script.exists():
             print(f"오류: 이미지 파이프라인 스크립트를 찾을 수 없습니다: {pipeline_script}")
+            log_stage_event("IMAGE_PIPELINE", "FAILED", "스크립트 없음")
             return False
+
+        cmd = [sys.executable, str(pipeline_script)]
+
+        if skip_existing is not None:
+            cmd.append('--skip_existing' if skip_existing else '--no_skip_existing')
+        if resume is not None:
+            cmd.append('--resume' if resume else '--no_resume')
+        if add_numbering is not None:
+            cmd.append('--add_numbering' if add_numbering else '--no_add_numbering')
+        if min_width is not None:
+            cmd.append(f'--min_width={min_width}')
+        if min_height is not None:
+            cmd.append(f'--min_height={min_height}')
+        if max_width is not None:
+            cmd.append(f'--max_width={max_width}')
+        if max_height is not None:
+            cmd.append(f'--max_height={max_height}')
+
+        subprocess.run(cmd, check=True)
+        print("\n===== 이미지 파이프라인 완료 =====\n")
+        log_stage_event("IMAGE_PIPELINE", "SUCCESS")
+        return True
     except Exception as e:
         print(f"이미지 파이프라인 실행 중 오류 발생: {str(e)}")
+        log_stage_event("IMAGE_PIPELINE", "FAILED", str(e))
         import traceback
         traceback.print_exc()
         return False
@@ -464,6 +542,7 @@ def run_ocr_processing(image_source_dir, exclude_labels=None, skip_ocr=False, sk
     """
     if skip_ocr:
         print("OCR 처리 건너뛰기 옵션이 설정되어 있습니다.")
+        log_stage_event("OCR", "SKIPPED", "skip_ocr=True")
         return True
 
     print(f"\n===== OCR 처리 시작 (Using inference.py) =====\n")
@@ -477,7 +556,7 @@ def run_ocr_processing(image_source_dir, exclude_labels=None, skip_ocr=False, sk
         return False
 
     # 결과를 저장할 최상위 폴더 설정
-    ocr_results_dir = Path(__file__).parent.parent / 'Results/3.OCR_results'
+    ocr_results_dir = Path(__file__).parent.parent / 'Results/4.OCR_results'
     ocr_results_dir.mkdir(parents=True, exist_ok=True)
 
     # layout_output_dir의 하위 폴더들을 순회
@@ -486,6 +565,7 @@ def run_ocr_processing(image_source_dir, exclude_labels=None, skip_ocr=False, sk
 
     if not subfolders:
         print(f"오류: {image_source_dir} 에서 처리할 이미지 폴더를 찾을 수 없습니다.")
+        log_stage_event("OCR", "FAILED", "입력 폴더 없음")
         return False
 
     print(f"총 {len(subfolders)}개의 폴더에 대해 OCR을 실행합니다.")
@@ -500,6 +580,7 @@ def run_ocr_processing(image_source_dir, exclude_labels=None, skip_ocr=False, sk
         if skip_existing and expected_output_file.exists():
             print(f"결과 파일이 이미 존재하여 건너뜁니다: {expected_output_file}")
             success_count += 1
+            log_stage_event("OCR", "SKIPPED", folder_name)
             continue
 
         try:
@@ -522,7 +603,11 @@ def run_ocr_processing(image_source_dir, exclude_labels=None, skip_ocr=False, sk
     print(f"성공적으로 처리된 폴더: {success_count}/{len(subfolders)}")
     print(f"결과 저장 위치: {ocr_results_dir}")
 
-    return success_count > 0
+    if success_count > 0:
+        log_stage_event("OCR", "SUCCESS", f"{success_count}/{len(subfolders)} 폴더")
+        return True
+    log_stage_event("OCR", "FAILED", "처리된 폴더 없음")
+    return False
 
 def main():
     """
@@ -601,7 +686,10 @@ def main():
                             print("\n===== OCR 처리 완료 =====\n")
                             
                             # 이미지 파이프라인 실행
-                            run_image_pipeline()
+                            run_image_pipeline(
+                                skip_existing=args.skip_existing,
+                                resume=args.resume,
+                            )
                         
                         print("\n===== 파일 처리 완료 =====\n")
                     else:

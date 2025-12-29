@@ -19,6 +19,8 @@ import {
   File,
   FileText,
   FileType,
+  FileSpreadsheet,
+  Presentation,
   ImageIcon,
   Code,
   WandSparkles,
@@ -260,6 +262,36 @@ const LeftBox: React.FC<LeftBoxProps> = ({
       return (
         <div className="bg-blue-100 rounded-md p-1 items-center">
           <FileText className="text-blue-500" size={20} />
+        </div>
+      );
+    if (
+      lowerFileName.endsWith('.hwp') ||
+      lowerFileName.endsWith('.hwpx') ||
+      lowerFileName.endsWith('.doc') ||
+      lowerFileName.endsWith('.docx')
+    )
+      return (
+        <div className="bg-indigo-100 rounded-md p-1 items-center">
+          <FileText className="text-indigo-600" size={20} />
+        </div>
+      );
+    if (
+      lowerFileName.endsWith('.xls') ||
+      lowerFileName.endsWith('.xlsx') ||
+      lowerFileName.endsWith('.csv')
+    )
+      return (
+        <div className="bg-emerald-100 rounded-md p-1 items-center">
+          <FileSpreadsheet className="text-emerald-600" size={20} />
+        </div>
+      );
+    if (
+      lowerFileName.endsWith('.ppt') ||
+      lowerFileName.endsWith('.pptx')
+    )
+      return (
+        <div className="bg-amber-100 rounded-md p-1 items-center">
+          <Presentation className="text-amber-600" size={20} />
         </div>
       );
     if (
@@ -607,7 +639,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
                       <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
                     </div>
                   ) : (
-                    <FileContentBox content={fileContent} />
+                    <FileContentBox content={fileContent} forceMarkdown />
                   )}
                 </div>
               </div>
