@@ -294,6 +294,7 @@ def process_sound_file(file_path: str, skip_existing: bool = True, resume: bool 
             return True
 
         # STT 파이프라인 실행 (markdown_dir 없이)
+        from pipeline_sound import run_sound_pipeline  # torchaudio 미사용 시 import 지연
         result = run_sound_pipeline(file_path, markdown_dir=None)
 
         if not result or not result.get("text_path") or not result.get("markdown_path"):
