@@ -299,15 +299,38 @@ def get_rag_response(
             for img_item in pipeline_images:
                 # file_path가 있고, 아직 추가되지 않았으며, base64 또는 image_base64 데이터가 있는지 확인
                 base64_data = img_item.get('base64') or img_item.get('image_base64')
-                if 'file_path' in img_item and img_item['file_path'] not in processed_image_paths and base64_data:
+                file_path = img_item.get('file_path')
+                
+                # base64가 없는데 file_path만 있는 경우 백엔드에서 변환 시도
+                if not base64_data and file_path:
+                    logger.info(f"이미지 경로 발견, base64 변환 시도: {file_path}")
+                    base64_data = encode_image_to_base64(file_path)
+                
+                if file_path and file_path not in processed_image_paths and base64_data:
                     images.append({
-                        'path': img_item['file_path'],
-                        'alt': os.path.basename(img_item.get('title', img_item['file_path'])),
-                        'title': img_item.get('title', os.path.basename(img_item['file_path'])),
-                        'base64': base64_data  # 이미 가져온 base64_data 사용
+                        'path': file_path,
+                        'alt': os.path.basename(img_item.get('title', file_path)),
+                        'title': img_item.get('title', os.path.basename(file_path)),
+                        'base64': base64_data
                     })
-                    processed_image_paths.add(img_item['file_path'])
+                    processed_image_paths.add(file_path)
         
+        # image_paths 리스트도 처리 (경로만 온 경우 대비)
+        image_paths = results.get('image_paths', [])
+        if image_paths:
+            logger.info(f"image_paths 리스트에서 {len(image_paths)}개의 이미지를 처리합니다.")
+            for path in image_paths:
+                if path and path not in processed_image_paths:
+                    base64_data = encode_image_to_base64(path)
+                    if base64_data:
+                        images.append({
+                            'path': path,
+                            'alt': os.path.basename(path),
+                            'title': os.path.basename(path),
+                            'base64': base64_data
+                        })
+                        processed_image_paths.add(path)
+            
         # routes.py의 ChatResponse 모델은 List[str]을 기대하므로 base64 문자열 리스트로 변환
         final_images = [img['base64'] for img in images if img.get('base64')]
 

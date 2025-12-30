@@ -160,8 +160,8 @@ const apiMethods = {
     return api.post('/chat', { query, sources }, config);
   },
 
-  // 채팅 전송 일시 중지?
-  postCancel: (task_ids: string[]) => {
+  // 작업 취소
+  cancelTasks: (task_ids: string[]) => {
     return api.post('/cancel', { task_ids });
   },
 
@@ -213,6 +213,7 @@ type ApiInstance = typeof api & {
     sources: string[],
     config?: AxiosRequestConfig
   ) => Promise<AxiosResponse>;
+  cancelTasks: (task_ids: string[]) => Promise<AxiosResponse>;
   postCancel: (task_ids: string[]) => Promise<AxiosResponse>;
   uploadDocuments: (title: string, link: string) => Promise<AxiosResponse>;
   generateMindmap: (data: { filename: string; max_topics?: number }) => Promise<AxiosResponse>;

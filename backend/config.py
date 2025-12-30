@@ -15,12 +15,7 @@ PROJECT_ROOT = BACKEND_DIR.parent
 
 # 백엔드 .env 파일 로드 (로컬 개발용)
 # Jenkins에서 설정한 환경변수가 .env 파일보다 우선합니다.
-ENV_PATH = BACKEND_DIR / '.env'
-if ENV_PATH.exists():
-    load_dotenv(dotenv_path=ENV_PATH)
-    logger.info(f"백엔드 .env 파일 로드됨: {ENV_PATH}")
-else:
-    logger.info(f"백엔드 .env 파일을 찾을 수 없음. 환경 변수를 사용합니다: {ENV_PATH}")
+
 
 class PathConfig:
     '''경로 설정을 중앙화하는 클래스'''
@@ -33,15 +28,9 @@ class PathConfig:
         self.NEXTITS_DATA_DIR = os.path.join(self.BASE_DIR, 'nextits_data')
         self.DOC_DIR = os.path.join(self.NEXTITS_DATA_DIR, 'doc')
         self.RESULTS_DIR = os.path.join(self.NEXTITS_DATA_DIR, 'Results')
-        self.OCR_RESULTS_DIR = os.path.join(self.RESULTS_DIR, '3.OCR_results')
+        self.OCR_RESULTS_DIR = os.path.join(self.RESULTS_DIR, '4.OCR_results')
         
-        # 크롤링 데이터 저장 경로 - 마크다운 파일을 바로 doc 디렉토리에 저장
-        # 하위 디렉토리 없이 바로 저장
-        self.SNIPPET_DIR = self.DOC_DIR
-        self.CLEAN_MD_DIR = self.DOC_DIR
-        self.NAMUWIKI_DIR = self.DOC_DIR
-        self.WIKIPEDIA_DIR = self.DOC_DIR
-        
+
         # 디렉토리 생성
         self.ensure_directories()
     

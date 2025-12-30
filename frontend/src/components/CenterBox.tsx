@@ -7,6 +7,8 @@ import api from '@/lib/api';
 import { FileContext } from '@/contexts/FileContext';
 import MessageActions from './MessageActions';
 import ChatInit from './ChatInit';
+import ImageSlider from './ImageSlider';
+import ImageZoomModal from './ImageZoomModal';
 
 // 아이콘 임포트
 import { ArrowUp, Loader2, CircleUserRound, Bot, Square } from 'lucide-react';
@@ -40,6 +42,17 @@ const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
   const [currentTaskId, setCurrentTaskId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 이미지 모달 상태
+  const [zoomModalOpen, setZoomModalOpen] = useState(false);
+  const [zoomImages, setZoomImages] = useState<string[]>([]);
+  const [zoomInitialIndex, setZoomInitialIndex] = useState(0);
+
+  const handleOpenZoom = (images: string[], index: number) => {
+    setZoomImages(images);
+    setZoomInitialIndex(index);
+    setZoomModalOpen(true);
+  };
 
   // 메시지 목록이 업데이트될 때마다 스크롤을 맨 아래로 이동
   useEffect(() => {
@@ -191,6 +204,9 @@ const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const hasSelectedFiles = checkedFilenames.length > 0;
+  const selectedFilesLine = checkedFilenames.join(', ');
+
   return (
     <div
       id="centerbox"
@@ -201,222 +217,176 @@ const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
       >
         {<h2 className="text-lg font-bold">채팅</h2>}
       </div>
-      {/* Message Display Area */}
-      <div className="flex-grow overflow-auto p-2 relative">
-        {(!isFiles || messages.length === 0) ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <ChatInit />
-          </div>
-        ) : (
-          <div className="flex flex-col space-y-2">
-            {messages.map((msg, index) => (
-              <div
-                key={index}
-                className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`}
-              >
-                {msg.sender === 'bot' && (
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 mr-2">
-                    <Bot size={24} className="text-gray-600" />
-                  </div>
-                )}
 
+      {/* Message Display Area */}
+      <div className="flex-grow overflow-hidden relative">
+        <div className="absolute inset-0 overflow-y-auto p-4 no-scrollbar">
+          {(!isFiles || messages.length === 0) ? (
+            <div className="h-full flex items-center justify-center">
+              <ChatInit />
+            </div>
+          ) : (
+            <div className="flex flex-col space-y-4">
+              {messages.map((msg, index) => (
                 <div
-                  className={`max-w-[80%] flex flex-col ${
-                    msg.sender === 'user' ? 'items-end' : 'items-start'
-                  }`}
+                  key={index}
+                  className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  {/* 타임스탬프 */}
-                  <div className="text-xs text-gray-400 mb-1 px-1">
-                    {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('ko-KR', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    }) : ''}
-                  </div>
-                  
+                  {msg.sender === 'bot' && (
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 mr-2">
+                      <Bot size={24} className="text-gray-600" />
+                    </div>
+                  )}
+
                   <div
-                    className={`rounded-lg p-3 ${
-                      msg.sender === 'user'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-white border border-gray-200'
+                    className={`max-w-[80%] flex flex-col ${
+                      msg.sender === 'user' ? 'items-end' : 'items-start'
                     }`}
                   >
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        table: ({ node, ...props }) => (
-                          <div className="table-container overflow-x-auto my-2">
-                            <table className="markdown-table border-collapse w-full" {...props} />
-                          </div>
-                        ),
-                        thead: props => (
-                          <thead className="markdown-thead bg-[#f5f7fa]" {...props} />
-                        ),
-                        tbody: props => <tbody className="markdown-tbody" {...props} />,
-                        tr: props => (
-                          <tr
-                            className="markdown-tr border-b border-gray-200 hover:bg-gray-50"
-                            {...props}
-                          />
-                        ),
-                        th: props => (
-                          <th
-                            className="markdown-th p-2 text-left font-semibold border-b-2 border-gray-300"
-                            {...props}
-                          />
-                        ),
-                        td: props => <td className="markdown-td p-2 border-gray-200" {...props} />,
-                        code: ({ node, inline, className, children, ...props }) => {
-                          const match = /language-(.*)/.exec(className || '');
-                          const language = match ? match[1] : '';
-
-                          if (inline) {
-                            return (
-                              <code
-                                className="inline-code px-1 py-0.5 rounded bg-gray-100 text-red-500"
-                                {...props}
-                              >
-                                {children}
-                              </code>
-                            );
-                          }
-
-                          return (
-                            <div className="code-block-wrapper my-3 rounded overflow-hidden">
-                              {language && (
-                                <div className="code-header bg-gray-800 text-gray-200 text-xs px-4 py-1">
-                                  <span className="language-tag">{language}</span>
-                                </div>
-                              )}
-                              <SyntaxHighlighter
-                                style={vscDarkPlus as any}
-                                language={language || 'text'}
-                                PreTag="div"
-                                className="code-block"
-                                showLineNumbers={!inline && language !== 'text'}
-                                wrapLines={true}
-                                {...props}
-                              >
-                                {String(children).replace(/\n$/, '')}
-                              </SyntaxHighlighter>
-                            </div>
-                          );
-                        },
-                        a: ({ href, children }) => (
-                          <a
-                            href={href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="markdown-link text-blue-600 hover:underline"
-                          >
-                            {children}
-                          </a>
-                        ),
-                      }}
+                    {/* 타임스탬프 */}
+                    <div className="text-xs text-gray-400 mb-1 px-1">
+                      {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('ko-KR', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      }) : ''}
+                    </div>
+                    
+                    <div
+                      className={`rounded-lg p-3 ${
+                        msg.sender === 'user'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-white border border-gray-200'
+                      }`}
                     >
-                      {msg.text}
-                    </ReactMarkdown>
-
-                    {/* 이미지 갤러리 */}
-                    {msg.images && msg.images.length > 0 && (
-                      <div className="image-gallery mt-3 space-y-3">
-                        {msg.images.map((img, idx) => {
-                          console.log(`Rendering image ${idx}:`, img);
-                        
-                          // 이미지 데이터 추출 로직 개선
-                          let base64ForDisplay = '';
-                          let imgTitle = `이미지 ${idx + 1}`;
-                          let imgAlt = `이미지 ${idx + 1}`;
-                          
-                          if (typeof img === 'string') {
-                            // 문자열인 경우 (기존 방식)
-                            base64ForDisplay = img;
-                          } else if (img && typeof img === 'object') {
-                            // 객체인 경우 (새로운 방식)
-                            const imgData = img as ImageData;
-                            base64ForDisplay = imgData.base64 || '';
-                            imgTitle = imgData.title || imgTitle;
-                            imgAlt = imgData.alt || imgAlt;
-                            console.log(`Image ${idx} base64 length:`, base64ForDisplay.length);
-                          }
-                          
-                          // data:image/ 접두사가 없으면 추가
-                          if (base64ForDisplay && !base64ForDisplay.startsWith('data:')) {
-                            base64ForDisplay = `data:image/png;base64,${base64ForDisplay}`;
-                          }
-                          
-                          let isValidBase64 =
-                            base64ForDisplay.startsWith('data:image/') ||
-                            base64ForDisplay.startsWith('data:application/');
-
-                          return (
-                            <div key={idx} className="border border-gray-200 p-2 rounded">
-                              <div className="font-medium text-sm mb-2">이미지 {idx + 1}</div>
-
-                              {isValidBase64 ? (
-                                <>
-                                  <div className="text-center">
-                                    <img
-                                      src={base64ForDisplay}
-                                      alt={imgAlt}
-                                      title={imgTitle}
-                                      className="mx-auto my-2 max-w-full max-h-[300px] object-contain rounded cursor-pointer"
-                                      loading="eager"
-                                      onClick={() => {
-                                        const newWindow = window.open();
-                                        if (newWindow) {
-                                          newWindow.document.write(`
-                                            <html>
-                                              <head><title>${imgTitle}</title></head>
-                                              <body style="margin:0; display:flex; justify-content:center; align-items:center; min-height:100vh; background:#f0f0f0;">
-                                                <img src="${base64ForDisplay}" style="max-width:100%; max-height:100%; object-fit:contain;" alt="${imgAlt}">
-                                              </body>
-                                            </html>
-                                          `);
-                                        }
-                                      }}
-                                    />
-                                  </div>
-
-                                  <div className="mt-2 text-xs text-gray-500 text-center">
-                                    클릭하면 새 탭에서 확대됩니다.
-                                  </div>
-                                </>
-                              ) : (
-                                <div className="p-3 bg-red-100 text-red-700 text-center rounded">
-                                  <p>이미지를 표시할 수 없습니다</p>
-                                </div>
-                              )}
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          table: ({ node, ...props }) => (
+                            <div className="table-container overflow-x-auto my-2">
+                              <table className="markdown-table border-collapse w-full" {...props} />
                             </div>
-                          );
-                        })}
+                          ),
+                          thead: props => (
+                            <thead className="markdown-thead bg-[#f5f7fa]" {...props} />
+                          ),
+                          tbody: props => <tbody className="markdown-tbody" {...props} />,
+                          tr: props => (
+                            <tr
+                              className="markdown-tr border-b border-gray-200 hover:bg-gray-50"
+                              {...props}
+                            />
+                          ),
+                          th: props => (
+                            <th
+                              className="markdown-th p-2 text-left font-semibold border-b-2 border-gray-300"
+                              {...props}
+                            />
+                          ),
+                          td: props => <td className="markdown-td p-2 border-gray-200" {...props} />,
+                          code: ({ node, inline, className, children, ...props }) => {
+                            const match = /language-(.*)/.exec(className || '');
+                            const language = match ? match[1] : '';
+
+                            if (inline) {
+                              return (
+                                <code
+                                  className="inline-code px-1 py-0.5 rounded bg-gray-100 text-red-500"
+                                  {...props}
+                                >
+                                  {children}
+                                </code>
+                              );
+                            }
+
+                            return (
+                              <div className="code-block-wrapper my-3 rounded overflow-hidden">
+                                {language && (
+                                  <div className="code-header bg-gray-800 text-gray-200 text-xs px-4 py-1">
+                                    <span className="language-tag">{language}</span>
+                                  </div>
+                                )}
+                                <SyntaxHighlighter
+                                  style={vscDarkPlus as any}
+                                  language={language || 'text'}
+                                  PreTag="div"
+                                  className="code-block"
+                                  showLineNumbers={!inline && language !== 'text'}
+                                  wrapLines={true}
+                                  {...props}
+                                >
+                                  {String(children).replace(/\n$/, '')}
+                                </SyntaxHighlighter>
+                              </div>
+                            );
+                          },
+                          a: ({ href, children }) => (
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="markdown-link text-blue-600 hover:underline"
+                            >
+                              {children}
+                            </a>
+                          ),
+                        }}
+                      >
+                        {msg.text}
+                      </ReactMarkdown>
+
+                      {/* 이미지 갤러리/슬라이더 */}
+                      {msg.images && msg.images.length > 0 && (
+                        <ImageSlider 
+                          images={msg.images.map(img => {
+                            if (typeof img === 'string') return img;
+                            let b64 = (img as ImageData).base64 || '';
+                            return b64.startsWith('data:') ? b64 : `data:image/png;base64,${b64}`;
+                          })} 
+                          onImageClick={(index) => {
+                            const allUrls = msg.images!.map(img => {
+                              if (typeof img === 'string') return img;
+                              let b64 = (img as ImageData).base64 || '';
+                              return b64.startsWith('data:') ? b64 : `data:image/png;base64,${b64}`;
+                            });
+                            handleOpenZoom(allUrls, index);
+                          }}
+                        />
+                      )}
+                    </div>
+                    {msg.sender === 'bot' && (
+                      <div className="w-full flex justify-end">
+                        <MessageActions content={msg.text} />
                       </div>
                     )}
                   </div>
-                  {msg.sender === 'bot' && (
-                    <div className="w-full flex justify-end">
-                      <MessageActions content={msg.text} />
+
+                  {msg.sender === 'user' && (
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 ml-2">
+                      <CircleUserRound size={24} className="text-blue-500" />
                     </div>
                   )}
                 </div>
-
-                {msg.sender === 'user' && (
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 ml-2">
-                    <CircleUserRound size={24} className="text-blue-500" />
+              ))}
+              {isStreaming && (
+                <div className="flex items-center space-x-1 ml-1">
+                  <div className="animate-spin">
+                    <Loader2 size={20} />
                   </div>
-                )}
-              </div>
-            ))}
-            {isStreaming && (
-              <div className="flex items-center space-x-1 ml-1">
-                <div className="animate-spin">
-                  <Loader2 size={20} />
+                  <p className="text-base">답변 생성 중...</p>
                 </div>
-                <p className="text-base">답변 생성 중...</p>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        )}
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Selected files indicator above prompt divider */}
+      <div className="px-4 py-2 text-xs text-gray-600 bg-[#f8f9fa] flex flex-wrap gap-1 min-h-[40px] border-t border-gray-200">
+        <span className="font-semibold whitespace-nowrap">선택된 파일:</span>
+        <span className={`truncate ${hasSelectedFiles ? 'text-gray-700' : 'text-gray-400'}`}>
+          {hasSelectedFiles ? selectedFilesLine : '없음'}
+        </span>
       </div>
 
       {/* Input Area */}
@@ -455,23 +425,13 @@ const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
           </div>
         </div>
 
-        {/* 선택된 파일 표시 */}
-        {checkedFilenames.length > 0 && (
-          <div className="mt-2 text-xs text-gray-500">
-            <span>선택된 파일: {checkedFilenames.length}개</span>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {checkedFilenames.map((file, index) => (
-                <span
-                  key={index}
-                  className="bg-gray-100 px-2 py-0.5 rounded-full truncate max-w-[150px]"
-                >
-                  {file}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
+      <ImageZoomModal 
+        isOpen={zoomModalOpen}
+        onClose={() => setZoomModalOpen(false)}
+        images={zoomImages}
+        initialIndex={zoomInitialIndex}
+      />
     </div>
   );
 };

@@ -361,7 +361,7 @@ def delete_document_by_filename(client: weaviate.Client, filename: str) -> bool:
             str((NEXTITS_DATA_DIR / "doc" / filename)),
             str((NEXTITS_DATA_DIR / "doc" / f"{base_name}.md")),
             str((NEXTITS_DATA_DIR / "Results" / "7.stt" / f"{base_name}.md")),
-            str((NEXTITS_DATA_DIR / "Results" / "3.OCR_results" / f"{base_name}.md")),
+            str((NEXTITS_DATA_DIR / "Results" / "4.OCR_results" / f"{base_name}.md")),
         })
         logger.debug(f"UUID 검색을 위한 후보 경로 목록: {metadata_candidates}") # <<< 로그 추가
 
@@ -425,7 +425,7 @@ def get_document_uuid_map(client: weaviate.Client, filenames: List[str]) -> Dict
             str((NEXTITS_DATA_DIR / "doc" / filename)),
             str((NEXTITS_DATA_DIR / "doc" / f"{base_name}.md")),
             str((NEXTITS_DATA_DIR / "Results" / "7.stt" / f"{base_name}.md")),
-            str((NEXTITS_DATA_DIR / "Results" / "3.OCR_results" / f"{base_name}.md")),
+            str((NEXTITS_DATA_DIR / "Results" / "4.OCR_results" / f"{base_name}.md")),
         })
         logger.debug(f"'{filename}'에 대한 UUID 검색 후보 경로: {metadata_candidates}") # <<< 로그 추가
 

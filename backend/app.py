@@ -21,7 +21,7 @@ CORS(app)  # 모든 출처에서의 요청을 허용합니다.
 #         # Search top 10 results and return them
 #         results = crawler_pipeline.search(query, 10)
 
-#         output_dir = "./nextits_data/Results/3.OCR_results"
+#         output_dir = "./nextits_data/Results/4.OCR_results"
 #         for result in results:
 #             crawler_pipeline.crawling_web(result = result, output_dir=output_dir)
 #         return jsonify(results), 200

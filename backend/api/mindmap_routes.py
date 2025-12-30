@@ -80,9 +80,9 @@ async def generate_mindmap_task(task_id: str, filename: str, max_topics: int):
             "progress": 10
         }
         
-        # 3.OCR_results에서만 파일 찾기
+        # 4.OCR_results에서만 파일 찾기
         base_dir = Path(__file__).parent.parent / "nextits_data"
-        ocr_dir = base_dir / "Results" / "3.OCR_results"
+        ocr_dir = base_dir / "Results" / "4.OCR_results"
         
         # 파일명에서 확장자를 .md로 변환
         # 예: 원가관리회계.pdf -> 원가관리회계.md
@@ -93,7 +93,7 @@ async def generate_mindmap_task(task_id: str, filename: str, max_topics: int):
         file_path = ocr_dir / md_filename
         
         if not file_path.exists():
-            raise FileNotFoundError(f"3.OCR_results에서 파일을 찾을 수 없습니다: {md_filename} (원본 요청: {filename})")
+            raise FileNotFoundError(f"4.OCR_results에서 파일을 찾을 수 없습니다: {md_filename} (원본 요청: {filename})")
         
         # 파일 내용 읽기
         with open(file_path, 'r', encoding='utf-8') as f:

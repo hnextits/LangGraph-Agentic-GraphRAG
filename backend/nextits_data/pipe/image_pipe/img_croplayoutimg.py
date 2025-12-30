@@ -57,7 +57,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 # 상대 경로로 디렉토리 설정
 LAYOUT_DETECTION_DIR = BASE_DIR / "nextits_data" / "Results" / "2.LayoutDetection"
 CROP_IMAGE_DIR = BASE_DIR / "nextits_data" / "Results" / "3.Crop_image"
-OCR_RESULTS_DIR = BASE_DIR / "nextits_data" / "Results" / "3.OCR_results"
+OCR_RESULTS_DIR = BASE_DIR / "nextits_data" / "Results" / "4.OCR_results"
 
 # 기본값 설정 (명령행 인자로 재정의 가능)
 INPUT_DIR = LAYOUT_DETECTION_DIR
@@ -299,6 +299,14 @@ def create_metadata(crop_path, original_json_path, pdf_folder_name, label, box_c
     # 순서번호는 2자리수로 표시 (01, 02, ...)
     file_name = f"{pdf_folder_name}_{display_page_num}_{index_num:02d}"
     
+    # 파일 경로를 상대 경로로 변환 (/backend/nextits_data/... 형식)
+    # BASE_DIR (backend/ 디렉토리)를 기준으로 상대 경로 계산
+    try:
+        relative_crop_path = f"/backend/{crop_path.relative_to(BASE_DIR)}"
+    except Exception:
+        # relative_to가 실패할 경우 (예: 다른 드라이브) 기본 str 사용
+        relative_crop_path = str(crop_path)
+
     # 메타데이터 생성
     metadata = {
         "metadata": {
@@ -309,7 +317,7 @@ def create_metadata(crop_path, original_json_path, pdf_folder_name, label, box_c
             "index": str(number) if number is not None else index_value,
             "id": id_value,
             "file_name": file_name,
-            "file_path": str(crop_path),
+            "file_path": relative_crop_path,
             "text": ocr_text,
             "tags": None,
             "con_type": label,
@@ -392,15 +400,34 @@ def process_json_file(json_path, pdf_folder_name, file_type="PDF", skip_existing
                 if label in TARGET_LABELS:
                     label_counts[label] += 1
             
+            # 현재 JSON의 페이지 번호/파일명 접두어 계산
+            json_filename = os.path.basename(json_path)
+            raw_page_num = extract_page_num(json_filename)
+            page_num = raw_page_num if raw_page_num is not None else "none"
+            display_page_num = "0" if page_num == "none" else page_num
+            page_prefix = f"{pdf_folder_name}_{display_page_num}_"
+            
             # 출력 폴더가 존재하고 skip_existing이 True인 경우, 그리고 처리할 레이블이 하나 이상 있는 경우에만 건너뛰기 로직 실행
             if skip_existing and output_check_path.exists() and any(label_counts.values()):
                 all_processed = True
                 
-                # 각 레이블별로 처리된 이미지 수 확인
+                # 각 레이블별로 처리된 이미지 수 확인 (현재 페이지 기준)
                 for label in TARGET_LABELS:
+                    expected_count = label_counts[label]
+                    if expected_count == 0:
+                        continue
+                    
                     label_folder = output_check_path / label
-                    # 처리해야 할 이미지가 있는데, 폴더가 없거나 파일 수가 부족한 경우
-                    if label_counts[label] > 0 and (not label_folder.exists() or len(list(label_folder.glob('*_metadata.json'))) < label_counts[label]):
+                    if not label_folder.exists():
+                        all_processed = False
+                        break
+                    
+                    processed_count = len([
+                        file_path for file_path in label_folder.glob('*_metadata.json')
+                        if file_path.name.startswith(page_prefix)
+                    ])
+                    
+                    if processed_count < expected_count:
                         all_processed = False
                         break
                 
@@ -436,9 +463,7 @@ def process_json_file(json_path, pdf_folder_name, file_type="PDF", skip_existing
         # 원본 이미지가 없는 경우 레이아웃 이미지 사용
         img_path = original_img_path if os.path.exists(original_img_path) else layout_img_path
         
-        # 페이지 번호 추출
-        json_filename = os.path.basename(json_path)
-        page_num = extract_page_num(json_filename)
+        # 페이지 번호 정보는 위에서 계산됨
         
         # 모든 박스 데이터 가져오기 (메타데이터 생성에 사용)
         boxes_data = data.get('boxes', [])
@@ -521,8 +546,13 @@ def process_json_file(json_path, pdf_folder_name, file_type="PDF", skip_existing
                 # 넘버링 카운터 증가 (성공적으로 크롭된 경우에만)
                 number_counter += 1
                 
-                # 메타데이터 경로 업데이트
-                metadata["metadata"]["file_path"] = str(output_path)
+                # 메타데이터 경로 업데이트 (상대 경로로 유지)
+                try:
+                    relative_output_path = f"/backend/{output_path.relative_to(BASE_DIR)}"
+                except Exception:
+                    relative_output_path = str(output_path)
+                
+                metadata["metadata"]["file_path"] = relative_output_path
                 
                 # 캡션과 태그는 사용하지 않음
                 caption, tags = None, None
@@ -643,8 +673,8 @@ if __name__ == "__main__":
     parser.add_argument("--input_dir", type=str, default=INPUT_DIR, help="레이아웃 결과 파일들이 있는 디렉토리")
     parser.add_argument("--output_dir", type=str, default=OUTPUT_DIR, help="크롭한 이미지 저장할 디렉토리")
     # '--skip_existing'의 기본값을 True로 설정하고, '--no_skip_existing'로 비활성화할 수 있도록 재구성
-    parser.set_defaults(skip_existing=True)
-    parser.add_argument("--no_skip_existing", dest="skip_existing", action="store_false", help="이미 처리된 파일도 다시 처리 (기본: 건너뛰기)")
+    parser.add_argument("--skip_existing", action="store_true", default=True, help="이미 처리된 파일 건너뛰기 (기본값: True)")
+    parser.add_argument("--no_skip_existing", dest="skip_existing", action="store_false", help="이미 처리된 파일도 다시 처리")
     parser.add_argument("--resume", action="store_true", default=True, help="마지막으로 처리된 파일부터 이어서 처리 (기본값: True)")
     parser.add_argument("--no_resume", dest="resume", action="store_false", help="처음부터 다시 처리")
     parser.add_argument("--add_numbering", action="store_true", default=True, help="메타데이터에 넘버링 추가 (기본값: True)")

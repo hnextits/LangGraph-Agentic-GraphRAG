@@ -37,6 +37,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # API 라우터 가져오기
+from api import routes as api_routes
 from api.routes import router as api_router
 # from api.summary_routes import router as summary_router
 from api.pause_api import router as pause_router
@@ -70,10 +71,11 @@ def startup_event():
     app.state.running_tasks = {}
 
     # 작업 상태 관리를 위한 전역 변수들을 app.state에 초기화
-    app.state.tasks = {}
-    app.state.task_status = {}
-    app.state.task_cache = {}
-    app.state.task_cache_timestamps = {}
+    # api.routes의 전역 상태와 동일한 객체를 공유하도록 설정
+    app.state.tasks = api_routes.tasks
+    app.state.task_status = api_routes.task_status
+    app.state.task_cache = api_routes.task_cache
+    app.state.task_cache_timestamps = api_routes.task_cache_timestamps
     logger.info("실행 작업 관리자(running_tasks)가 초기화되었습니다.")
 
     def register_models():

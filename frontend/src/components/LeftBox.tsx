@@ -19,6 +19,8 @@ import {
   File,
   FileText,
   FileType,
+  FileSpreadsheet,
+  Presentation,
   ImageIcon,
   Code,
   WandSparkles,
@@ -263,6 +265,36 @@ const LeftBox: React.FC<LeftBoxProps> = ({
         </div>
       );
     if (
+      lowerFileName.endsWith('.hwp') ||
+      lowerFileName.endsWith('.hwpx') ||
+      lowerFileName.endsWith('.doc') ||
+      lowerFileName.endsWith('.docx')
+    )
+      return (
+        <div className="bg-indigo-100 rounded-md p-1 items-center">
+          <FileText className="text-indigo-600" size={20} />
+        </div>
+      );
+    if (
+      lowerFileName.endsWith('.xls') ||
+      lowerFileName.endsWith('.xlsx') ||
+      lowerFileName.endsWith('.csv')
+    )
+      return (
+        <div className="bg-emerald-100 rounded-md p-1 items-center">
+          <FileSpreadsheet className="text-emerald-600" size={20} />
+        </div>
+      );
+    if (
+      lowerFileName.endsWith('.ppt') ||
+      lowerFileName.endsWith('.pptx')
+    )
+      return (
+        <div className="bg-amber-100 rounded-md p-1 items-center">
+          <Presentation className="text-amber-600" size={20} />
+        </div>
+      );
+    if (
       lowerFileName.endsWith('.jpg') ||
       lowerFileName.endsWith('.png') ||
       lowerFileName.endsWith('.jpeg') ||
@@ -424,9 +456,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
   return (
     <div
       id="leftbox"
-      className={`${
-        collapsed ? 'w-12' : 'w-[95%]'
-      } h-full border border-gray-200 rounded-2xl overflow-hidden flex flex-col`}
+      className="w-full h-full border border-gray-200 rounded-2xl overflow-hidden flex flex-col"
     >
       <div className="w-full h-full flex flex-col bg-white overflow-hidden">
         {/* Header */}
@@ -583,10 +613,10 @@ const LeftBox: React.FC<LeftBoxProps> = ({
             </div>
           </div>
         ) : (
-          <div className="flex-grow flex flex-col overflow-hidden">
+          <div className="flex-grow flex flex-col overflow-hidden relative">
             {selectedSource ? (
-              <div className="h-full flex flex-col">
-                <div className="flex items-center p-2 border-b border-gray-200 flex-shrink-0">
+              <div className="absolute inset-0 flex flex-col bg-white z-10">
+                <div className="flex items-center p-2 border-b border-gray-200 flex-shrink-0 bg-white">
                   <button onClick={handleBackToList} className="p-1 rounded-md hover:bg-gray-100">
                     <ArrowLeft size={18} />
                   </button>
@@ -601,13 +631,13 @@ const LeftBox: React.FC<LeftBoxProps> = ({
                     <ExternalLink size={18} />
                   </button>
                 </div>
-                <div className="flex-grow p-4 overflow-y-auto no-scrollbar">
+                <div className="flex-grow overflow-y-auto no-scrollbar p-4 min-h-0 bg-white">
                   {isLoading ? (
                     <div className="flex justify-center items-center h-full">
                       <div className="animate-spin h-8 w-8 border-4 border-blue-500 rounded-full border-t-transparent"></div>
                     </div>
                   ) : (
-                    <FileContentBox content={fileContent} />
+                    <FileContentBox content={fileContent} forceMarkdown />
                   )}
                 </div>
               </div>
@@ -644,7 +674,7 @@ const LeftBox: React.FC<LeftBoxProps> = ({
                       <li
                         key={index}
                         onClick={() => handleSourceClick(source)}
-                        className="px-1 py-2 mb-2 flex items-center justify-between hover:bg-gray-50 cursor-pointe gap-2"
+                        className="px-1 py-2 mb-2 flex items-center justify-between hover:bg-gray-50 cursor-pointer gap-2"
                       >
                         <label className="relative flex items-center justify-center h-5 w-5 cursor-pointer" onClick={e => e.stopPropagation()}>
                           <input

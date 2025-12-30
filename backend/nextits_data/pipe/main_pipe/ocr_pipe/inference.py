@@ -36,7 +36,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
 # ============= 설정 구간 =============
 CONFIG = {
     "input_image_folder": str(BASE_DIR / "backend" / "nextits_data" / "Results" / "1.Converted_images" / "PDF" / "원가관리회계"),  # 입력 이미지 폴더 경로
-    "output_folder": str(BASE_DIR / "backend" / "nextits_data" / "Results" / "3.OCR_results"),  # 출력 폴더 경로
+    "output_folder": str(BASE_DIR / "backend" / "nextits_data" / "Results" / "4.OCR_results"),  # 출력 폴더 경로
     "model": "ChatDOC/OCRFlux-3B",  # 모델 경로
     "batch_size": 256,  # 배치 크기
     "gpu_memory_utilization": 0.2,  # GPU 메모리 사용률
@@ -287,7 +287,7 @@ def save_results(results: list, output_folder: str, input_folder_name: str):
         markdown_text = result["markdown_text"]
         
         # 각 이미지별로 구분자 추가
-        combined_markdown.append(f"###{image_name}")
+        combined_markdown.append(f"### {image_name}")
         combined_markdown.append(markdown_text)
         combined_markdown.append("")  # 빈 줄로 구분
     

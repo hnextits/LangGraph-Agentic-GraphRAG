@@ -99,8 +99,10 @@ class RAGConfig:
         self.GENERATOR_DO_SAMPLE = True  # 샘플링 활성화
         
         # SGLang 설정 - Engine API 직접 사용
-        self.SGLANG_USE_DIRECT_ENGINE = True  # SGLang Engine API 직접 사용
-        self.GENERATOR_NUM_BEAMS = 1     # 빔 서치 비활성화 (그리디 서치)
+        self.SGLANG_USE_DIRECT_ENGINE = True  # SGLang Engine API directly
+        self.GENERATOR_MEM_FRACTION = 0.2     # Reduced from 0.3 to 0.2 (20% of GPU 0)
+        self.SUMMARIZER_MEM_FRACTION = 0.15    # Reduced from 0.2 to 0.15 (15% of GPU 0)
+        self.GENERATOR_NUM_BEAMS = 1     # Disable beam search
         self.GENERATOR_PAD_TOKEN_ID = None  # 토크나이저에서 설정
         self.GENERATOR_ENABLE_THINKING = False
         self.MODEL_TIMEOUT = 180
@@ -133,8 +135,8 @@ class RAGConfig:
         #############################################
         # 파이프라인 설정
         self.debug_mode = False
-        self.use_feedback_loop = True
-        self.use_refiner = False
+        self.use_feedback_loop = False  # Disabled feedback loop to save resources
+        self.use_refiner = False        # Explicitly disabled
         self.separate_image_text_results = True  # 이미지와 텍스트 결과 분리 여부
         
         # 메모리 관리 설정
@@ -179,7 +181,7 @@ class RAGConfig:
         #############################################
         # 5. 쿼리 리라이팅 설정
         #############################################
-        self.ENABLE_QUERY_REWRITE = False  # 쿼리 리라이팅 비활성화 (속도 향상)
+        self.ENABLE_QUERY_REWRITE = False  # Explicitly disabled
         
         #############################################
         # 5-1. 프롬프트 템플릿 설정
@@ -287,12 +289,7 @@ class RAGConfig:
         
         #############################################
         # 7-1. Search 시스템 설정
-        #############################################
-        # 경로 설정
-        self.SEARCH_DATA_DIR = self.PROJECT_ROOT / "backend" / "search_data"
-        self.CRAWLING_DATA_DIR = self.SEARCH_DATA_DIR / "crawling"
-        self.SEARCH_RESULTS_DIR = self.SEARCH_DATA_DIR / "results"
-        
+        #############################################      
         # Google Search API 설정
         self.ENABLE_GOOGLE_SEARCH = True
         self.GOOGLE_API_KEY = "REMOVED_SECRET"
@@ -313,7 +310,6 @@ class RAGConfig:
         self.CRAWL_DELAY = 1.0  # 크롤링 간 대기 시간 (초)
         
         # Search 디렉토리 생성
-        self._ensure_search_directories()
         
         #############################################
         # 8. 프롬프트 설정
@@ -463,18 +459,7 @@ class RAGConfig:
         os.environ['CUDA_LAUNCH_BLOCKING'] = '0'
         
         logger.info("메모리 최적화 설정 완료")
-    
-    def _ensure_search_directories(self):
-        """Search 시스템 디렉토리 생성"""
-        directories = [
-            self.SEARCH_DATA_DIR,
-            self.CRAWLING_DATA_DIR,
-            self.SEARCH_RESULTS_DIR
-        ]
-        
-        for directory in directories:
-            os.makedirs(directory, exist_ok=True)
-            logger.debug(f"Search 디렉토리 확인: {directory}")
+
     
     @classmethod
     def load_embedding_model(cls, model_name=None, device=None, use_fp16=True, cache_dir=None):
