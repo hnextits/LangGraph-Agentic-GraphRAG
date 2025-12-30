@@ -1,7 +1,19 @@
-import { useState, useEffect, useRef, KeyboardEvent, useContext } from 'react';
+import React, { useState, useEffect, useRef, KeyboardEvent, useContext, useMemo, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import remarkEmoji from 'remark-emoji';
+import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
+import python from 'react-syntax-highlighter/dist/cjs/languages/prism/python';
+import javascript from 'react-syntax-highlighter/dist/cjs/languages/prism/javascript';
+import json from 'react-syntax-highlighter/dist/cjs/languages/prism/json';
+import markdown from 'react-syntax-highlighter/dist/cjs/languages/prism/markdown';
+import bash from 'react-syntax-highlighter/dist/cjs/languages/prism/bash';
+
+SyntaxHighlighter.registerLanguage('python', python);
+SyntaxHighlighter.registerLanguage('javascript', javascript);
+SyntaxHighlighter.registerLanguage('json', json);
+SyntaxHighlighter.registerLanguage('markdown', markdown);
+SyntaxHighlighter.registerLanguage('bash', bash);
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import api from '@/lib/api';
 import { FileContext } from '@/contexts/FileContext';
@@ -33,7 +45,7 @@ interface CenterBoxProps {
   isFiles: boolean;
 }
 
-const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
+const CenterBox: React.FC<CenterBoxProps> = React.memo(({ isFiles }) => {
   const { checkedFilenames, checkedFileUuids } = useContext(FileContext);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -259,7 +271,7 @@ const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
                       }`}
                     >
                       <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
+                        remarkPlugins={[remarkGfm, remarkEmoji as any]}
                         components={{
                           table: ({ node, ...props }) => (
                             <div className="table-container overflow-x-auto my-2">
@@ -434,6 +446,6 @@ const CenterBox: React.FC<CenterBoxProps> = ({ isFiles }) => {
       />
     </div>
   );
-};
+});
 
 export default CenterBox;

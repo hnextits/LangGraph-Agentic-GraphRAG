@@ -6,7 +6,18 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkEmoji from 'remark-emoji';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter';
+import python from 'react-syntax-highlighter/dist/cjs/languages/prism/python';
+import javascript from 'react-syntax-highlighter/dist/cjs/languages/prism/javascript';
+import json from 'react-syntax-highlighter/dist/cjs/languages/prism/json';
+import markdown from 'react-syntax-highlighter/dist/cjs/languages/prism/markdown';
+import bash from 'react-syntax-highlighter/dist/cjs/languages/prism/bash';
+
+SyntaxHighlighter.registerLanguage('python', python);
+SyntaxHighlighter.registerLanguage('javascript', javascript);
+SyntaxHighlighter.registerLanguage('json', json);
+SyntaxHighlighter.registerLanguage('markdown', markdown);
+SyntaxHighlighter.registerLanguage('bash', bash);
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import { useGetSummaryContent } from '@/queries';
 
@@ -150,7 +161,7 @@ const SummaryModal: React.FC<SummaryModalProps> = ({ open, onClose, file }) => {
           ) : (
             <Box sx={{ textAlign: 'left', lineHeight: 1.8 }}>
               <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkEmoji]}
+                remarkPlugins={[remarkGfm, remarkEmoji as any]}
                 components={{
                   h1: ({ node, ...props }) => (
                     <Typography

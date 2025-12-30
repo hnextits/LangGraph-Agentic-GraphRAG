@@ -64,14 +64,13 @@ app.title = "챗봇 API"
 @app.on_event("startup")
 def startup_event():
     """
-    애플리케이션 시작 시 RAG 파이프라인을 초기화하고, 실행 중인 작업을 관리할 상태를 설정합니다.
+    애플리케이션 시작 시 기본 상태를 설정합니다.
+    모든 모델은 LazyModelManager를 통해 필요할 때 로드됩니다.
     """
     # 실행 중인 작업을 저장할 딕셔너리 초기화
-    # key: task_id (str), value: threading.Event 객체
     app.state.running_tasks = {}
 
     # 작업 상태 관리를 위한 전역 변수들을 app.state에 초기화
-    # api.routes의 전역 상태와 동일한 객체를 공유하도록 설정
     app.state.tasks = api_routes.tasks
     app.state.task_status = api_routes.task_status
     app.state.task_cache = api_routes.task_cache
@@ -106,6 +105,7 @@ def startup_event():
 
     register_models()
     app.state.model_manager = model_manager
+    logger.info("LazyModelManager에 모델 등록 완료 (모든 모델은 Lazy Loading 지원)")
 
 # CORS 미들웨어 설정
 app.add_middleware(

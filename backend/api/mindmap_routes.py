@@ -70,10 +70,23 @@ class MindmapContentResponse(BaseModel):
 
 
 # === 백그라운드 작업 함수 ===
-async def generate_mindmap_task(task_id: str, filename: str, max_topics: int):
+async def generate_mindmap_task(task_id: str, filename: str, max_topics: int, model_manager: Any):
     """백그라운드에서 마인드맵 생성 (subprocess 방식, max_topics 전달)"""
     try:
         logger.info(f"[{task_id}] 마인드맵 생성 시작: {filename} (max_topics={max_topics})")
+        
+        # MindMapGenerator 획득 (Lazy Loading)
+        try:
+            generator = model_manager.acquire("mindmap_generator")
+        except Exception as e:
+            logger.error(f"[{task_id}] 마인드맵 모델 획득 실패: {e}")
+            mindmap_tasks[task_id] = {
+                "status": "failed",
+                "message": f"모델 로드 실패: {e}",
+                "progress": 100
+            }
+            return
+
         mindmap_tasks[task_id] = {
             "status": "processing",
             "message": "파일 읽는 중...",
@@ -203,6 +216,8 @@ async def generate_mindmap_task(task_id: str, filename: str, max_topics: int):
                 logger.error(f"[{task_id}] stderr 전체 내용:\n{process.stderr}")
                 raise Exception(f"JSON 파싱 실패: {e}. stdout: {process.stdout[:200]}")
         finally:
+            # 모델 해제
+            model_manager.release("mindmap_generator")
             # 임시 파일 삭제
             Path(tmp_path).unlink(missing_ok=True)
         
@@ -267,7 +282,8 @@ async def generate_mindmap_task(task_id: str, filename: str, max_topics: int):
 
 @router.post("/generate", response_model=MindmapTaskResponse)
 async def generate_mindmap(
-    request: MindmapGenerateRequest,
+    request: Request,
+    request_data: MindmapGenerateRequest,
     background_tasks: BackgroundTasks
 ):
     """
@@ -282,8 +298,9 @@ async def generate_mindmap(
     background_tasks.add_task(
         generate_mindmap_task,
         task_id,
-        request.filename,
-        request.max_topics
+        request_data.filename,
+        request_data.max_topics,
+        request.app.state.model_manager
     )
     
     mindmap_tasks[task_id] = {

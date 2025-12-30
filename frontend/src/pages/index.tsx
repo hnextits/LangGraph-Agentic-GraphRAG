@@ -3,8 +3,20 @@ import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import { useWindowSize } from '@/hooks/useWindowSize';
 
-// 컴포넌트 일반 임포트
-import { LeftBox, CenterBox, RightBox, Header } from '@/components/';
+// 무거운 컴포넌트들을 dynamic import (SSR 비활성화 및 지연 로딩)
+const LeftBox = dynamic(() => import('@/components/LeftBox'), { 
+  ssr: false,
+  loading: () => <div className="h-full bg-white animate-pulse" /> 
+});
+const CenterBox = dynamic(() => import('@/components/CenterBox'), { 
+  ssr: false,
+  loading: () => <div className="h-full bg-white animate-pulse" /> 
+});
+const RightBox = dynamic(() => import('@/components/RightBox'), { 
+  ssr: false,
+  loading: () => <div className="h-full bg-white animate-pulse" /> 
+});
+const Header = dynamic(() => import('@/components/Header'), { ssr: false });
 
 import { useGetFiles } from '@/queries';
 

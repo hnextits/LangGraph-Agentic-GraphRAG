@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import api from '@/lib/api';
 import FileContentBox from './FileContentBox';
 import FileContentModal from './FileContentModal';
@@ -51,7 +51,7 @@ interface LeftBoxProps {
   isLoadingFiles: boolean;
 }
 
-const LeftBox: React.FC<LeftBoxProps> = ({
+const LeftBox: React.FC<LeftBoxProps> = React.memo(({
   collapsed = false,
   onToggleCollapse = () => {},
   onFileUploadClick,
@@ -826,6 +826,6 @@ const LeftBox: React.FC<LeftBoxProps> = ({
       />
     </div>
   );
-};
+});
 
 export default LeftBox;

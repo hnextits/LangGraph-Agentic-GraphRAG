@@ -30,7 +30,7 @@ interface RightBoxProps {
   selectedFiles?: string[];
 }
 
-const RightBox: React.FC<RightBoxProps> = ({
+const RightBox: React.FC<RightBoxProps> = React.memo(({
   collapsed = false,
   onToggleCollapse = () => {},
   selectedFiles = [],
@@ -542,6 +542,6 @@ const RightBox: React.FC<RightBoxProps> = ({
       <MindmapModal open={mindmapModalOpen} onClose={handleCloseMindmapModal} file={modalFile} />
     </div>
   );
-};
+});
 
 export default RightBox;

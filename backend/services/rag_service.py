@@ -42,6 +42,16 @@ def _load_rag_module():
             sys.modules["config"] = original_config_module
 
 
+def initialize_rag_pipeline():
+    """애플리케이션 시작 시 RAG 파이프라인을 초기화하고 인스턴스를 반환합니다."""
+    logger.info("RAG 파이프라인 초기화를 시작합니다...")
+    try:
+        pipeline_cls = _load_rag_module()
+        return pipeline_cls()
+    except Exception as e:
+        logger.error(f"RAG 파이프라인 초기화 중 예외 발생: {e}", exc_info=True)
+        return None
+
 def build_rag_pipeline():
     """LazyModelManager용 RAGPipeline 빌더."""
     logger.info("Lazy builder를 통해 RAG 파이프라인을 생성합니다.")

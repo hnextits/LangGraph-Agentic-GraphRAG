@@ -93,6 +93,14 @@ except ImportError as e:
     logger.error(f"AnswerGenerator 모듈 임포트 실패: {e}")
     AnswerGenerator = None
 
+# 요약 생성기 인스턴스 (싱글톤으로 관리) - LazyModelManager 사용으로 전환 중
+answer_generator = None
+
+def get_answer_generator(request: Request):
+    """LazyModelManager를 통해 AnswerGenerator 인스턴스를 가져옵니다."""
+    model_manager = request.app.state.model_manager
+    return model_manager.acquire("answer_generator")
+
 
 def sanitize_summary_filename(value: str) -> str:
     """요약 파일 저장용 간단한 파일명 정규화"""
@@ -357,71 +365,76 @@ def build_answer_generator():
     return AnswerGenerator()
 
 
-async def process_summarize_files(task_id: str, filenames: List[str]):
-    """지정된 파일들을 찾아 내용을 요약하는 백그라운드 함수"""
+async def process_summarize_files(task_id: str, filenames: List[str], model_manager: Any):
+    """지정된 파일들을 찾아 내용을 요약하는 백그라운드 함수 (LazyModelManager 사용)"""
     logger.info(f"[{task_id}] 파일 요약 작업 시작: {filenames}")
     tasks[task_id].update({"status": "running", "message": "요약할 파일을 찾는 중...", "progress": 10})
 
     try:
         summaries, sources = [], []
         
-        # AnswerGenerator는 이미 상단에서 import됨
-        if AnswerGenerator is None:
-            tasks[task_id].update({"status": "failed", "error": "요약 모듈을 찾을 수 없습니다."})
+        # AnswerGenerator 획득
+        try:
+            generator = model_manager.acquire("answer_generator")
+            # 모델이 실제 엔진을 로드하도록 보장
+            if hasattr(generator, "load_model"):
+                if not generator.model_loaded:
+                    generator.load_model()
+        except Exception as e:
+            logger.error(f"[{task_id}] 요약 모델 획득 실패: {e}")
+            tasks[task_id].update({"status": "failed", "error": f"요약 모델 로드 실패: {e}"})
             return
 
-        for i, filename in enumerate(filenames):
-            if await asyncio.to_thread(check_and_handle_pause, task_id): return
-            
-            progress = 10 + int((i / len(filenames)) * 80)
-            tasks[task_id].update({"message": f"파일 처리 중... ({i+1}/{len(filenames)}): {filename}", "progress": progress})
-
-            # 4.OCR_results에서만 파일 검색
-            base_name = Path(filename).stem
-            candidate_names = [filename, f"{base_name}.md"]
-            
-            file_to_summarize = None
-            for name in candidate_names:
-                file_path = OCR_RESULTS_DIR / name
-                if file_path.exists():
-                    file_to_summarize = file_path
-                    break
-            
-            if file_to_summarize is None:
-                logger.warning(f"[{task_id}] 4.OCR_results에서 파일을 찾을 수 없습니다: {filename}")
-                continue
-
-            try:
-                # 파일 내용 읽기
-                with open(file_to_summarize, 'r', encoding='utf-8') as f:
-                    content = f.read()
+        try:
+            for i, filename in enumerate(filenames):
+                if await asyncio.to_thread(check_and_handle_pause, task_id): return
                 
-                if not content or content.isspace():
-                    logger.warning(f"[{task_id}] 파일에 요약할 텍스트가 없습니다: {filename}")
+                progress = 10 + int((i / len(filenames)) * 80)
+                tasks[task_id].update({"message": f"파일 처리 중... ({i+1}/{len(filenames)}): {filename}", "progress": progress})
+
+                # 4.OCR_results에서만 파일 검색
+                base_name = Path(filename).stem
+                candidate_names = [filename, f"{base_name}.md"]
+                
+                file_to_summarize = None
+                for name in candidate_names:
+                    file_path = OCR_RESULTS_DIR / name
+                    if file_path.exists():
+                        file_to_summarize = file_path
+                        break
+                
+                if file_to_summarize is None:
+                    logger.warning(f"[{task_id}] 4.OCR_results에서 파일을 찾을 수 없습니다: {filename}")
                     continue
+
+                try:
+                    # 파일 내용 읽기
+                    with open(file_to_summarize, 'r', encoding='utf-8') as f:
+                        content = f.read()
                     
-                # AnswerGenerator 인스턴스 생성 및 요약 생성
-                generator = AnswerGenerator()
-                summary = generator.generate_answer(content)
-                
-                # 메모리 정리
-                generator.cleanup_model()
-                
-                if summary and summary != "(관련된 구글 검색 결과를 찾을 수 없습니다)":
-                    summaries.append(summary)
-                    sources.append({"filename": filename, "path": str(file_to_summarize)})
-            except Exception as e:
-                logger.warning(f"[{task_id}] 파일 요약 중 오류 ({filename}): {e}")
+                    if not content or content.isspace():
+                        logger.warning(f"[{task_id}] 파일에 요약할 텍스트가 없습니다: {filename}")
+                        continue
+                        
+                    # 요약 생성
+                    summary = generator.generate_answer(content)
+                    
+                    if summary and summary != "(관련된 구글 검색 결과를 찾을 수 없습니다)":
+                        summaries.append(summary)
+                        sources.append({"filename": filename, "path": str(file_to_summarize)})
+                except Exception as e:
+                    logger.warning(f"[{task_id}] 파일 요약 중 오류 ({filename}): {e}")
+        finally:
+            model_manager.release("answer_generator")
 
         if not summaries:
             tasks[task_id].update({"status": "completed", "message": "요약할 내용이 있는 파일을 찾지 못했습니다.", "progress": 100, "result": {"summary": "요약할 내용이 없습니다.", "sources": []}})
             return
 
         final_summary = "\n\n---\n\n".join(summaries)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         # 여러 파일 요약 시 파일명을 명확히 함
         safe_filenames_str = sanitize_summary_filename("_".join(filenames))
-        result_file = SUMMARIZE_DIR / f"summary_{timestamp}_{safe_filenames_str}.md"
+        result_file = SUMMARIZE_DIR / f"summary_{safe_filenames_str}.md"
         result_file.write_text(final_summary, encoding="utf-8")
         
         tasks[task_id].update({
@@ -670,196 +683,21 @@ async def search(query: SearchQuery) -> SearchResponse:
 
 
 # 요약 작업을 시작시키는 API
-@router.post("/summarize", response_model=SummarizeResponse)
-async def summarize_files(request_data: SummarizeRequest) -> SummarizeResponse:
-    # 요청 본문에서 file_names 추출
+@router.post("/summarize", response_model=TaskCreationResponse)
+async def summarize_files(request_data: SummarizeRequest, background_tasks: BackgroundTasks, request: Request) -> TaskCreationResponse:
+    """선택된 파일들을 요약하는 API (백그라운드 처리)"""
     file_names = request_data.filenames
-    """
-    선택된 파일들을 요약하는 API 엔드포인트
-    """
     logger.info(f"요약 요청 받음: {file_names}")
     
-    try:
-        # AnswerGenerator 인스턴스 가져오기
-        generator = get_answer_generator()
-        
-        # DOC_DIR 존재 여부 확인
-        if not os.path.exists(DOC_DIR):
-            logger.error(f"문서 디렉토리가 존재하지 않습니다: {DOC_DIR}")
-            raise HTTPException(status_code=404, detail=f"문서 디렉토리가 존재하지 않습니다: {DOC_DIR}")
-            
-        # 파일 내용 수집 (개선된 파일 검색)
-        file_contents = []
-        missing_files = []
-        
-        # DOC_DIR, OCR_RESULTS_DIR, STT_TEXT_DIR에서 파일 찾기
-        search_dirs = [OCR_RESULTS_DIR, STT_TEXT_DIR]
-        available_files = {}
-        for search_dir in search_dirs:
-            if os.path.exists(search_dir):
-                for f in os.listdir(search_dir):
-                    file_full_path = os.path.join(search_dir, f)
-                    if os.path.isfile(file_full_path):
-                        # 파일명을 키로, 전체 경로를 값으로 저장 (중복 시 덮어쓰기)
-                        available_files[f] = file_full_path
-        
-        logger.info(f"검색 가능한 파일 수: {len(available_files)}")
-        
-        for file_name in file_names:
-            file_path = available_files.get(file_name)
-            found = False
-            
-            # 1. 정확한 파일명으로 검색
-            if file_path and os.path.exists(file_path):
-                found = True
-                logger.info(f"파일 찾음: {file_name} -> {file_path}")
-            else:
-                # 2. 파일명 정규화하여 검색 (공백, 특수문자 처리)
-                normalized_name = file_name.strip()
-                for available_file, available_path in available_files.items():
-                    if available_file == normalized_name or available_file.strip() == normalized_name:
-                        file_path = available_path
-                        found = True
-                        logger.info(f"정규화된 파일명으로 찾음: {file_name} -> {available_file}")
-                        break
-                
-                # 3. 확장자 없이 검색
-                if not found:
-                    base_name = os.path.splitext(file_name)[0]
-                    for available_file, available_path in available_files.items():
-                        if os.path.splitext(available_file)[0] == base_name:
-                            file_path = available_path
-                            found = True
-                            logger.info(f"확장자 없이 찾음: {file_name} -> {available_file}")
-                            break
-            
-            if not found:
-                logger.warning(f"파일을 찾을 수 없음: {file_name}")
-                logger.debug(f"사용 가능한 파일 목록 (처음 10개): {list(available_files.keys())[:10]}")
-                missing_files.append(file_name)
-                continue
-                
-            try:
-                # 처리가 필요한 파일 타입 체크 (PDF, 오디오/비디오)
-                processed_file_extensions = ['.pdf', '.wav', '.mp3', '.ogg', '.flac', '.webm', '.mp4', '.mov', '.avi', '.wmv']
-                needs_processed_file = any(file_path.lower().endswith(ext) for ext in processed_file_extensions)
-                
-                if needs_processed_file:
-                    # PDF, 오디오/비디오 파일인 경우, OCR_RESULTS_DIR 또는 STT_TEXT_DIR에서 처리된 마크다운 파일 찾기
-                    base_name = os.path.splitext(os.path.basename(file_path))[0]
-                    
-                    # 여러 위치에서 처리된 결과 찾기
-                    processed_locations = [
-                        OCR_RESULTS_DIR / f"{base_name}.md",
-                        STT_TEXT_DIR / f"{base_name}.md"
-                    ]
-                    
-                    md_file_path = None
-                    for location in processed_locations:
-                        if location.exists():
-                            md_file_path = location
-                            break
-                    
-                    if md_file_path:
-                        with open(md_file_path, 'r', encoding='utf-8') as f:
-                            content = f.read()
-                            file_contents.append({
-                                "title": file_name,
-                                "content": content
-                            })
-                        logger.info(f"처리된 파일 로드 성공: {file_name} -> {md_file_path}")
-                    else:
-                        logger.error(f"파일 ({file_name})의 처리 결과를 찾을 수 없습니다.")
-                        logger.info(f"확인한 위치: {[str(loc) for loc in processed_locations]}")
-                        logger.info(f"파일을 먼저 처리해야 합니다. 원본 파일 경로: {file_path}")
-                        missing_files.append(file_name)
-                else:
-                    # 텍스트 파일인 경우 일반적으로 읽기
-                    with open(file_path, 'r', encoding='utf-8') as f:
-                        content = f.read()
-                        file_contents.append({
-                            "title": file_name,
-                            "content": content
-                        })
-                    logger.info(f"파일 로드 성공: {file_name}")
-            except Exception as e:
-                logger.error(f"파일 읽기 오류 ({file_name}): {str(e)}")
-        
-        if not file_contents:
-            if missing_files:
-                raise HTTPException(status_code=404, detail=f"요청한 파일을 찾을 수 없습니다: {', '.join(missing_files)}")
-            else:
-                raise HTTPException(status_code=404, detail="유효한 파일을 찾을 수 없습니다")
-        
-        # 임시 저장 디렉토리 설정
-        temp_dir = os.path.join(parent_dir, 'nextits_data', 'temp')
-        os.makedirs(temp_dir, exist_ok=True)
-        
-        # 파일 내용을 make_llm_input_data에 맞는 형식으로 변환
-        formatted_data = []
-        for item in file_contents:
-            formatted_data.append({
-                "link": item["title"],  # 파일명을 링크로 사용
-                "data": item["content"],  # 파일 내용을 데이터로 사용
-                "google_snipping": ""  # 빈 스니핑
-            })
-        
-        # make_llm_input_data 호출하여 입력 데이터 생성
-        processed_data = generator.make_llm_input_data(temp_dir, formatted_data)
-        
-        # processed_data는 리스트이므로 문자열로 변환
-        combined_content = ""
-        for item in processed_data:
-            link = item.get('link', '')
-            data = item.get('data', '')
-            if data:
-                combined_content += f"\n\n## 출처: {link}\n\n{data}\n"
-        
-        # generate_answer 호출하여 요약 생성 (내부에서 자동으로 청킹 처리)
-        # 동기 함수를 별도 스레드에서 실행하여 이벤트 루프 블로킹 방지
-        import asyncio
-        from concurrent.futures import ThreadPoolExecutor
-        
-        def run_generate_in_thread():
-            """별도 스레드에서 새 이벤트 루프 생성하여 실행"""
-            new_loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(new_loop)
-            try:
-                return generator.generate_answer(combined_content)
-            finally:
-                new_loop.close()
-                asyncio.set_event_loop(None)
-        
-        loop = asyncio.get_event_loop()
-        with ThreadPoolExecutor() as executor:
-            summary = await loop.run_in_executor(executor, run_generate_in_thread)
-        
-        # 요약 결과 저장 디렉토리 설정
-        summary_dir = os.path.join(parent_dir, 'nextits_data', 'Results', '6.summarize')
-        os.makedirs(summary_dir, exist_ok=True)
+    task_id = str(uuid.uuid4())
+    tasks[task_id] = {"status": "pending", "message": "요약 작업 대기 중...", "progress": 0}
+    
+    background_tasks.add_task(process_summarize_files, task_id, file_names, request.app.state.model_manager)
+    
+    return TaskCreationResponse(task_id=task_id, status="pending")
 
-        # 타임스탬프 기반 파일명 생성
-        from datetime import datetime
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        summary_filename = f"summary_{file_name}.md"
-        summary_path = os.path.join(summary_dir, summary_filename)
-
-        # 요약 결과를 마크다운 파일로 저장
-        with open(summary_path, "w", encoding="utf-8") as f:
-            # 헤더 정보 추가
-            f.write(summary)
-
-        # API 응답에 파일 경로 추가
-        return {
-            "summary": summary,
-            "files": file_names,
-            "timestamp": timestamp,
-            "summary_file": summary_path  # 저장된 파일 경로 추가
-        }
-        
-    except Exception as e:
-        logger.error(f"요약 생성 중 오류 발생: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"요약 생성 중 오류 발생: {str(e)}")
+# === 채팅 관련 API ===
+@router.post("/chat", response_model=ChatResponse, tags=["Chat"])
 
 
 # 생성된 요약 파일의 목록을 조회하는 API
@@ -1227,19 +1065,23 @@ async def chat(query: ChatQuery, request: Request, background_tasks: BackgroundT
 
     try:
         rag_pipeline = model_manager.acquire("rag_pipeline")
+        # SGLang 엔진 로드 확인 (추가)
+        generator = getattr(rag_pipeline, "generator", None)
+        if generator and hasattr(generator, "ensure_model_loaded"):
+            generator.ensure_model_loaded()
     except Exception as exc:
         logger.error("RAG 파이프라인을 로드하지 못했습니다: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail="RAG 파이프라인을 초기화하지 못했습니다.")
 
-    try:
-        generator = getattr(rag_pipeline, "generator", None)
-        ensure_loader = getattr(generator, "ensure_model_loaded", None)
-        if callable(ensure_loader):
-            ensure_loader()
-    except Exception as exc:
-        logger.error("RAG 생성기 초기화 중 오류가 발생했습니다: %s", exc, exc_info=True)
-        model_manager.release("rag_pipeline")
-        raise HTTPException(status_code=500, detail="답변 생성기를 초기화하지 못했습니다.")
+    # try:
+    #     generator = getattr(rag_pipeline, "generator", None)
+    #     ensure_loader = getattr(generator, "ensure_model_loaded", None)
+    #     if callable(ensure_loader):
+    #         ensure_loader()
+    # except Exception as exc:
+    #     logger.error("RAG 생성기 초기화 중 오류가 발생했습니다: %s", exc, exc_info=True)
+    #     model_manager.release("rag_pipeline")
+    #     raise HTTPException(status_code=500, detail="답변 생성기를 초기화하지 못했습니다.")
 
     def schedule_rag_task():
         try:
