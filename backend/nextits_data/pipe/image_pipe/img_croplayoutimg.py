@@ -299,6 +299,14 @@ def create_metadata(crop_path, original_json_path, pdf_folder_name, label, box_c
     # 순서번호는 2자리수로 표시 (01, 02, ...)
     file_name = f"{pdf_folder_name}_{display_page_num}_{index_num:02d}"
     
+    # 파일 경로를 상대 경로로 변환 (/backend/nextits_data/... 형식)
+    # BASE_DIR (backend/ 디렉토리)를 기준으로 상대 경로 계산
+    try:
+        relative_crop_path = f"/backend/{crop_path.relative_to(BASE_DIR)}"
+    except Exception:
+        # relative_to가 실패할 경우 (예: 다른 드라이브) 기본 str 사용
+        relative_crop_path = str(crop_path)
+
     # 메타데이터 생성
     metadata = {
         "metadata": {
@@ -309,7 +317,7 @@ def create_metadata(crop_path, original_json_path, pdf_folder_name, label, box_c
             "index": str(number) if number is not None else index_value,
             "id": id_value,
             "file_name": file_name,
-            "file_path": str(crop_path),
+            "file_path": relative_crop_path,
             "text": ocr_text,
             "tags": None,
             "con_type": label,
@@ -538,8 +546,13 @@ def process_json_file(json_path, pdf_folder_name, file_type="PDF", skip_existing
                 # 넘버링 카운터 증가 (성공적으로 크롭된 경우에만)
                 number_counter += 1
                 
-                # 메타데이터 경로 업데이트
-                metadata["metadata"]["file_path"] = str(output_path)
+                # 메타데이터 경로 업데이트 (상대 경로로 유지)
+                try:
+                    relative_output_path = f"/backend/{output_path.relative_to(BASE_DIR)}"
+                except Exception:
+                    relative_output_path = str(output_path)
+                
+                metadata["metadata"]["file_path"] = relative_output_path
                 
                 # 캡션과 태그는 사용하지 않음
                 caption, tags = None, None

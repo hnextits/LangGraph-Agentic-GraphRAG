@@ -63,11 +63,12 @@ class SGLangGenerator:
             
             # Engine 클래스를 사용하여 모델 초기화
             # mem_fraction_static: SGLang이 사용할 GPU 메모리 비율
-            # Qwen3-8B 모델은 약 16GB 필요, 0.3 = 30% 정도 필요
+            # RAGConfig에서 설정한 값 사용 (기본값 0.3)
+            mem_fraction = getattr(self.config, 'GENERATOR_MEM_FRACTION', 0.3)
             try:
                 self.engine = sgl.Engine(
                     model_path=self.model_name,
-                    mem_fraction_static=0.3,  # 메모리 할당량 제한 (30% - 약 24GB)
+                    mem_fraction_static=mem_fraction,  # 메모리 할당량 제한
                     disable_cuda_graph=True,  # CUDA 그래프 비활성화로 안정성 향상
                     trust_remote_code=True,   # 원격 코드 신뢰
                     dtype="auto"              # 자동으로 적절한 dtype 선택

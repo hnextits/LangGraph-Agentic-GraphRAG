@@ -61,7 +61,16 @@ const FileContentBox: React.FC<FileContentBoxProps> = ({ content, forceMarkdown 
   // 마크다운 렌더링 (CenterBox와 동일한 스타일)
   if (fileType === 'markdown') {
     return (
-      <div className="p-4 prose prose-sm max-w-none dark:prose-invert markdown-content markdown-body message">
+      <div className="p-4 markdown-content markdown-body message prose prose-slate max-w-none 
+        prose-headings:text-slate-900 prose-headings:font-bold prose-headings:mt-6 prose-headings:mb-4
+        prose-h1:text-3xl prose-h1:border-b prose-h1:pb-2
+        prose-h2:text-2xl prose-h2:border-b prose-h2:pb-1
+        prose-h3:text-xl
+        prose-p:my-4 prose-p:leading-7 prose-p:text-slate-700
+        prose-li:my-2
+        prose-strong:text-slate-900 prose-strong:font-bold
+        prose-code:text-rose-600 prose-code:bg-slate-100 prose-code:px-1 prose-code:rounded prose-code:before:content-none prose-code:after:content-none
+        prose-blockquote:border-l-4 prose-blockquote:border-slate-300 prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-slate-600">
         <ReactMarkdown
           remarkPlugins={[remarkGfm]}
           rehypePlugins={[rehypeRaw]}

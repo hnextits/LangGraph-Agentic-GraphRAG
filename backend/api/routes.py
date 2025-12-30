@@ -114,6 +114,9 @@ TASK_CACHE_TTL = 60 * 60
 
 # --- 작업 상태 저장소 ---
 tasks: Dict[str, Dict[str, Any]] = {}
+task_status: Dict[str, Dict[str, Any]] = {}
+task_cache: Dict[str, Dict[str, Any]] = {}
+task_cache_timestamps: Dict[str, float] = {}
 
 def cleanup_task_cache(request: Request):
     """오래된 작업 상태 캐시 정리"""
@@ -219,8 +222,11 @@ def check_and_handle_pause(task_id: str) -> bool:
 def run_text_indexing(task_id: str, file_path: str):
     """텍스트 인덱싱 실행 함수 - 4.OCR_results에서만 검색"""
     logger.info(f"[{task_id}] 텍스트 인덱싱 시작: {file_path}")
-    tasks[task_id]['status'] = 'indexing'
-    tasks[task_id]['message'] = '텍스트 인덱싱 중...'
+    tasks[task_id].update({
+        'status': 'indexing',
+        'message': '[분석 중] 데이터 임베딩 및 인덱싱 중...',
+        'progress': max(tasks[task_id].get('progress', 0), 70)
+    })
     try:
         if check_and_handle_pause(task_id): return
         base_name = Path(file_path).stem
@@ -250,18 +256,21 @@ def run_text_indexing(task_id: str, file_path: str):
 
         tasks[task_id].update({
             'status': 'index_completed',
-            'message': '파일 처리 및 인덱싱 완료'
+            'message': '파일 처리 및 인덱싱 완료',
+            'progress': 100
         })
         logger.info(f"[{task_id}] 텍스트 인덱싱 성공")
     except Exception as e:
         logger.error(f"[{task_id}] 텍스트 인덱싱 실패: {e}", exc_info=True)
-        tasks[task_id].update({'status': 'index_failed', 'error': str(e)})
+        tasks[task_id].update({'status': 'index_failed', 'error': str(e), 'progress': 100})
 
 def run_processing_pipeline(task_id: str, file_path: str):
     """(업로드된 파일) 처리 및 인덱싱 파이프라인"""
     logger.info(f"[{task_id}] 파일 처리 파이프라인 시작: {file_path}")
-    tasks[task_id]['status'] = 'processing'
-    tasks[task_id]['message'] = '파일 처리 스크립트 실행 중...'
+    # 1단계: 업로드 직후 처리 대기 (이미 upload_files에서 0~5% 설정됨)
+    # 2단계: 스크립트 실행 준비
+    tasks[task_id].update({'status': 'processing', 'message': '파일 처리 준비 중...', 'progress': 10})
+
     try:
         if check_and_handle_pause(task_id): return
         script_path = NEXTITS_DATA_DIR / "pipe" / "run_file_processor.py"
@@ -269,7 +278,8 @@ def run_processing_pipeline(task_id: str, file_path: str):
             raise FileNotFoundError(f"처리 스크립트를 찾을 수 없습니다: {script_path}")
 
         command = [sys.executable, str(script_path), "--file", file_path]
-        logger.info(f"[{task_id}] run_file_processor 실행: {' '.join(command)}")
+        logger.info(f"[{task_id}] run_file_processor 실행 (3단계): {' '.join(command)}")
+        tasks[task_id].update({'status': 'processing', 'message': '파일 분석 스크립트 실행 (3단계)...', 'progress': 20})
 
         process = subprocess.Popen(
             command,
@@ -283,20 +293,60 @@ def run_processing_pipeline(task_id: str, file_path: str):
         assert process.stdout is not None
         for line in process.stdout:
             line = line.rstrip()
+            # 4단계: 스크립트 내부 진행 (로그에 따라 progress 점진적 상승 20~60)
             logger.info(f"[{task_id}] PIPELINE | {line}")
-            print(f"[{task_id}] PIPELINE | {line}", flush=True)
+            
+            # 사용자 친화적인 로그 변환
+            user_friendly_msg = line
+            if "Layout" in line or "감지" in line:
+                user_friendly_msg = "레이아웃 감지 중..."
+            elif "OCR" in line or "텍스트" in line:
+                user_friendly_msg = "OCR 및 텍스트 추출 중..."
+            elif "image" in line or "이미지" in line:
+                user_friendly_msg = "이미지 변환 및 크롭 중..."
+            elif "Embedding" in line or "임베딩" in line:
+                user_friendly_msg = "데이터 임베딩 및 인덱싱 중..."
+            elif "Processing" in line or "분석" in line:
+                user_friendly_msg = "파일 분석 중..."
+
+            current = tasks[task_id].get('progress', 20)
+            new_progress = min(current + 2, 60) # 로그마다 2%씩 상승
+            tasks[task_id].update({'progress': new_progress, 'message': f"[분석 중] {user_friendly_msg}"})
+
+            # 취소 확인 (즉시 종료를 위해 SIGTERM 보낸 후 wait)
+            if is_cancelled(task_id):
+                logger.info(f"[{task_id}] 파이프라인 취소 감지됨. 프로세스 종료 시도.")
+                process.terminate() # SIGTERM
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    logger.warning(f"[{task_id}] 프로세스가 5초 내에 종료되지 않아 강제 종료(Kill)합니다.")
+                    process.kill() # SIGKILL
+                
+                tasks[task_id].update({'status': 'cancelled', 'message': '작업이 사용자에 의해 취소되었습니다.'})
+                return
 
         return_code = process.wait()
 
         if return_code == 0:
-            logger.info(f"[{task_id}] 스크립트 실행 성공, 텍스트 인덱싱 시작.")
-            tasks[task_id]['status'] = 'processed'
+            # 5단계: 스크립트 완료
+            logger.info(f"[{task_id}] 스크립트 실행 성공 (5단계), 메타데이터 업데이트 및 텍스트 인덱싱 시작.")
+            
+            # 메타데이터 업데이트 실행
+            try:
+                from nextits_data.pipe.main_pipe.UDP_File_meta import main as update_meta
+                update_meta()
+                logger.info(f"[{task_id}] file_metadata.json 업데이트 완료.")
+            except Exception as meta_err:
+                logger.error(f"[{task_id}] 메타데이터 업데이트 중 오류 발생: {meta_err}")
+
+            tasks[task_id].update({'status': 'processed', 'progress': 70, 'message': '파일 분석 완료, 인덱싱 시작 (5단계)...'})
             run_text_indexing(task_id, file_path)
         else:
-            raise RuntimeError(f"스크립트 실행 실패 (exit code {return_code}). 자세한 내용은 앞선 PIPELINE 로그를 확인하세요.")
+            raise RuntimeError(f"스크립트 실행 실패 (exit code {return_code}).")
     except Exception as e:
         logger.error(f"[{task_id}] 파일 처리 파이프라인 실패: {e}", exc_info=True)
-        tasks[task_id].update({'status': 'failed', 'error': str(e)})
+        tasks[task_id].update({'status': 'failed', 'error': str(e), 'progress': 100})
 
 
 # 요약 생성기 인스턴스 (싱글톤으로 관리)

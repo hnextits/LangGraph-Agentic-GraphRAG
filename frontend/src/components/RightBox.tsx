@@ -277,9 +277,7 @@ const RightBox: React.FC<RightBoxProps> = ({
 
   return (
     <div
-      className={`${
-        collapsed ? 'w-12' : 'w-[95%]'
-      } h-full border border-gray-200 rounded-2xl overflow-hidden flex flex-col`}
+      className="w-full h-full border border-gray-200 rounded-2xl overflow-hidden flex flex-col"
     >
       <div className="w-full h-full flex flex-col bg-white overflow-hidden">
         {/* Header */}
