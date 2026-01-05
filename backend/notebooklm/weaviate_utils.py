@@ -73,11 +73,13 @@ def create_schema(client, recreate: bool = False) -> bool:
                     Property(name="page_num", data_type=DataType.INT, description="페이지 번호"),
                     Property(name="chunk_id", data_type=DataType.TEXT, description="청크 고유 ID", skip_vectorization=True, index_searchable=True),
                     Property(name="document_uuid", data_type=DataType.TEXT, description="연결된 문서 UUID"),
+                    Property(name="session_id", data_type=DataType.TEXT, description="세션 ID"),
                     Property(name="metadata", data_type=DataType.OBJECT, description="추가 메타데이터",
                         nested_properties=[
                             Property(name="document_id", data_type=DataType.TEXT),
                             Property(name="content_type", data_type=DataType.TEXT),
                             Property(name="file_path", data_type=DataType.TEXT),
+                            Property(name="session_id", data_type=DataType.TEXT),
                         ]
                     ),
                 ]
@@ -100,11 +102,13 @@ def create_schema(client, recreate: bool = False) -> bool:
                     Property(name="image_id", data_type=DataType.TEXT, description="이미지 고유 ID", skip_vectorization=True, index_searchable=True),
                     Property(name="tags", data_type=DataType.TEXT_ARRAY, description="이미지 태그"),
                     Property(name="document_uuid", data_type=DataType.TEXT, description="연결된 문서 UUID"),
+                    Property(name="session_id", data_type=DataType.TEXT, description="세션 ID"),
                     Property(name="metadata", data_type=DataType.OBJECT, description="추가 메타데이터",
                         nested_properties=[
                             Property(name="document_id", data_type=DataType.TEXT),
                             Property(name="content_type", data_type=DataType.TEXT),
                             Property(name="file_path", data_type=DataType.TEXT),
+                            Property(name="session_id", data_type=DataType.TEXT),
                         ]
                     ),
                 ]
@@ -119,7 +123,7 @@ def create_schema(client, recreate: bool = False) -> bool:
         logger.error("Weaviate 스키마 생성 중 오류 발생: %s", exc, exc_info=True)
         return False
 
-def batch_import_text_documents(client, documents: List[Dict[str, Any]], document_uuid: str = None) -> bool:
+def batch_import_text_documents(client, documents: List[Dict[str, Any]], document_uuid: str = None, session_id: str = None) -> bool:
     """
     텍스트 문서를 배치로 Weaviate에 임포트 (v4 API)
     """
@@ -139,7 +143,11 @@ def batch_import_text_documents(client, documents: List[Dict[str, Any]], documen
                     "page_num": doc.get("page_num", 0),
                     "chunk_id": chunk_id,
                     "document_uuid": doc.get("document_uuid") or document_uuid,
-                    "metadata": doc.get("metadata", {})
+                    "session_id": session_id or "default",
+                    "metadata": {
+                        **(doc.get("metadata", {})),
+                        "session_id": session_id or "default"
+                    }
                 }
                 vector = doc.get("embedding")
 
@@ -155,7 +163,7 @@ def batch_import_text_documents(client, documents: List[Dict[str, Any]], documen
         logger.error(f"텍스트 문서 배치 임포트 중 오류 발생: {str(e)}", exc_info=True)
         return False
 
-def batch_import_image_documents(client, documents: List[Dict[str, Any]], document_uuid: str = None) -> bool:
+def batch_import_image_documents(client, documents: List[Dict[str, Any]], document_uuid: str = None, session_id: str = None) -> bool:
     """
     이미지 문서를 배치로 Weaviate에 임포트 (v4 API)
     """
@@ -176,7 +184,11 @@ def batch_import_image_documents(client, documents: List[Dict[str, Any]], docume
                     "image_id": image_id,
                     "tags": doc.get("tags", []),
                     "document_uuid": doc.get("document_uuid") or document_uuid,
-                    "metadata": doc.get("metadata", {})
+                    "session_id": session_id or "default",
+                    "metadata": {
+                        **(doc.get("metadata", {})),
+                        "session_id": session_id or "default"
+                    }
                 }
 
                 vector = doc.get("embedding")

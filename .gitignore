@@ -44,3 +44,6 @@ target/
 /backend/nextits_data/pipe/parser/test_result
 /backend/nextits_data/pipe/parser/test_doc
 
+#sessions
+/backend/nextits_data/sessions
+

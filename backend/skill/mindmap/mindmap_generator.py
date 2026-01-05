@@ -4392,7 +4392,7 @@ def generate_interactive_html(concepts: Dict[str, Any]) -> str:
     
     return html
 
-async def process_text_file(filepath: str, max_topics: int = 8):
+async def process_text_file(filepath: str, max_topics: int = 8, output_dir: Optional[str] = None):
     """Process a single text file and generate mindmap outputs."""
     logger = get_logger()
     try:
@@ -4421,15 +4421,19 @@ async def process_text_file(filepath: str, max_topics: int = 8):
         # Generate markdown outline
         markdown_outline = generator._convert_mindmap_to_markdown(mindmap)
         
-        # Output directory: nextits_data/Results/8.mindmap
-        output_dir = Path(__file__).parent.parent.parent / "nextits_data" / "Results" / "8.mindmap"
-        output_dir.mkdir(parents=True, exist_ok=True)
+        # Output directory: use provided output_dir or default to nextits_data/Results/8.mindmap
+        if output_dir:
+            final_output_dir = Path(output_dir)
+        else:
+            final_output_dir = Path(__file__).parent.parent.parent / "nextits_data" / "Results" / "8.mindmap"
+        
+        final_output_dir.mkdir(parents=True, exist_ok=True)
         
         # Save outputs with simple names based on input file
         output_files = {
-            # str(output_dir / f"{base_filename}_mindmap.txt"): mindmap,
-            str(output_dir / f"{base_filename}_mindmap.html"): interactive_html,
-            str(output_dir / f"{base_filename}_mindmap_outline.md"): markdown_outline
+            # str(final_output_dir / f"{base_filename}_mindmap.txt"): mindmap,
+            str(final_output_dir / f"{base_filename}_mindmap.html"): interactive_html,
+            str(final_output_dir / f"{base_filename}_mindmap_outline.md"): markdown_outline
         }
         # Save all outputs
         for filename, content in output_files.items():
@@ -4451,6 +4455,7 @@ async def main():
     parser.add_argument('input_file', help='Input document file path')
     parser.add_argument('--request-id', help='Request ID for tracking')
     parser.add_argument('--max-topics', type=int, default=8, help='Maximum topics')
+    parser.add_argument('--output-dir', help='Output directory path')
     parser.add_argument('--output-json', action='store_true', help='Output as JSON')
     
     args = parser.parse_args()
@@ -4468,8 +4473,8 @@ async def main():
             # SGLang 로그도 억제
             os.environ['SGLANG_LOG_LEVEL'] = 'ERROR'
             
-            # 일반 모드로 실행 (파일 저장, max_topics 전달)
-            output_files = await process_text_file(input_file, max_topics=args.max_topics)
+            # 일반 모드로 실행 (파일 저장, max_topics 및 output_dir 전달)
+            output_files = await process_text_file(input_file, max_topics=args.max_topics, output_dir=args.output_dir)
             
             # 파일 경로만 JSON으로 반환
             result = {
@@ -4483,9 +4488,9 @@ async def main():
             sys.stdout.write('\n')
             sys.stdout.flush()
         else:
-            # 일반 모드 (파일 출력, max_topics 전달)
-            logger.info(f"Generating mindmap for {input_file} (max_topics={args.max_topics})")
-            output_files = await process_text_file(input_file, max_topics=args.max_topics)
+            # 일반 모드 (파일 출력, max_topics 및 output_dir 전달)
+            logger.info(f"Generating mindmap for {input_file} (max_topics={args.max_topics}, output_dir={args.output_dir})")
+            output_files = await process_text_file(input_file, max_topics=args.max_topics, output_dir=args.output_dir)
             
             # Print summary
             print("\nMindmap Generation Complete!")

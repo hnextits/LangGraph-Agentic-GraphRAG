@@ -140,6 +140,7 @@ class ImageSearcher:
         cancellation_event: Optional[threading.Event] = None,
         allowed_document_uuids: Optional[Set[str]] = None,
         use_uuid_filter: bool = False,
+        session_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """이미지 쿼리로 검색을 수행합니다.
         
@@ -150,6 +151,7 @@ class ImageSearcher:
             cancellation_event: 취소 이벤트
             allowed_document_uuids: 허용된 문서 UUID 집합
             use_uuid_filter: UUID 필터 사용 여부 (기본값: False, 전체 이미지 검색)
+            session_id: 세션 ID (필터링용)
         """
         # 설정에서 기본값 가져오기
         config = RAGConfig()
@@ -195,24 +197,36 @@ class ImageSearcher:
             # 필요한 개수만 검색 (리랭킹은 검색된 결과에 대해서만 수행)
             search_top_k = top_k
             
-            logger.debug(f"Weaviate 이미지 검색 시작: 클래스={self.class_name}, top_k={search_top_k}")
+            logger.debug(f"Weaviate 이미지 검색 시작 (session: {session_id}): 클래스={self.class_name}, top_k={search_top_k}")
             
             try:
                 from weaviate.classes.query import Filter
                 
                 collection = self.client.collections.get(self.class_name)
                 
-                # UUID 필터 구성 (use_uuid_filter가 True일 때만 적용)
+                # 필터 구성 (session_id + allowed_document_uuids)
                 filters = None
+                
+                # 1. 세션 필터 (session_id가 제공된 경우)
+                if session_id:
+                    filters = Filter.by_property("session_id").equal(session_id)
+                    logger.info(f"이미지 검색에 세션 필터 적용: {session_id}")
+                
+                # 2. UUID 필터 구성 (use_uuid_filter가 True일 때만 적용)
                 if use_uuid_filter and allowed_document_uuids:
                     uuids = [uuid for uuid in allowed_document_uuids if uuid]
+                    uuid_filter = None
                     if len(uuids) == 1:
-                        filters = Filter.by_property("document_uuid").equal(uuids[0])
+                        uuid_filter = Filter.by_property("document_uuid").equal(uuids[0])
                         logger.info(f"이미지 검색에 UUID 필터 적용: {uuids[0]}")
                     elif len(uuids) > 1:
-                        filters = Filter.by_property("document_uuid").contains_any(uuids)
+                        uuid_filter = Filter.by_property("document_uuid").contains_any(uuids)
                         logger.info(f"이미지 검색에 UUID 필터 적용: {len(uuids)}개 문서")
-                else:
+                    
+                    if uuid_filter:
+                        filters = filters & uuid_filter if filters else uuid_filter
+                
+                if not filters:
                     logger.info("이미지 검색: 전체 이미지 데이터베이스에서 검색")
                 
                 # 벡터 검색 실행 (v4 API)

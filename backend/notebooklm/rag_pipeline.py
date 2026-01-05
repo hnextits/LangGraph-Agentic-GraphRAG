@@ -131,6 +131,7 @@ class RAGPipeline:
         top_k: int = 5,
         cancellation_event: Optional[threading.Event] = None,
         allowed_document_uuids: Optional[Set[str]] = None,
+        session_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         질문 처리 및 답변 생성 (수정된 메서드)
@@ -138,11 +139,14 @@ class RAGPipeline:
         Args:
             query: 사용자 질문
             top_k: 각 파이프라인에서 반환할 최대 결과 수
+            cancellation_event: 취소 이벤트
+            allowed_document_uuids: 허용된 문서 UUID 집합
+            session_id: 세션 ID (필터링용)
             
         Returns:
             처리 결과 딕셔너리
         """
-        logger.info(f"질문 처리 시작: '{query}'")
+        logger.info(f"질문 처리 시작 (session: {session_id}): '{query}'")
 
         # 취소 확인
         if cancellation_event and cancellation_event.is_set():
@@ -157,6 +161,7 @@ class RAGPipeline:
             top_k=top_k,
             cancellation_event=cancellation_event,
             allowed_document_uuids=allowed_document_uuids,
+            session_id=session_id,
         )
         
         # 검색 결과 로깅

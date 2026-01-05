@@ -49,19 +49,39 @@ CONFIG = {
 LLM_MODEL = None
 
 def load_model(config):
-    """모델을 한 번만 로드하여 전역 변수에 저장"""
+    """모델을 한 번만 로드하여 전역 변수에 저장 (메모리 프로파일링 에러 발생 시 재시도 로직 포함)"""
     global LLM_MODEL
     if LLM_MODEL is None:
-        print("Loading vLLM model for the first time...")
-        LLM_MODEL = LLM(
-            model=config["model"],
-            gpu_memory_utilization=config["gpu_memory_utilization"],
-            max_model_len=config["max_model_len"],
-            trust_remote_code=True,  # 일부 모델은 이 옵션이 필요할 수 있습니다
-            # attn_backend="eager"  # Flash-Attention 2 사용 명시
-            enforce_eager=True,
-        )
-        print("vLLM model loaded successfully.")
+        import time
+        max_retries = 3
+        retry_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                print(f"Loading vLLM model (attempt {attempt + 1}/{max_retries})...")
+                LLM_MODEL = LLM(
+                    model=config["model"],
+                    gpu_memory_utilization=config["gpu_memory_utilization"],
+                    max_model_len=config["max_model_len"],
+                    trust_remote_code=True,
+                    enforce_eager=True,
+                    # VLLM v1에서 프로파일링 에러를 줄이기 위한 추가 설정이 필요할 수 있음
+                )
+                print("vLLM model loaded successfully.")
+                break
+            except AssertionError as e:
+                if "memory profiling" in str(e) and attempt < max_retries - 1:
+                    print(f"Memory profiling error detected: {e}. Retrying in {retry_delay}s...")
+                    time.sleep(retry_delay)
+                    continue
+                raise
+            except Exception as e:
+                print(f"Error loading vLLM model: {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay)
+                    continue
+                raise
+                
     return LLM_MODEL
 
 def build_qwen2_5_vl_prompt(question):

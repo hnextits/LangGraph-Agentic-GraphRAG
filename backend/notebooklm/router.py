@@ -167,6 +167,7 @@ class RAGRouter:
         top_k: int = 15,
         cancellation_event: Optional[threading.Event] = None,
         allowed_document_uuids: Optional[Set[str]] = None,
+        session_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         쿼리를 ParallelSearcher에 위임하여 최종 결과를 반환합니다.
@@ -175,13 +176,16 @@ class RAGRouter:
         Args:
             query (str): 사용자 원본 쿼리
             top_k (int): 반환할 최종 결과의 수
+            cancellation_event (Optional[threading.Event]): 취소 이벤트
+            allowed_document_uuids (Optional[Set[str]]): 허용된 문서 UUID 집합
+            session_id (Optional[str]): 세션 ID (필터링용)
 
         Returns:
             Dict[str, Any]: 통합되고 재정렬된 검색 결과
         """
         # 1. 항상 text와 image 검색기를 사용하도록 route_query 호출
         selected_searchers = self.route_query(query)
-        logger.info(f"RAG 검색을 위해 선택된 검색기: {selected_searchers}")
+        logger.info(f"RAG 검색을 위해 선택된 검색기: {selected_searchers} (session: {session_id})")
 
         # 취소 확인
         if cancellation_event and cancellation_event.is_set():
@@ -194,6 +198,7 @@ class RAGRouter:
             top_k,
             cancellation_event=cancellation_event,
             allowed_document_uuids=allowed_document_uuids,
+            session_id=session_id,
         )
         
         # 3. 메타데이터 보강 및 결과 반환

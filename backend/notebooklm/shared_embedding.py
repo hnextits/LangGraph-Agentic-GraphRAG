@@ -57,6 +57,10 @@ class SharedEmbeddingModel:
                 logger.error(f"Failed to load shared embedding model: {e}")
                 raise
 
+    def load_model(self):
+        """모델을 명시적으로 로드합니다."""
+        self._ensure_model_loaded()
+
     def generate_embedding(self, text: str, normalize: bool = True) -> Optional[np.ndarray]:
         if not text:
             return None

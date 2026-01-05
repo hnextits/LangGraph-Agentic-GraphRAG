@@ -38,7 +38,8 @@ interface SourceItem {
   id: string;
   title: string;
   taskId?: string;
-  status?: 'completed' | 'processing' | 'failed';
+  status?: 'completed' | 'processing' | 'failed' | 'queued';
+  message?: string;
 }
 
 interface LeftBoxProps {
@@ -94,6 +95,42 @@ const LeftBox: React.FC<LeftBoxProps> = React.memo(({
   const [isReportLoading, setIsReportLoading] = useState<boolean>(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
+  // 작업 큐 관련 상태
+  const [queueStatus, setQueueStatus] = useState<{
+    status: string;
+    wait_count: number;
+    message: string;
+  } | null>(null);
+
+  // 작업 상태 폴링 (파일 처리 파이프라인 대응)
+  useEffect(() => {
+    let pollInterval: NodeJS.Timeout;
+
+    if (sources.some(s => s.status === 'processing' || s.status === 'queued')) {
+      pollInterval = setInterval(async () => {
+        try {
+          const processingTasks = sources.filter(s => s.status === 'processing' || s.status === 'queued');
+          for (const task of processingTasks) {
+            if (!task.taskId) continue;
+            const response = await api.getTaskStatus(task.taskId);
+            const { status, message } = response.data;
+
+            setSources(prev => prev.map(s => 
+              s.taskId === task.taskId 
+                ? { ...s, status: (status === 'queued' ? 'queued' : (status === 'failed' ? 'failed' : (status === 'completed' || status === 'processed' || status === 'index_completed' ? 'completed' : 'processing'))), message } 
+                : s
+            ));
+          }
+        } catch (error) {
+          console.error('Task status polling error:', error);
+        }
+      }, 3000);
+    }
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [sources]);
   const queryClient = useQueryClient();
   const {
     checkedFilenames,
@@ -691,10 +728,19 @@ const LeftBox: React.FC<LeftBoxProps> = React.memo(({
                         </label>
                         <div className="flex items-center flex-grow min-w-0">
                           <div className="min-w-[40px] flex items-center justify-center">
-                            {getFileIcon(source.title)}
+                            {source.status === 'processing' || source.status === 'queued' ? (
+                              <Loader2 className="animate-spin text-blue-500" size={20} />
+                            ) : (
+                              getFileIcon(source.title)
+                            )}
                           </div>
-                          <div className="truncate">
-                            <span className="text-sm">{formatFileName(source.title)}</span>
+                          <div className="flex flex-col truncate">
+                            <span className="text-sm truncate">{formatFileName(source.title)}</span>
+                            {(source.status === 'processing' || source.status === 'queued') && source.message && (
+                              <span className="text-[10px] text-blue-500 truncate animate-pulse">
+                                {source.message}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </li>

@@ -28,9 +28,13 @@ except ImportError as e:
 # 작업 상태 저장소
 mindmap_tasks: Dict[str, Dict[str, Any]] = {}
 
-# 마인드맵 저장 디렉토리
-MINDMAP_DIR = Path(__file__).parent.parent / "nextits_data" / "Results" / "8.mindmap"
-MINDMAP_DIR.mkdir(parents=True, exist_ok=True)
+# 마인드맵 저장 디렉토리 (하위 호환성 및 기본 경로 설정을 위해 유지)
+def get_mindmap_dir(session_id: Optional[str] = None) -> Path:
+    from notebooklm.config import RAGConfig
+    config = RAGConfig()
+    if session_id:
+        return config.get_session_results_dir(session_id, "8.mindmap")
+    return config.DATA_ROOT / "Results" / "8.mindmap"
 
 
 # === Pydantic 모델 ===
@@ -59,6 +63,7 @@ class MindmapStatusResponse(BaseModel):
 
 class MindmapListResponse(BaseModel):
     """마인드맵 목록 응답"""
+    files: List[str]
     mindmaps: List[str]
 
 
@@ -70,57 +75,62 @@ class MindmapContentResponse(BaseModel):
 
 
 # === 백그라운드 작업 함수 ===
-async def generate_mindmap_task(task_id: str, filename: str, max_topics: int, model_manager: Any):
+async def generate_mindmap_task(task_id: str, filename: str, max_topics: int, model_manager: Any, session_id: Optional[str] = None):
     """백그라운드에서 마인드맵 생성 (subprocess 방식, max_topics 전달)"""
-    try:
-        logger.info(f"[{task_id}] 마인드맵 생성 시작: {filename} (max_topics={max_topics})")
-        
-        # MindMapGenerator 획득 (Lazy Loading)
-        try:
-            generator = model_manager.acquire("mindmap_generator")
-        except Exception as e:
-            logger.error(f"[{task_id}] 마인드맵 모델 획득 실패: {e}")
-            mindmap_tasks[task_id] = {
-                "status": "failed",
-                "message": f"모델 로드 실패: {e}",
-                "progress": 100
-            }
-            return
+    from notebooklm.config import RAGConfig
+    config = RAGConfig()
+    
+    if session_id:
+        ocr_results_dir = config.get_session_results_dir(session_id, "4.OCR_results")
+        mindmap_dir = config.get_session_results_dir(session_id, "8.mindmap")
+    else:
+        # 하위 호환성
+        ocr_results_dir = config.DATA_ROOT / "Results" / "4.OCR_results"
+        mindmap_dir = config.DATA_ROOT / "Results" / "8.mindmap"
+    
+    mindmap_dir.mkdir(parents=True, exist_ok=True)
 
-        mindmap_tasks[task_id] = {
-            "status": "processing",
-            "message": "파일 읽는 중...",
-            "progress": 10
-        }
+    try:
+        logger.info(f"[{task_id}] 마인드맵 생성 시작: {filename} (max_topics={max_topics}, session={session_id})")
         
-        # 4.OCR_results에서만 파일 찾기
-        base_dir = Path(__file__).parent.parent / "nextits_data"
-        ocr_dir = base_dir / "Results" / "4.OCR_results"
+        # 1. 파일 찾기
+        base_name = Path(filename).stem
+        candidate_names = [filename, f"{base_name}.md", f"{base_name}.txt"]
         
-        # 파일명에서 확장자를 .md로 변환
-        # 예: 원가관리회계.pdf -> 원가관리회계.md
-        filename_path = Path(filename)
-        base_name = filename_path.stem  # 확장자 제외한 파일명
-        md_filename = f"{base_name}.md"  # .md 확장자로 변경
+        input_file = None
+        for name in candidate_names:
+            p = ocr_results_dir / name
+            if p.exists():
+                input_file = p
+                break
         
-        file_path = ocr_dir / md_filename
+        if not input_file:
+            raise FileNotFoundError(f"4.OCR_results에서 파일을 찾을 수 없습니다: {filename}")
         
-        if not file_path.exists():
-            raise FileNotFoundError(f"4.OCR_results에서 파일을 찾을 수 없습니다: {md_filename} (원본 요청: {filename})")
-        
-        # 파일 내용 읽기
-        with open(file_path, 'r', encoding='utf-8') as f:
+        # 2. 파일 내용 읽기
+        with open(input_file, 'r', encoding='utf-8') as f:
             document_content = f.read()
         
         if not document_content or document_content.isspace():
             raise ValueError("파일 내용이 비어있습니다")
         
         mindmap_tasks[task_id].update({
+            "status": "processing",
+            "message": "파일 읽는 중...",
+            "progress": 10
+        })
+        
+        # 3. 마인드맵 생성 중...
+        mindmap_tasks[task_id].update({
             "message": "마인드맵 생성 중...",
             "progress": 20
         })
         
         # subprocess 방식으로 실행 (event loop 충돌 방지)
+        # 4. 결과 파일 경로 설정
+        output_file = mindmap_dir / f"mindmap_{base_name}.json"
+        
+        # 5. 생성기 가져오기 및 실행
         import subprocess
         import json
         import tempfile
@@ -150,6 +160,7 @@ async def generate_mindmap_task(task_id: str, filename: str, max_topics: int, mo
                 str(tmp_path),
                 "--request-id", task_id,
                 "--max-topics", str(max_topics),  # max_topics 전달
+                "--output-dir", str(mindmap_dir),  # 세션별 출력 디렉토리 전달
                 "--output-json"  # JSON 형식으로 결과 출력
             ]
             
@@ -292,141 +303,104 @@ async def generate_mindmap(
     - **filename**: 마인드맵을 생성할 파일명
     - **max_topics**: 최대 주제 수 (기본값: 8)
     """
-    task_id = str(uuid.uuid4())
+    filename = request_data.filename
+    max_topics = request_data.max_topics or 20
     
-    # 백그라운드 작업 추가
+    task_id = str(uuid.uuid4())
+    mindmap_tasks[task_id] = {
+        "task_id": task_id,
+        "status": "pending",
+        "message": "대기 중...",
+        "progress": 0,
+        "filename": filename
+    }
+    
+    # 세션 ID 획득
+    session_id = getattr(request.state, "session_id", "default_session")
+    model_manager = getattr(request.app.state, "model_manager", None)
+    
     background_tasks.add_task(
-        generate_mindmap_task,
-        task_id,
-        request_data.filename,
-        request_data.max_topics,
-        request.app.state.model_manager
+        generate_mindmap_task, 
+        task_id, 
+        filename, 
+        max_topics, 
+        model_manager,
+        session_id=session_id
     )
     
-    mindmap_tasks[task_id] = {
-        "status": "pending",
-        "message": "마인드맵 생성 대기 중...",
-        "progress": 0
-    }
-    
-    return {
-        "task_id": task_id,
-        "status": "pending",
-        "message": "마인드맵 생성이 시작되었습니다"
-    }
-
-
-@router.get("/status/{task_id}", response_model=MindmapStatusResponse)
-async def get_mindmap_status(task_id: str):
-    """
-    마인드맵 생성 상태 확인
-    
-    - **task_id**: 작업 ID
-    """
-    if task_id not in mindmap_tasks:
-        raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다")
-    
-    task = mindmap_tasks[task_id]
-    
-    return {
-        "task_id": task_id,
-        "status": task.get("status", "unknown"),
-        "message": task.get("message"),
-        "progress": task.get("progress"),
-        "result": task.get("result"),
-        "error": task.get("error")
-    }
+    return MindmapTaskResponse(task_id=task_id, status="pending")
 
 
 @router.get("/list", response_model=MindmapListResponse)
-async def list_mindmaps():
-    """
-    생성된 마인드맵 목록 조회
-    """
-    try:
-        # HTML 파일만 목록에 표시
-        mindmaps = [
-            f.name for f in MINDMAP_DIR.iterdir() 
-            if f.is_file() and f.suffix == '.html'
-        ]
-        mindmaps.sort(reverse=True)  # 최신순
-        
-        return {"mindmaps": mindmaps}
-        
-    except Exception as e:
-        logger.error(f"마인드맵 목록 조회 실패: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/content/{filename}")
-async def get_mindmap_content(filename: str, format: str = "html"):
-    """
-    마인드맵 내용 조회
+async def list_mindmaps(request: Request):
+    """생성된 마인드맵 파일 목록 조회 (글로벌 + 세션 병합)"""
+    from notebooklm.config import RAGConfig
+    config = RAGConfig()
+    session_id = getattr(request.state, "session_id", "default_session")
     
-    - **filename**: 파일명 (확장자 제외)
-    - **format**: 출력 형식 (html, markdown, mermaid)
-    """
+    session_mindmap_dir = config.get_session_results_dir(session_id, "8.mindmap")
+    global_mindmap_dir = config.DATA_ROOT / "Results" / "8.mindmap"
+    
+    def get_files_from_dir(directory: Path):
+        if not directory.exists():
+            return []
+        files = [f.name for f in directory.glob("mindmap_*.json")]
+        html_files = [f.name for f in directory.glob("*_mindmap.html")]
+        outline_files = [f.name for f in directory.glob("*_mindmap_outline.md")]
+        return list(set(files + html_files + outline_files))
+
+    session_files = get_files_from_dir(session_mindmap_dir)
+    global_files = get_files_from_dir(global_mindmap_dir)
+    
+    # 중복 제거 및 병합
+    all_files = sorted(list(set(session_files + global_files)))
+    
+    return MindmapListResponse(files=all_files, mindmaps=all_files)
+
+
+@router.get("/content/{filename}", response_model=MindmapContentResponse)
+async def get_mindmap_detail(request: Request, filename: str):
+    """마인드맵 파일 내용 조회 (글로벌 + 세션 검색)"""
+    from notebooklm.config import RAGConfig
+    config = RAGConfig()
+    session_id = getattr(request.state, "session_id", "default_session")
+    
+    session_mindmap_dir = config.get_session_results_dir(session_id, "8.mindmap")
+    global_mindmap_dir = config.DATA_ROOT / "Results" / "8.mindmap"
+    
+    # 1. 세션에서 먼저 찾기
+    file_path = session_mindmap_dir / filename
+    if not file_path.exists():
+        # 하위 호환성: 확장자가 없는 경우 .json 추가 시도
+        if not filename.endswith('.json') and not filename.endswith('.html') and not filename.endswith('.md'):
+            temp_path = session_mindmap_dir / f"{filename}.json"
+            if temp_path.exists():
+                file_path = temp_path
+    
+    # 2. 세션에 없으면 글로벌에서 찾기
+    if not file_path.exists():
+        file_path = global_mindmap_dir / filename
+        if not file_path.exists() and not filename.endswith('.json') and not filename.endswith('.html') and not filename.endswith('.md'):
+            temp_path = global_mindmap_dir / f"{filename}.json"
+            if temp_path.exists():
+                file_path = temp_path
+            
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="마인드맵 파일을 찾을 수 없습니다.")
+        
     try:
-        base_filename = Path(filename).stem
-        
-        # 형식에 따라 파일 찾기
-        if format == "html":
-            file_path = MINDMAP_DIR / f"{base_filename}.html"
-        elif format == "markdown" or format == "md":
-            file_path = MINDMAP_DIR / f"{base_filename}.md"
-        elif format == "mermaid" or format == "mmd":
-            file_path = MINDMAP_DIR / f"{base_filename}.mmd"
-        else:
-            # 확장자가 포함된 경우
-            file_path = MINDMAP_DIR / filename
-        
-        if not file_path.exists():
-            raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다")
-        
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
         
-        return {
-            "filename": file_path.name,
-            "format": format,
-            "content": content
-        }
-        
-    except HTTPException:
-        raise
+        # 파일 확장자에 따라 포맷 결정
+        if file_path.suffix == ".html":
+            file_format = "html"
+        elif file_path.suffix == ".md":
+            file_format = "markdown"
+        else:
+            file_format = "json"
+        return MindmapContentResponse(filename=file_path.name, format=file_format, content=content)
     except Exception as e:
-        logger.error(f"마인드맵 내용 조회 실패: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"파일 읽기 오류: {str(e)}")
 
-
-@router.delete("/{filename}")
-async def delete_mindmap(filename: str):
-    """
-    마인드맵 삭제 (관련된 모든 형식 파일 삭제)
-    
-    - **filename**: 파일명
-    """
-    try:
-        base_filename = Path(filename).stem
-        deleted_files = []
-        
-        # 모든 형식 파일 삭제
-        for ext in ['.html', '.md', '.mmd']:
-            file_path = MINDMAP_DIR / f"{base_filename}{ext}"
-            if file_path.exists():
-                file_path.unlink()
-                deleted_files.append(file_path.name)
-        
-        if not deleted_files:
-            raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다")
-        
-        return {
-            "message": "마인드맵이 삭제되었습니다",
-            "deleted_files": deleted_files
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"마인드맵 삭제 실패: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+# 중복된 아래 코드들 삭제 (파일 끝까지)

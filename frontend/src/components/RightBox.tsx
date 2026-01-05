@@ -22,7 +22,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import SummaryModal from './SummaryModal';
 import MindmapModal from './MindmapModal';
-import Swal from 'sweetalert2';
+import AlertModal from './AlertModal';
 
 interface RightBoxProps {
   collapsed?: boolean;
@@ -54,6 +54,11 @@ const RightBox: React.FC<RightBoxProps> = React.memo(({
   const [summaryModalOpen, setSummaryModalOpen] = useState(false);
   const [mindmapModalOpen, setMindmapModalOpen] = useState(false);
   const [modalFile, setModalFile] = useState<string>('');
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleteSuccessModalOpen, setIsDeleteSuccessModalOpen] = useState(false);
+  const [isDeleteFailModalOpen, setIsDeleteFailModalOpen] = useState(false);
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState('');
 
   const [checkedSummarizes, setCheckedSummarizes] = useState<string[]>([]);
   const [checkedMindmaps, setCheckedMindmaps] = useState<string[]>([]);
@@ -127,62 +132,59 @@ const RightBox: React.FC<RightBoxProps> = React.memo(({
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
+    if (activeTab === 'summary') {
+      if (checkedSummarizes.length === 0) return;
+    } else if (activeTab === 'mindmap') {
+      if (checkedMindmaps.length === 0) return;
+    } else {
+      return;
+    }
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    setIsDeleteModalOpen(false);
     let itemsToDelete: string[] = [];
     let itemType = '';
 
     if (activeTab === 'summary') {
-      if (checkedSummarizes.length === 0) return;
       itemsToDelete = checkedSummarizes;
       itemType = '요약';
     } else if (activeTab === 'mindmap') {
-      if (checkedMindmaps.length === 0) return;
       itemsToDelete = checkedMindmaps;
       itemType = '마인드맵';
-    } else {
-      return;
     }
 
-    const result = await Swal.fire({
-      title: '정말 삭제하시겠습니까?',
-      text: '삭제된 파일은 복구할 수 없습니다',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: '삭제',
-      cancelButtonText: '취소',
-      reverseButtons: true,
-    });
-
-    if (result.isConfirmed) {
-      try {
-        if (activeTab === 'summary') {
-          const response = await api.deleteSummary(itemsToDelete);
-          if (response.data?.deleted_files && response.data.deleted_files.length > 0) {
-            setCheckedSummarizes([]);
-            Swal.fire('삭제 완료!', `${itemType}이 삭제되었습니다.`, 'success');
-            queryClient.invalidateQueries({ queryKey: ['summaries'] });
-          } else {
-            const errorMessage =
-              response.data?.failed_files?.length > 0
-                ? `${itemType} 삭제 실패: ${response.data.failed_files
-                    .map((f: { filename: string; reason: string }) => f.filename)
-                    .join(', ')}`
-                : `${itemType} 삭제에 실패했습니다.`;
-            Swal.fire('삭제 실패!', errorMessage, 'error');
-          }
-        } else if (activeTab === 'mindmap') {
-          // 마인드맵 삭제는 개별 API 호출
-          for (const filename of itemsToDelete) {
-            await api.deleteMindmap(filename);
-          }
-          setCheckedMindmaps([]);
-          Swal.fire('삭제 완료!', `${itemType}이 삭제되었습니다.`, 'success');
-          await loadMindmaps();
+    try {
+      if (activeTab === 'summary') {
+        const response = await api.deleteSummary(itemsToDelete);
+        if (response.data?.deleted_files && response.data.deleted_files.length > 0) {
+          setCheckedSummarizes([]);
+          setIsDeleteSuccessModalOpen(true);
+          queryClient.invalidateQueries({ queryKey: ['summaries'] });
+        } else {
+          const errorMessage =
+            response.data?.failed_files?.length > 0
+              ? `${itemType} 삭제 실패: ${response.data.failed_files
+                  .map((f: { filename: string; reason: string }) => f.filename)
+                  .join(', ')}`
+              : `${itemType} 삭제에 실패했습니다.`;
+          setDeleteErrorMessage(errorMessage);
+          setIsDeleteFailModalOpen(true);
         }
-      } catch (error) {
-        console.error(`${itemType} 삭제 실패:`, error);
-        Swal.fire('오류 발생!', `${itemType} 삭제 중 오류가 발생했습니다.`, 'error');
+      } else if (activeTab === 'mindmap') {
+        for (const filename of itemsToDelete) {
+          await api.deleteMindmap(filename);
+        }
+        setCheckedMindmaps([]);
+        setIsDeleteSuccessModalOpen(true);
+        await loadMindmaps();
       }
+    } catch (error) {
+      console.error(`${itemType} 삭제 실패:`, error);
+      setDeleteErrorMessage(`${itemType} 삭제 중 오류가 발생했습니다.`);
+      setIsDeleteFailModalOpen(true);
     }
   };
 
@@ -471,40 +473,42 @@ const RightBox: React.FC<RightBoxProps> = React.memo(({
                   </div>
                 ) : activeTab === 'mindmap' && mindmaps.length > 0 ? (
                   <ul className="space-y-2">
-                    {mindmaps.map((file, index) => {
-                      const isChecked = checkedMindmaps.includes(file);
-                      return (
-                        <li
-                          key={index}
-                          onClick={() => handleOpenMindmapModal(file)}
-                          className="px-1 py-2 mb-2 flex items-center hover:bg-gray-50 cursor-pointer gap-2"
-                        >
-                          <label className="relative flex items-center justify-center h-5 w-5 cursor-pointer" onClick={e => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={handleToggle(file)}
-                              className="sr-only"
-                            />
-                            {isChecked ? (
-                              <CircleCheck className="h-5 w-5 text-blue-500" />
-                            ) : (
-                              <Circle className="h-5 w-5 text-gray-400" />
-                            )}
-                          </label>
-                          <div className="flex items-center flex-grow min-w-0">
-                            <div className="min-w-[40px] flex items-center justify-center">
-                              <div className="bg-purple-100 rounded-md p-1 items-center">
-                                <Network className="text-purple-500" size={20} />
+                    {mindmaps
+                      .filter(file => file.toLowerCase().endsWith('.html'))
+                      .map((file, index) => {
+                        const isChecked = checkedMindmaps.includes(file);
+                        return (
+                          <li
+                            key={index}
+                            onClick={() => handleOpenMindmapModal(file)}
+                            className="px-1 py-2 mb-2 flex items-center hover:bg-gray-50 cursor-pointer gap-2"
+                          >
+                            <label className="relative flex items-center justify-center h-5 w-5 cursor-pointer" onClick={e => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={handleToggle(file)}
+                                className="sr-only"
+                              />
+                              {isChecked ? (
+                                <CircleCheck className="h-5 w-5 text-blue-500" />
+                              ) : (
+                                <Circle className="h-5 w-5 text-gray-400" />
+                              )}
+                            </label>
+                            <div className="flex items-center flex-grow min-w-0">
+                              <div className="min-w-[40px] flex items-center justify-center">
+                                <div className="bg-purple-100 rounded-md p-1 items-center">
+                                  <Network className="text-purple-500" size={20} />
+                                </div>
+                              </div>
+                              <div className="ml-2 truncate">
+                                <span className="text-sm">{file.replace('_mindmap.html', '')}</span>
                               </div>
                             </div>
-                            <div className="ml-2 truncate">
-                              <span className="text-sm">{file}</span>
-                            </div>
-                          </div>
-                        </li>
-                      );
-                    })}
+                          </li>
+                        );
+                      })}
                   </ul>
                 ) : activeTab === 'report' ? (
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
@@ -540,6 +544,40 @@ const RightBox: React.FC<RightBoxProps> = React.memo(({
 
       <SummaryModal open={summaryModalOpen} onClose={handleCloseModal} file={modalFile} />
       <MindmapModal open={mindmapModalOpen} onClose={handleCloseMindmapModal} file={modalFile} />
+
+      {/* 삭제 확인 모달 */}
+      <AlertModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="정말 삭제하시겠습니까?"
+        content={`선택한 ${activeTab === 'summary' ? checkedSummarizes.length : checkedMindmaps.length}개의 항목을 삭제합니다. 이 작업은 되돌릴 수 없습니다.`}
+        iconType="warning"
+        confirmButtonText="삭제"
+        cancelButtonText="취소"
+      />
+
+      {/* 삭제 성공 모달 */}
+      <AlertModal
+        isOpen={isDeleteSuccessModalOpen}
+        onClose={() => setIsDeleteSuccessModalOpen(false)}
+        title="삭제 완료"
+        content="항목이 성공적으로 삭제되었습니다."
+        iconType="success"
+        confirmButtonText={null}
+        cancelButtonText={null}
+      />
+
+      {/* 삭제 실패 모달 */}
+      <AlertModal
+        isOpen={isDeleteFailModalOpen}
+        onClose={() => setIsDeleteFailModalOpen(false)}
+        title="삭제 실패"
+        content={deleteErrorMessage}
+        iconType="error"
+        confirmButtonText={null}
+        cancelButtonText={null}
+      />
     </div>
   );
 });

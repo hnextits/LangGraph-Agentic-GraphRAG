@@ -5,7 +5,7 @@ import os
 import re
 import json
 import logging
-from typing import List, Dict, Tuple, Any
+from typing import List, Dict, Tuple, Any, Optional
 from dataclasses import dataclass
 from pathlib import Path
 import numpy as np
@@ -200,8 +200,9 @@ class EnhancedSemanticChunker:
 
 class WeaviateVectorStore:
     """Weaviate 기반 벡터 저장소 (배치 저장 로직 포함)"""
-    def __init__(self):
+    def __init__(self, session_id: Optional[str] = None):
         self.config = RAGConfig()
+        self.session_id = session_id
         self.client = None
         self._init_client()
 
@@ -254,9 +255,11 @@ class WeaviateVectorStore:
                     "page_num": metadata.get('page_num', 0),
                     "chunk_id": vec.chunk_id,
                     "document_uuid": str(document_uuid),
+                    "session_id": self.session_id or "default",
                     "metadata": {
                         **document_metadata,
                         **chunk_metadata,
+                        "session_id": self.session_id or "default"
                     },
                 }
                 
@@ -278,12 +281,13 @@ class WeaviateVectorStore:
 # =============================================================================
 
 class Qwen3LateChunker:
-    def __init__(self, chunk_size=1000, overlap_size=100):
+    def __init__(self, chunk_size=1000, overlap_size=100, session_id: Optional[str] = None):
         self.chunk_size = chunk_size
         self.overlap_size = overlap_size
         self.embedding_model = shared_embedding
-        self.vector_store = WeaviateVectorStore()
+        self.vector_store = WeaviateVectorStore(session_id=session_id)
         self.document_metadata = {}
+        self.session_id = session_id
     def process_markdown_file(self, file_path: str) -> str:
         start_time = datetime.now()
         document_id = self._generate_document_id(file_path)
@@ -434,7 +438,19 @@ def search_vectors(query: str, top_k: int = 5) -> List[Dict]:
 # Main 함수 (스키마 삭제 및 생성 순서 수정 완료)
 # =============================================================================
 
-def main(input_file=None, recreate_schema=False, search_mode=False):
+def process_markdown_files(client, file_paths: List[str], session_id: Optional[str] = None):
+    """여러 마운트다운 파일을 인덱싱합니다."""
+    chunker = Qwen3LateChunker(session_id=session_id)
+    # 기존 코드에서 Qwen3LateChunker가 사용하는 client는 내부적으로 생성하므로 
+    # client 인자를 넘기지 않고 chunker 내부의 vector_store.client를 사용하거나 
+    # 필요시 chunker 구조를 개선해야 하지만, 현재 구조 유지를 위해 세션 ID만 전달합니다.
+    for file_path in file_paths:
+        try:
+            chunker.process_markdown_file(file_path)
+        except Exception as e:
+            logger.error(f"Error processing {file_path}: {e}")
+
+def main(input_file=None, recreate_schema=False, search_mode=False, session_id=None):
     """
     Main function for chunking and indexing
     

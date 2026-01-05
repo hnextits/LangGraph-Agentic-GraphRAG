@@ -2,10 +2,12 @@ import os
 import logging
 import uvicorn
 import sys
+import shutil
 from pathlib import Path
 import threading
 
-from fastapi import FastAPI, Request, Depends
+import uuid
+from fastapi import FastAPI, Request, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
 
@@ -51,22 +53,93 @@ model_manager = LazyModelManager()
 # FastAPI 앱 초기화
 app = FastAPI()
 
+# CORS 미들웨어 설정
+# allow_credentials=True일 경우 allow_origins에 "*"를 사용할 수 없습니다.
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:6004",
+    "http://localhost:6005",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:6004",
+    "http://127.0.0.1:6005",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["set-cookie"],  # 브라우저가 Set-Cookie 헤더를 볼 수 있게 노출
 )
 
 app.title = "챗봇 API"
+
+@app.middleware("http")
+async def session_middleware(request: Request, call_next):
+    # 0. CORS preflight (OPTIONS) 요청은 세션 처리를 건너뜀
+    if request.method == "OPTIONS":
+        return await call_next(request)
+
+    # 1. 헤더에서 세션 ID 확인 (우선순위 1)
+    session_id = request.headers.get("X-Session-ID")
+    
+    # 2. 쿠키에서 세션 ID 확인 (우선순위 2)
+    if not session_id:
+        session_id = request.cookies.get("session_id")
+    
+    is_new_session = False
+    if not session_id:
+        # 서버에서 생성하지 않고 클라이언트가 생성하도록 유도하기 위해
+        # 여기서는 세션 ID가 없으면 하나 생성해줌
+        session_id = str(uuid.uuid4())
+        is_new_session = True
+        logger.info(f"New session created: {session_id} for {request.url.path}")
+    
+    request.state.session_id = session_id
+    
+    # CORS 사전 요청(OPTIONS)과 헬스체크 등은 세션 쿠키 설정을 건너뜀
+    if request.method == "OPTIONS" or request.url.path in ["/health", "/metrics", "/favicon.ico"]:
+        return await call_next(request)
+
+    response = await call_next(request)
+    
+    # 클라이언트가 헤더로 세션 ID를 식별할 수 있도록 응답 헤더에도 포함
+    response.headers["X-Session-ID"] = session_id
+    
+    # 쿠키 설정 (브라우저가 헤더를 처리하지 못할 경우를 대비한 백업)
+    # 기존에 쿠키가 없거나 새로 생성된 경우에만 설정
+    if is_new_session or not request.cookies.get("session_id"):
+        response.set_cookie(
+            key="session_id",
+            value=session_id,
+            httponly=True,
+            samesite="lax",
+            secure=False,
+            max_age=3600 * 24 * 7,
+            path="/"
+        )
+    return response
 
 @app.on_event("startup")
 def startup_event():
     """
     애플리케이션 시작 시 기본 상태를 설정합니다.
-    모든 모델은 LazyModelManager를 통해 필요할 때 로드됩니다.
     """
+    # 세션 데이터 초기화 (휘발성 유지)
+    from notebooklm.config import RAGConfig
+    config = RAGConfig()
+    if config.SESSIONS_ROOT.exists():
+        logger.info("서버 시작 시 이전 세션 데이터를 삭제합니다.")
+        try:
+            # sessions 디렉토리 자체는 남겨두고 내부 세션 폴더들만 삭제
+            for session_dir in config.SESSIONS_ROOT.iterdir():
+                if session_dir.is_dir():
+                    shutil.rmtree(session_dir)
+            logger.info("세션 데이터 초기화 완료")
+        except Exception as e:
+            logger.error(f"세션 데이터 초기화 중 오류: {e}")
+
     # 실행 중인 작업을 저장할 딕셔너리 초기화
     app.state.running_tasks = {}
 
@@ -76,6 +149,13 @@ def startup_event():
     app.state.task_cache = api_routes.task_cache
     app.state.task_cache_timestamps = api_routes.task_cache_timestamps
     logger.info("실행 작업 관리자(running_tasks)가 초기화되었습니다.")
+
+    # GPU 작업 큐 워커 시작
+    from utils.task_queue import gpu_task_queue
+    import asyncio
+    asyncio.create_task(gpu_task_queue.start_worker())
+    app.state.gpu_task_queue = gpu_task_queue
+    logger.info("GPU 작업 큐 워커가 시작되었습니다.")
 
     def register_models():
         from api.routes import build_answer_generator
@@ -106,15 +186,6 @@ def startup_event():
     register_models()
     app.state.model_manager = model_manager
     logger.info("LazyModelManager에 모델 등록 완료 (모든 모델은 Lazy Loading 지원)")
-
-# CORS 미들웨어 설정
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # API 라우터 포함
 app.include_router(api_router)

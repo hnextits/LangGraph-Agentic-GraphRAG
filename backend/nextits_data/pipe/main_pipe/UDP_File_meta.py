@@ -44,15 +44,18 @@ class EnvManager:
         target_dir = base_dir / "doc"  # 기본값으로 doc 폴더 사용
         return str(target_dir)
 
-    def get_output_json_path(self) -> str:
+    def get_output_json_path(self, target_dir: Optional[str] = None) -> str:
         """
         출력 JSON 파일 경로를 반환
         
+        매개변수:
+            target_dir (Optional[str]): 대상 디렉토리 경로 (기본값: self.get_target_directory())
+            
         반환값:
             str: 출력 JSON 파일 경로
         """
-        target_dir = self.get_target_directory()
-        output_json = str(Path(target_dir) / "metadata" / "file_metadata.json")
+        base_dir = target_dir if target_dir else self.get_target_directory()
+        output_json = str(Path(base_dir) / "metadata" / "file_metadata.json")
         
         # 디렉토리 생성
         os.makedirs(os.path.dirname(output_json), exist_ok=True)
@@ -242,11 +245,16 @@ def save_metadata_to_json(metadata_list: List[Dict[str, Any]], output_file: str)
         logging.error(f"JSON 파일 저장 중 오류가 발생했습니다: {e}")
         raise
 
-def main():
+def main(target_dir: Optional[str] = None):
     try:
         # 환경 변수에서 설정 로드
         env_manager = EnvManager()
-        target_dir, output_json = env_manager.get_paths()
+        
+        # 외부에서 target_dir이 제공된 경우 그것을 사용, 아니면 기본값 사용
+        if not target_dir:
+            target_dir, output_json = env_manager.get_paths()
+        else:
+            output_json = env_manager.get_output_json_path(target_dir)
         
         # 디렉토리 존재 여부 확인
         if not os.path.exists(target_dir):

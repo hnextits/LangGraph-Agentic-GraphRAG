@@ -151,6 +151,7 @@ class TextSearcher:
         rerank_top_k: int = None,
         cancellation_event: Optional[threading.Event] = None,
         allowed_document_uuids: Optional[Set[str]] = None,
+        session_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """텍스트 쿼리로 검색을 수행합니다."""
         # config에서 기본값 가져오기
@@ -176,21 +177,31 @@ class TextSearcher:
                 raise InterruptedError("Operation cancelled before Weaviate search")
             
             # Weaviate 벡터 검색 수행 (v4 API)
-            logger.debug(f"Weaviate 검색 시작: 클래스={self.class_name}, top_k={search_top_k}")
+            logger.debug(f"Weaviate 검색 시작 (session: {session_id}): 클래스={self.class_name}, top_k={search_top_k}")
             
             try:
                 from weaviate.classes.query import Filter
                 
                 collection = self.client.collections.get(self.class_name)
                 
-                # UUID 필터 구성
+                # 필터 구성 (session_id + allowed_document_uuids)
                 filters = None
+                
+                # 1. 세션 필터 (session_id가 제공된 경우)
+                if session_id:
+                    filters = Filter.by_property("session_id").equal(session_id)
+                
+                # 2. UUID 필터 (allowed_document_uuids가 제공된 경우)
                 if allowed_document_uuids:
                     uuids = [uuid for uuid in allowed_document_uuids if uuid]
+                    uuid_filter = None
                     if len(uuids) == 1:
-                        filters = Filter.by_property("document_uuid").equal(uuids[0])
+                        uuid_filter = Filter.by_property("document_uuid").equal(uuids[0])
                     elif len(uuids) > 1:
-                        filters = Filter.by_property("document_uuid").contains_any(uuids)
+                        uuid_filter = Filter.by_property("document_uuid").contains_any(uuids)
+                    
+                    if uuid_filter:
+                        filters = filters & uuid_filter if filters else uuid_filter
                 
                 # 벡터 검색 실행
                 response = collection.query.near_vector(

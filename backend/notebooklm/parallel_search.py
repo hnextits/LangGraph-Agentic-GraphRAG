@@ -33,6 +33,7 @@ class ParallelSearcher:
         top_k: int = 3,
         cancellation_event: Optional[threading.Event] = None,
         allowed_document_uuids: Optional[Set[str]] = None,
+        session_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         쿼리 재작성부터 병렬 검색, 재정렬까지 전체 검색 파이프라인을 실행합니다.
@@ -109,14 +110,15 @@ class ParallelSearcher:
                             continue # 다음 작업으로 넘어감
 
                         futures.append(
-                            executor.submit(
-                                searcher.search,
-                                rewritten_query,
-                                top_k=top_k,
-                                rerank=rerank_needed,
-                                cancellation_event=cancellation_event,
-                                allowed_document_uuids=allowed_document_uuids,
-                            )
+                                executor.submit(
+                                    searcher.search,
+                                    rewritten_query,
+                                    top_k=top_k,
+                                    rerank=rerank_needed,
+                                    cancellation_event=cancellation_event,
+                                    allowed_document_uuids=allowed_document_uuids,
+                                    session_id=session_id,
+                                )
                         )
             
             # 결과 취합 - 이미지와 텍스트 분리

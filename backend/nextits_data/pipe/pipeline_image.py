@@ -183,6 +183,7 @@ def main():
     parser.add_argument("--layout_input", type=str, help="레이아웃 감지 결과가 있는 입력 디렉토리")
     parser.add_argument("--crop_output", type=str, help="크롭된 이미지를 저장할 출력 디렉토리")
     parser.add_argument("--metadata_output", type=str, help="병합된 메타데이터를 저장할 출력 디렉토리")
+    parser.add_argument("--results_base", type=str, help="결과 저장 최상위 경로 (세션 지원용)")
     
     # 처리 옵션 인자
     parser.add_argument("--skip_existing", dest="skip_existing", action="store_true", help="이미 처리된 파일 건너뛰기")
@@ -200,9 +201,16 @@ def main():
     args = parser.parse_args()
     
     # 인자에서 값 가져오기 (또는 기본값 사용)
-    layout_input_dir = args.layout_input or str(Config.LAYOUT_INPUT_DIR)
-    crop_output_dir = args.crop_output or str(Config.CROP_OUTPUT_DIR)
-    metadata_output_dir = args.metadata_output or str(Config.METADATA_OUTPUT_DIR)
+    results_base = Path(args.results_base) if args.results_base else None
+    
+    if results_base:
+        layout_input_dir = args.layout_input or str(results_base / "2.LayoutDetection")
+        crop_output_dir = args.crop_output or str(results_base / "3.Crop_image")
+        metadata_output_dir = args.metadata_output or str(results_base / "5.Completion_results" / "image")
+    else:
+        layout_input_dir = args.layout_input or str(Config.LAYOUT_INPUT_DIR)
+        crop_output_dir = args.crop_output or str(Config.CROP_OUTPUT_DIR)
+        metadata_output_dir = args.metadata_output or str(Config.METADATA_OUTPUT_DIR)
     skip_existing = Config.SKIP_EXISTING if args.skip_existing is None else args.skip_existing
     resume = Config.RESUME if args.resume is None else args.resume
     add_numbering = Config.ADD_NUMBERING if args.add_numbering is None else args.add_numbering

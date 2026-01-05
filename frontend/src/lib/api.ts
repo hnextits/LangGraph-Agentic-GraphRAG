@@ -17,6 +17,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 const api = axios.create({
   baseURL: API_URL,
   timeout: 600000, // 10분 타임아웃 (RAG 처리 시간 고려)
+  withCredentials: true, // 쿠키 전송 및 수신 허용
   headers: {
     'Content-Type': 'application/json',
   },
@@ -26,6 +27,15 @@ const api = axios.create({
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     console.log(`API 요청: ${config.method?.toUpperCase()} ${config.url}`);
+    
+    // 로컬 스토리지에서 세션 ID 가져오기
+    if (typeof window !== 'undefined') {
+      const storedSessionId = localStorage.getItem('session_id');
+      if (storedSessionId) {
+        config.headers['X-Session-ID'] = storedSessionId;
+      }
+    }
+    
     return config;
   },
   (error: any) => {
@@ -38,6 +48,17 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     console.log(`API 응답: ${response.status} ${response.config.url}`);
+    
+    // 백엔드에서 생성한 세션 ID가 헤더로 내려오면 저장
+    const sessionId = response.headers['x-session-id'];
+    if (sessionId && typeof window !== 'undefined') {
+      const currentSessionId = localStorage.getItem('session_id');
+      if (currentSessionId !== sessionId) {
+        console.log(`세션 ID 업데이트: ${sessionId}`);
+        localStorage.setItem('session_id', sessionId);
+      }
+    }
+    
     return response;
   },
   (error: any) => {

@@ -120,6 +120,10 @@ const FileUploadBox: React.FC<FileUploadBoxProps> = ({ isOpen, onClose, onFilesA
       // 태스크 상태 폴링
       pollAbortRef.current = false;
       const pollSingleTask = async (taskId: string) => {
+        if (!taskId || taskId === 'undefined') {
+          console.error('유효하지 않은 taskId로 폴링을 시도했습니다.');
+          return 'failed';
+        }
         let failureCount = 0;
         while (!pollAbortRef.current) {
           try {

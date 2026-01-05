@@ -47,7 +47,18 @@ class RAGConfig:
         #############################################
         current_file = Path(__file__).resolve()
         self.PROJECT_ROOT = current_file.parent.parent.parent
-        self.DATA_PATH = self.DATA_PATH = self.PROJECT_ROOT / "data" / "nextits_data"
+        self.DATA_ROOT = self.PROJECT_ROOT / "backend" / "nextits_data"
+        self.DATA_PATH = self.DATA_ROOT
+        self.SESSIONS_ROOT = self.DATA_ROOT / "sessions"
+        self.DEFAULT_DOC_DIR = self.DATA_ROOT / "doc"
+        self.DEFAULT_METADATA_DIR = self.DEFAULT_DOC_DIR / "metadata"
+        self.DEFAULT_METADATA_FILE = self.DEFAULT_METADATA_DIR / "file_metadata.json"
+        
+        # 기본 디렉토리 생성
+        self.DATA_ROOT.mkdir(parents=True, exist_ok=True)
+        self.SESSIONS_ROOT.mkdir(parents=True, exist_ok=True)
+        self.DEFAULT_DOC_DIR.mkdir(parents=True, exist_ok=True)
+        self.DEFAULT_METADATA_DIR.mkdir(parents=True, exist_ok=True)
         self.INDEX_DIR = os.path.join(os.path.dirname(__file__), "faiss_test")
         self.CACHE_DIR = Path.home() / ".cache" / "huggingface" / "hub"
         
@@ -445,6 +456,29 @@ class RAGConfig:
         # 초기화 완료 표시
         self._initialized = True
     
+    def get_session_dir(self, session_id: str) -> Path:
+        """세션별 전용 디렉토리 경로 반환 및 생성"""
+        session_dir = self.SESSIONS_ROOT / session_id
+        session_dir.mkdir(parents=True, exist_ok=True)
+        return session_dir
+
+    def get_session_doc_dir(self, session_id: str) -> Path:
+        """세션별 문서 디렉토리 경로 반환 및 생성"""
+        doc_dir = self.get_session_dir(session_id) / "doc"
+        doc_dir.mkdir(parents=True, exist_ok=True)
+        return doc_dir
+
+    def get_session_metadata_file(self, session_id: str) -> Path:
+        """세션별 메타데이터 파일 경로 반환"""
+        metadata_dir = self.get_session_doc_dir(session_id) / "metadata"
+        metadata_dir.mkdir(parents=True, exist_ok=True)
+        return metadata_dir / "file_metadata.json"
+
+    def get_session_results_dir(self, session_id: str, result_type: str) -> Path:
+        """세션별 결과물(OCR, 요약 등) 디렉토리 경로 반환 및 생성"""
+        results_dir = self.get_session_dir(session_id) / "Results" / result_type
+        results_dir.mkdir(parents=True, exist_ok=True)
+        return results_dir
     def _setup_memory_optimization(self):
         """메모리 최적화 설정"""
         import os

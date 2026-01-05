@@ -123,7 +123,7 @@ def run_udp_checkfiletype():
         print(f"오류: 스크립트 실행 중 오류 발생: {str(e)}")
         return []
 
-def process_file(file_path: str, skip_existing: bool = True, resume: bool = True):
+def process_file(file_path: str, skip_existing: bool = True, resume: bool = True, results_base: Path = None):
     """
     파일을 처리하고 유형을 판단합니다.
     
@@ -131,26 +131,30 @@ def process_file(file_path: str, skip_existing: bool = True, resume: bool = True
         file_path (str): 처리할 파일 경로
         skip_existing (bool): 이미 처리된 파일은 건너뛸지 여부
         resume (bool): 중단된 작업을 이어서 처리할지 여부
+        results_base (Path): 결과 저장 최상위 경로
     """
+    if results_base is None:
+        results_base = Path(__file__).parent.parent / 'Results'
+
     file_type = "알 수 없음"
     
     if is_pdf_file(file_path):
         file_type = "PDF"
         print(f"PDF 파일 감지: {file_path}")
         # PDF 처리 알고리즘 실행 (udp_pdftopng_300dpi.py)
-        process_pdf_file(file_path, skip_existing=skip_existing, resume=resume)
+        process_pdf_file(file_path, skip_existing=skip_existing, resume=resume, results_base=results_base)
 
     elif is_office_document(file_path):
         file_type = "Office"
         print(f"Office/HWP 파일 감지: {file_path}")
         # Office → PDF 변환 후 PDF 파이프라인 재사용
-        pdf_output_dir = Path(__file__).parent.parent / 'Results' / '0.Office_converted_pdf'
+        pdf_output_dir = results_base / '0.Office_converted_pdf'
         pdf_output_dir.mkdir(parents=True, exist_ok=True)
 
         converted_pdf = convert_to_pdf(file_path, output_dir=str(pdf_output_dir))
         if converted_pdf:
             print(f"변환된 PDF로 처리 진행: {converted_pdf}")
-            process_pdf_file(converted_pdf, skip_existing=skip_existing, resume=resume)
+            process_pdf_file(converted_pdf, skip_existing=skip_existing, resume=resume, results_base=results_base)
             file_type = "PDF"
         else:
             print(f"Office → PDF 변환 실패: {file_path}")
@@ -159,12 +163,12 @@ def process_file(file_path: str, skip_existing: bool = True, resume: bool = True
         file_type = "이미지"
         print(f"이미지 파일 감지: {file_path}")
         # 이미지 처리 알고리즘 실행 (UVDoc/demo.py)
-        process_image_file(file_path, skip_existing=skip_existing, resume=resume)
+        process_image_file(file_path, skip_existing=skip_existing, resume=resume, results_base=results_base)
 
     elif is_sound_file(file_path):
         file_type = "음성"
         print(f"음성 파일 감지: {file_path}")
-        process_sound_file(file_path, skip_existing=skip_existing, resume=resume)
+        process_sound_file(file_path, skip_existing=skip_existing, resume=resume, results_base=results_base)
         
     else:
         print(f"지원되지 않는 파일 유형: {file_path}")
@@ -177,7 +181,7 @@ def is_office_document(file_path: str) -> bool:
     """
     return is_office_file(file_path)
 
-def process_image_file(file_path: str, skip_existing: bool = True, resume: bool = True):
+def process_image_file(file_path: str, skip_existing: bool = True, resume: bool = True, results_base: Path = None):
     """
     이미지 파일을 처리합니다. UVDoc/demo.py를 실행하여 이미지 왕곡 보정을 수행합니다.
     
@@ -185,7 +189,11 @@ def process_image_file(file_path: str, skip_existing: bool = True, resume: bool 
         file_path (str): 처리할 이미지 파일 경로
         skip_existing (bool): 이미 처리된 파일은 건너뛸지 여부
         resume (bool): 중단된 작업을 이어서 처리할지 여부
+        results_base (Path): 결과 저장 최상위 경로
     """
+    if results_base is None:
+        results_base = Path(__file__).parent.parent / 'Results'
+
     try:
         print(f"이미지 파일 처리 중: {file_path}")
         
@@ -197,7 +205,7 @@ def process_image_file(file_path: str, skip_existing: bool = True, resume: bool 
             return False
         
         # 기본 출력 디렉토리
-        output_dir = Path(__file__).parent.parent / 'Results/1.Converted_images/IMG'
+        output_dir = results_base / '1.Converted_images/IMG'
         
         # 출력 디렉토리 생성
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -267,19 +275,22 @@ def process_image_file(file_path: str, skip_existing: bool = True, resume: bool 
         traceback.print_exc()
         return False
 
-def process_sound_file(file_path: str, skip_existing: bool = True, resume: bool = True):
+def process_sound_file(file_path: str, skip_existing: bool = True, resume: bool = True, results_base: Path = None):
     """음성 또는 영상 파일을 STT 파이프라인에 전달하고 결과를 저장합니다.
     
     저장 위치:
     - 4.OCR_results: 화자 정보 포함 (클릭 시 표시용)
     - 7.stt: 텍스트만 (임베딩용)
     """
+    if results_base is None:
+        results_base = Path(__file__).parent.parent / 'Results'
+
     try:
         print(f"음성/영상 파일 처리 중: {file_path}")
 
         # 4.OCR_results와 7.stt 디렉토리에서 이미 처리된 파일 확인
-        ocr_results_dir = Path(__file__).parent.parent / 'Results' / '4.OCR_results'
-        stt_dir = Path(__file__).parent.parent / 'Results' / '7.stt'
+        ocr_results_dir = results_base / '4.OCR_results'
+        stt_dir = results_base / '7.stt'
         ocr_results_dir.mkdir(parents=True, exist_ok=True)
         stt_dir.mkdir(parents=True, exist_ok=True)
         
@@ -314,7 +325,7 @@ def process_sound_file(file_path: str, skip_existing: bool = True, resume: bool 
         traceback.print_exc()
         return False
 
-def process_pdf_file(file_path: str, skip_existing: bool = True, resume: bool = True):
+def process_pdf_file(file_path: str, skip_existing: bool = True, resume: bool = True, results_base: Path = None):
     """
     PDF 파일을 처리합니다. udp_pdftopng_300dpi.py를 사용하여 PNG로 변환합니다.
     
@@ -322,7 +333,11 @@ def process_pdf_file(file_path: str, skip_existing: bool = True, resume: bool = 
         file_path (str): 처리할 PDF 파일 경로
         skip_existing (bool): 이미 처리된 파일은 건너뛸지 여부
         resume (bool): 중단된 작업을 이어서 처리할지 여부
+        results_base (Path): 결과 저장 최상위 경로
     """
+    if results_base is None:
+        results_base = Path(__file__).parent.parent / 'Results'
+
     try:
         print(f"PDF 파일 처리 중: {file_path}")
         
@@ -334,7 +349,7 @@ def process_pdf_file(file_path: str, skip_existing: bool = True, resume: bool = 
             return False
         
         # 기본 출력 디렉토리 (PDF 폴더)
-        base_output_dir = Path(__file__).parent.parent / 'Results/1.Converted_images/PDF'
+        base_output_dir = results_base / '1.Converted_images/PDF'
         base_output_dir.mkdir(parents=True, exist_ok=True)
         
         # PDF 파일명으로 하위 폴더 생성
@@ -486,10 +501,14 @@ def run_image_pipeline(
     min_height: int = 200,
     max_width: int = 800,
     max_height: int = 850,
+    results_base: Path = None,
 ):
     """
     이미지 파이프라인 스크립트(pipeline_image.py)를 실행하는 함수
     """
+    if results_base is None:
+        results_base = Path(__file__).parent.parent / 'Results'
+
     try:
         print("\n===== 이미지 파이프라인 실행 중... =====\n")
         pipeline_script = Path(__file__).parent / 'pipeline_image.py'
@@ -499,6 +518,11 @@ def run_image_pipeline(
             return False
 
         cmd = [sys.executable, str(pipeline_script)]
+        
+        # 결과 베이스 디렉토리 전달 (pipeline_image.py가 이를 지원하도록 수정 필요할 수 있음)
+        # 현재는 환경 변수나 인자로 전달 가능하다고 가정
+        if results_base:
+            cmd.extend(['--results_base', str(results_base)])
 
         if skip_existing is not None:
             cmd.append('--skip_existing' if skip_existing else '--no_skip_existing')
@@ -527,7 +551,7 @@ def run_image_pipeline(
         return False
 
 
-def run_ocr_processing(image_source_dir, exclude_labels=None, skip_ocr=False, skip_existing=True, resume=True, batch_size=64):
+def run_ocr_processing(image_source_dir, exclude_labels=None, skip_ocr=False, skip_existing=True, resume=True, batch_size=64, output_dir=None):
     """`inference.py`를 사용하여 OCR 처리를 수행합니다.
 
     Args:
@@ -537,6 +561,7 @@ def run_ocr_processing(image_source_dir, exclude_labels=None, skip_ocr=False, sk
         skip_existing: 기존 파일 건너뛰기 여부.
         resume: 중단된 작업 이어서 처리 여부 (현재 사용되지 않음).
         batch_size: 배치 크기.
+        output_dir: 결과를 저장할 디렉토리 (기본값: Results/4.OCR_results).
 
     Returns:
         bool: OCR 처리 성공 여부.
@@ -557,7 +582,11 @@ def run_ocr_processing(image_source_dir, exclude_labels=None, skip_ocr=False, sk
         return False
 
     # 결과를 저장할 최상위 폴더 설정
-    ocr_results_dir = Path(__file__).parent.parent / 'Results/4.OCR_results'
+    if output_dir is None:
+        ocr_results_dir = Path(__file__).parent.parent / 'Results/4.OCR_results'
+    else:
+        ocr_results_dir = Path(output_dir)
+    
     ocr_results_dir.mkdir(parents=True, exist_ok=True)
 
     # layout_output_dir의 하위 폴더들을 순회
@@ -619,6 +648,7 @@ def main():
         import argparse
         parser = argparse.ArgumentParser(description="파일 처리 파이프라인")
         parser.add_argument("--file", type=str, help="처리할 파일 경로")
+        parser.add_argument("--session_id", type=str, help="세션 ID")
         parser.add_argument("--skip_existing", action="store_true", help="이미 처리된 파일 건너뛰기")
         parser.add_argument("--no_skip_existing", dest="skip_existing", action="store_false", help="이미 처리된 파일도 다시 처리")
         parser.add_argument("--resume", action="store_true", help="중단된 작업 이어서 처리하기")
@@ -628,9 +658,18 @@ def main():
         parser.set_defaults(skip_existing=True, resume=True, skip_ocr=False)
         args = parser.parse_args()
         
+        # 세션 경로 설정
+        script_dir = Path(__file__).resolve().parent
+        data_dir = script_dir.parent
+        results_base = data_dir / 'Results'
+        if args.session_id:
+            results_base = data_dir / 'sessions' / args.session_id / 'Results'
+            results_base.mkdir(parents=True, exist_ok=True)
+            print(f"세션 모드 활성화: {args.session_id}, 결과 저장 위치: {results_base}")
+
         # 파일 경로가 지정되지 않은 경우 모든 파일 처리
         if not args.file:
-            # udp_checkfiletype.py 실행하고 결과 파일 목록 가져오기
+            # udp_checkfiletype.py 실행하고 결과 파일 목록 가져오기 (세션 디렉토리 고려 필요 시 수정)
             file_paths = run_udp_checkfiletype()
             
             if file_paths:
@@ -651,7 +690,8 @@ def main():
                     print(f"\n[{idx}/{len(file_paths)}] 파일 처리 중: {file_path}")
                     
                     if os.path.isfile(file_path):
-                        file_type = process_file(file_path, skip_existing=args.skip_existing, resume=args.resume)
+                        # process_file 내부에서도 results_base를 사용하도록 수정
+                        file_type = process_file(file_path, skip_existing=args.skip_existing, resume=args.resume, results_base=results_base)
                         
                         if file_type == "PDF":
                             stats['pdf'] += 1
@@ -673,15 +713,17 @@ def main():
                 
                 # PDF 파일이 처리되었다면 레이아웃 감지 실행
                 if stats['pdf'] > 0:
-                    input_dir = Path(__file__).parent.parent / 'Results/1.Converted_images'
-                    output_dir = Path(__file__).parent.parent / 'Results/2.LayoutDetection'
+                    input_dir = results_base / '1.Converted_images'
+                    output_dir = results_base / '2.LayoutDetection'
                     if run_layout_detection(input_dir, output_dir, args.skip_existing, args.resume):
                         # OCR 처리 실행 (입력 소스: 변환된 이미지 디렉토리)
+                        ocr_results_dir = results_base / '4.OCR_results'
                         ocr_success = run_ocr_processing(input_dir, exclude_labels=["image", "table", "formula"], 
                                           skip_ocr=args.skip_ocr, 
                                           skip_existing=args.skip_existing, 
                                           resume=args.resume,
-                                          batch_size=args.batch_size)
+                                          batch_size=args.batch_size,
+                                          output_dir=ocr_results_dir)
                         
                         if ocr_success:
                             print("\n===== OCR 처리 완료 =====\n")
@@ -690,6 +732,7 @@ def main():
                             run_image_pipeline(
                                 skip_existing=args.skip_existing,
                                 resume=args.resume,
+                                results_base=results_base
                             )
                         
                         print("\n===== 파일 처리 완료 =====\n")
@@ -703,24 +746,28 @@ def main():
             # 특정 파일만 처리
             file_path = args.file
             if os.path.isfile(file_path):
-                file_type = process_file(file_path, skip_existing=args.skip_existing, resume=args.resume)
+                # process_file이 사용하는 결과를 세션 경로로 변경하려면 process_file도 수정해야 함
+                # 일단 여기서 필요한 디렉토리들은 session_id 기준으로 설정
+                file_type = process_file(file_path, skip_existing=args.skip_existing, resume=args.resume, results_base=results_base)
                 print(f"\n파일 유형: {file_type}")
                 
                 # PDF 파일이 처리되었다면 레이아웃 감지 실행
                 if file_type == "PDF":
-                    input_dir = Path(__file__).parent.parent / 'Results/1.Converted_images'
-                    output_dir = Path(__file__).parent.parent / 'Results/2.LayoutDetection'
+                    input_dir = results_base / '1.Converted_images'
+                    output_dir = results_base / '2.LayoutDetection'
                     if run_layout_detection(input_dir, output_dir, args.skip_existing, args.resume):
                         # OCR 처리 실행 (입력 소스: 변환된 이미지 디렉토리)
+                        ocr_results_dir = results_base / '4.OCR_results'
                         ocr_success = run_ocr_processing(input_dir, exclude_labels=["image", "table", "formula"], 
                                           skip_ocr=args.skip_ocr, 
                                           skip_existing=args.skip_existing, 
                                           resume=args.resume,
-                                          batch_size=args.batch_size)
+                                          batch_size=args.batch_size,
+                                          output_dir=ocr_results_dir)
                         
                         if ocr_success:
                             # 이미지 파이프라인 실행
-                            run_image_pipeline()
+                            run_image_pipeline(results_base=results_base)
             else:
                 print(f"오류: 유효한 파일이 아닙니다: {file_path}")
             
