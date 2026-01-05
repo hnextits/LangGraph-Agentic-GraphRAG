@@ -83,10 +83,6 @@ async def generate_mindmap_task(task_id: str, filename: str, max_topics: int, mo
     if session_id:
         ocr_results_dir = config.get_session_results_dir(session_id, "4.OCR_results")
         mindmap_dir = config.get_session_results_dir(session_id, "8.mindmap")
-    else:
-        # 하위 호환성
-        ocr_results_dir = config.DATA_ROOT / "Results" / "4.OCR_results"
-        mindmap_dir = config.DATA_ROOT / "Results" / "8.mindmap"
     
     mindmap_dir.mkdir(parents=True, exist_ok=True)
 
@@ -323,7 +319,7 @@ async def generate_mindmap(
         generate_mindmap_task, 
         task_id, 
         filename, 
-        max_topics, 
+        request_data.max_topics, 
         model_manager,
         session_id=session_id
     )
