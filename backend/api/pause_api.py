@@ -7,7 +7,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # API 라우터 설정
-router = APIRouter()
+router = APIRouter(tags=["Pause"])
 
 # 전역 취소 상태 관리
 cancel_state = {

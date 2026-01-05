@@ -13,7 +13,7 @@ from pathlib import Path
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/v1/mindmap", tags=["Mindmap"])
+router = APIRouter(tags=["Mindmap"])
 
 # SGLang 기반 마인드맵 생성기 임포트
 try:
@@ -76,35 +76,53 @@ class MindmapContentResponse(BaseModel):
 
 # === 백그라운드 작업 함수 ===
 async def generate_mindmap_task(task_id: str, filename: str, max_topics: int, model_manager: Any, session_id: Optional[str] = None):
-    """백그라운드에서 마인드맵 생성 (subprocess 방식, max_topics 전달)"""
+    """백그라운드에서 마인드맵 생성 (글로벌 + 세션 OCR 결과 검색)"""
     from notebooklm.config import RAGConfig
     config = RAGConfig()
     
+    # 1. 경로 설정 (세션 및 글로벌)
+    session_ocr_dir = None
+    session_mindmap_dir = None
     if session_id:
-        ocr_results_dir = config.get_session_results_dir(session_id, "4.OCR_results")
-        mindmap_dir = config.get_session_results_dir(session_id, "8.mindmap")
+        session_ocr_dir = config.get_session_results_dir(session_id, "4.OCR_results")
+        session_mindmap_dir = config.get_session_results_dir(session_id, "8.mindmap")
     
+    global_ocr_dir = config.DATA_ROOT / "Results" / "4.OCR_results"
+    global_mindmap_dir = config.DATA_ROOT / "Results" / "8.mindmap"
+    
+    # 결과 저장 디렉토리 (세션 우선)
+    mindmap_dir = session_mindmap_dir or global_mindmap_dir
     mindmap_dir.mkdir(parents=True, exist_ok=True)
 
     try:
         logger.info(f"[{task_id}] 마인드맵 생성 시작: {filename} (max_topics={max_topics}, session={session_id})")
         
-        # 1. 파일 찾기
+        # 2. 파일 찾기 (세션 우선 후 글로벌)
         base_name = Path(filename).stem
         candidate_names = [filename, f"{base_name}.md", f"{base_name}.txt"]
         
-        input_file = None
+        file_path = None
         for name in candidate_names:
-            p = ocr_results_dir / name
-            if p.exists():
-                input_file = p
-                break
+            # 세션 디렉토리 먼저 확인
+            if session_ocr_dir:
+                p = session_ocr_dir / name
+                if p.exists():
+                    file_path = p
+                    break
+            
+            # 글로벌 디렉토리 확인
+            if not file_path:
+                p = global_ocr_dir / name
+                if p.exists():
+                    file_path = p
+                    break
         
-        if not input_file:
-            raise FileNotFoundError(f"4.OCR_results에서 파일을 찾을 수 없습니다: {filename}")
+        if file_path is None:
+            logger.error(f"[{task_id}] OCR 결과에서 파일을 찾을 수 없습니다: {filename}")
+            raise FileNotFoundError(f"OCR 결과에서 파일을 찾을 수 없습니다: {filename}")
         
         # 2. 파일 내용 읽기
-        with open(input_file, 'r', encoding='utf-8') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
             document_content = f.read()
         
         if not document_content or document_content.isspace():

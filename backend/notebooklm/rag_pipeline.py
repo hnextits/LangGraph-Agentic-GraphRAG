@@ -59,6 +59,26 @@ class RAGPipeline:
         
         logger.info("RAG 파이프라인 초기화 완료")
     
+    def load_engine_sync(self):
+        """SGLang 엔진을 명시적으로 로드합니다. (메인 스레드에서 직접 호출 필수)"""
+        try:
+            if self.generator and hasattr(self.generator, "ensure_model_loaded"):
+                # to_thread를 사용하지 않고 직접 호출하여 메인 스레드 유지
+                self.generator.ensure_model_loaded()
+                logger.info("Generator 엔진 로드 완료")
+            
+            if self.refiner and hasattr(self.refiner, "ensure_model_loaded"):
+                self.refiner.ensure_model_loaded()
+                logger.info("Refiner 엔진 로드 완료")
+        except Exception as e:
+            logger.error(f"엔진 로드 중 오류 발생: {e}")
+            raise
+
+    async def load_engine(self):
+        """SGLang 엔진을 비동기 인터페이스로 로드 (하위 호환성용)"""
+        # 내부적으로는 동기 함수를 호출하지만, 호출하는 쪽이 메인 스레드여야 함
+        self.load_engine_sync()
+
     def cleanup(self):
         """파이프라인이 사용하는 모든 리소스를 정리합니다."""
         try:

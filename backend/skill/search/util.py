@@ -226,14 +226,14 @@ def find_table_and_remove_style(article,soup):
 
 def crawling_web(result: dict, output_dir: str) -> str:
     """
-    웹 페이지를 크롤링하여 파일로 저장
+    웹 페이지를 크롤링하여 파일로 저장 (세션별 Results/4.OCR_results 연동 강화)
     
     Args:
         result: {'title': str, 'link': str, 'snippet': str (optional)} 형태의 딕셔너리
-        output_dir: 저장할 디렉토리 경로 (doc 또는 search_data/crawling)
+        output_dir: 저장할 디렉토리 경로 (예: .../sessions/[session_id]/doc)
         
     Returns:
-        str: 저장된 파일 경로 (doc 디렉토리의 파일)
+        str: 저장된 파일 경로
     """
     import requests
     from bs4 import BeautifulSoup
@@ -250,13 +250,22 @@ def crawling_web(result: dict, output_dir: str) -> str:
     
     # 파일명 생성
     safe_filename = sanitize_filename(title)
-    output_path = Path(output_dir) / f"{safe_filename}.md"
     
-    # 디렉토리 생성
-    Path(output_dir).mkdir(parents=True, exist_ok=True)
+    # output_dir가 문자열인 경우 Path 객체로 변환
+    base_output_path = Path(output_dir)
+    base_output_path.mkdir(parents=True, exist_ok=True)
     
-    # 4.OCR_results 디렉토리 경로 설정
-    ocr_results_dir = Path(output_dir).parent / 'Results' / '4.OCR_results'
+    # 1. doc 디렉토리에 저장 (list_files 노출용)
+    output_path = base_output_path / f"{safe_filename}.md"
+    
+    # 2. OCR_results 디렉토리 경로 설정 (세션 구조 대응)
+    # output_dir가 .../sessions/[session_id]/doc 형식이면 .parent는 .../sessions/[session_id]
+    if base_output_path.name == 'doc':
+        ocr_results_dir = base_output_path.parent / 'Results' / '4.OCR_results'
+    else:
+        # 일반적인 경우 Results 폴더 생성 시도
+        ocr_results_dir = base_output_path.parent / 'Results' / '4.OCR_results'
+        
     ocr_results_dir.mkdir(parents=True, exist_ok=True)
     ocr_results_path = ocr_results_dir / f"{safe_filename}.md"
     
@@ -292,14 +301,14 @@ def crawling_web(result: dict, output_dir: str) -> str:
             markdown_content += f"**요약:** {snippet}\n\n"
         markdown_content += f"## 본문\n\n{content}\n"
         
-        # doc 디렉토리에 파일 저장
-        with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(markdown_content)
+        # 1. doc 디렉토리에 파일 저장
+        output_path.write_text(markdown_content, encoding='utf-8')
         
-        # 4.OCR_results 디렉토리에도 복사
-        shutil.copy2(output_path, ocr_results_path)
-        print(f"검색 결과 저장: {output_path}")
-        print(f"검색 결과 복사: {ocr_results_path}")
+        # 2. 4.OCR_results 디렉토리에도 저장 (상세보기용)
+        ocr_results_path.write_text(markdown_content, encoding='utf-8')
+        
+        print(f"검색 결과 저장 완료: {output_path}")
+        print(f"OCR 결과 저장 완료: {ocr_results_path}")
         
         return str(output_path)
         
@@ -310,13 +319,8 @@ def crawling_web(result: dict, output_dir: str) -> str:
         markdown_content += f"**요약:** {snippet}\n\n"
         markdown_content += f"**오류:** 페이지 크롤링 실패 - {str(e)}\n"
         
-        # doc 디렉토리에 파일 저장
-        with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(markdown_content)
+        output_path.write_text(markdown_content, encoding='utf-8')
+        ocr_results_path.write_text(markdown_content, encoding='utf-8')
         
-        # 4.OCR_results 디렉토리에도 복사
-        shutil.copy2(output_path, ocr_results_path)
         print(f"검색 결과 저장 (오류 포함): {output_path}")
-        print(f"검색 결과 복사 (오류 포함): {ocr_results_path}")
-        
         return str(output_path)

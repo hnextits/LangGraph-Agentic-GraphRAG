@@ -25,7 +25,7 @@ from skill.search.util import sanitize_filename as search_sanitize_filename, cra
 # --- 로거 설정 (먼저 설정) ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/v1")
+router = APIRouter(tags=["RAG"])
 
 UUID_PATTERN = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
@@ -96,10 +96,12 @@ except ImportError as e:
 # 요약 생성기 인스턴스 (싱글톤으로 관리) - LazyModelManager 사용으로 전환 중
 answer_generator = None
 
-def get_answer_generator(request: Request):
-    """LazyModelManager를 통해 AnswerGenerator 인스턴스를 가져옵니다."""
-    model_manager = request.app.state.model_manager
-    return model_manager.acquire("answer_generator")
+def build_answer_generator():
+    """LazyModelManager용 AnswerGenerator 빌더."""
+    if AnswerGenerator is None:
+        raise RuntimeError("AnswerGenerator 모듈을 사용할 수 없습니다.")
+    logger.info("Lazy builder를 통해 AnswerGenerator 인스턴스를 생성합니다.")
+    return AnswerGenerator()
 
 
 def sanitize_summary_filename(value: str) -> str:
@@ -190,7 +192,325 @@ class SummarizeResponse(BaseModel):
     timestamp: str
 
 
-# --- 경로 설정 및 세션 도우미 ---
+# --- API 엔드포인트 구현 ---
+
+@router.get("/files", response_model=FileListResponse)
+async def list_files(request: Request):
+    """업로드된 파일 목록 조회 (글로벌 + 세션별 병합, doc 디렉토리 기준)"""
+    from notebooklm.config import RAGConfig
+    config = RAGConfig()
+    paths = get_session_paths(request)
+    
+    # LeftBox에는 원본 문서(doc) 디렉토리의 파일들만 표시
+    search_dirs = [
+        config.DEFAULT_DOC_DIR, # 글로벌 doc
+        paths["doc_dir"]        # 세션 doc
+    ]
+    
+    # 1. 파일 목록 수집 (병합 및 중복 제거)
+    all_files = set()
+    for d in search_dirs:
+        if d.exists():
+            # .md, .txt, .pdf 파일 모두 수집하여 목록에 노출
+            for f in d.iterdir():
+                if f.is_file() and not f.name.startswith('.'):
+                    all_files.add(f.name)
+    
+    files_list = sorted(list(all_files))
+    
+    # 2. Weaviate에서 UUID 매핑 정보 가져오기
+    uuid_map = {}
+    try:
+        client = config.get_weaviate_client()
+        if client and files_list:
+            from notebooklm.weaviate_utils import get_document_uuid_map
+            uuid_map = get_document_uuid_map(client, files_list)
+            client.close()
+    except Exception as e:
+        logger.warning(f"UUID 매핑 조회 실패: {e}")
+
+    return FileListResponse(files=files_list, document_uuid_map=uuid_map)
+
+
+@router.get("/summarizes", response_model=FileListResponse)
+async def list_summarizes(request: Request):
+    """생성된 요약 파일 목록 조회 (글로벌 + 세션별 병합)"""
+    from notebooklm.config import RAGConfig
+    config = RAGConfig()
+    paths = get_session_paths(request)
+    
+    session_summarize_dir = paths["summarize_dir"]
+    global_summarize_dir = config.DATA_ROOT / "Results" / "6.summarize"
+    
+    all_files = set()
+    if global_summarize_dir.exists():
+        all_files.update([f.name for f in global_summarize_dir.iterdir() if f.is_file() and f.suffix == ".md"])
+    if session_summarize_dir.exists():
+        all_files.update([f.name for f in session_summarize_dir.iterdir() if f.is_file() and f.suffix == ".md"])
+    
+    return FileListResponse(files=sorted(list(all_files)))
+
+
+@router.get("/summarizes/{filename}", response_model=FileContentResponse)
+async def get_summarize_content(request: Request, filename: str):
+    """특정 요약 파일의 내용 조회 (세션 우선 후 글로벌 검색)"""
+    from notebooklm.config import RAGConfig
+    config = RAGConfig()
+    paths = get_session_paths(request)
+    
+    # 1. 세션 디렉토리 확인
+    session_file = paths["summarize_dir"] / filename
+    if session_file.exists():
+        file_path = session_file
+    else:
+        # 2. 글로벌 디렉토리 확인
+        global_file = config.DATA_ROOT / "Results" / "6.summarize" / filename
+        if global_file.exists():
+            file_path = global_file
+        else:
+            raise HTTPException(status_code=404, detail="요약 파일을 찾을 수 없습니다.")
+    
+    try:
+        content = file_path.read_text(encoding="utf-8")
+        return FileContentResponse(filename=filename, content=content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"파일 읽기 오류: {e}")
+
+
+@router.get("/tasks/{task_id}", response_model=TaskStatusResponse)
+async def get_task_status(request: Request, task_id: str):
+    """작업 상태 조회 (GPU 큐 상태 포함)"""
+    # 1. 메모리 내 작업 상태 확인
+    tasks_dict = request.app.state.tasks
+    if task_id in tasks_dict:
+        status_data = tasks_dict[task_id]
+        return TaskStatusResponse(
+            task_id=task_id,
+            status=status_data.get("status", "unknown"),
+            message=status_data.get("message"),
+            progress=status_data.get("progress"),
+            result=status_data.get("result"),
+            error=status_data.get("error")
+        )
+    
+    # 2. GPU 작업 큐에서 확인
+    from utils.task_queue import gpu_task_queue
+    queue_status = gpu_task_queue.get_queue_status(task_id)
+    if queue_status["status"] != "not_found":
+        return TaskStatusResponse(
+            task_id=task_id,
+            status=queue_status["status"],
+            message=queue_status["message"],
+            progress=5 if queue_status["status"] == "pending" else 20
+        )
+        
+    raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다.")
+
+
+@router.delete("/files", response_model=DeleteFilesResponse)
+async def delete_files(request: Request, delete_req: DeleteFilesRequest):
+    """파일 삭제 (세션별 격리)"""
+    paths = get_session_paths(request)
+    doc_dir = paths["doc_dir"]
+    ocr_dir = paths["ocr_results_dir"]
+    
+    deleted_files = []
+    failed_files = []
+    
+    for filename in delete_req.filenames:
+        try:
+            # 원본 파일 삭제
+            file_path = doc_dir / filename
+            if file_path.exists():
+                file_path.unlink()
+            
+            # OCR 결과 삭제
+            base_name = Path(filename).stem
+            for ext in [".md", ".txt", ".json"]:
+                ocr_path = ocr_dir / f"{base_name}{ext}"
+                if ocr_path.exists():
+                    ocr_path.unlink()
+            
+            deleted_files.append(filename)
+        except Exception as e:
+            failed_files.append({"filename": filename, "error": str(e)})
+            
+    return DeleteFilesResponse(
+        message="파일 삭제 처리가 완료되었습니다.",
+        deleted_files=deleted_files,
+        failed_files=failed_files
+    )
+
+
+@router.post("/upload/files", response_model=UploadResponse)
+async def upload_files(request: Request, background_tasks: BackgroundTasks, files: List[UploadFile] = File(...)):
+    """파일 업로드 및 처리 시작 (세션별 격리)"""
+    paths = get_session_paths(request)
+    doc_dir = paths["doc_dir"]
+    session_id = getattr(request.state, "session_id", "default_session")
+    
+    # 디렉토리 생성 보장
+    doc_dir.mkdir(parents=True, exist_ok=True)
+    
+    task_id = str(uuid.uuid4())
+    uploaded_file_names = []
+    file_info_list = []
+    
+    for file in files:
+        file_path = doc_dir / file.filename
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        uploaded_file_names.append(file.filename)
+        file_info_list.append(FileTaskInfo(filename=file.filename, task_id=task_id))
+        
+    # 백그라운드 처리 파이프라인 시작
+    background_tasks.add_task(run_processing_pipeline, task_id, uploaded_file_names, session_id)
+    
+    # 작업 상태 초기화
+    tasks_dict = request.app.state.tasks
+    tasks_dict[task_id] = {
+        "status": "pending",
+        "message": "파일 업로드 완료, 처리 대기 중...",
+        "progress": 0
+    }
+    
+    return UploadResponse(
+        task_id=task_id,
+        message="파일 업로드 성공, 처리가 시작되었습니다.",
+        files=file_info_list
+    )
+
+
+@router.get("/files/{filename}", response_model=FileContentResponse)
+async def get_file_content(request: Request, filename: str):
+    """특정 파일의 내용 조회 (OCR 결과 우선 검색)"""
+    from notebooklm.config import RAGConfig
+    config = RAGConfig()
+    paths = get_session_paths(request)
+    
+    import urllib.parse
+    decoded_filename = urllib.parse.unquote(filename)
+    base_name = Path(decoded_filename).stem
+    
+    # 검색 후보 경로 리스트 (OCR 결과 우선)
+    search_paths = [
+        # 1. 세션 OCR 결과 디렉토리
+        paths["ocr_results_dir"] / decoded_filename,
+        paths["ocr_results_dir"] / f"{base_name}.md",
+        paths["ocr_results_dir"] / f"{base_name}.txt",
+        
+        # 2. 글로벌 OCR 결과 디렉토리
+        config.DATA_ROOT / "Results" / "4.OCR_results" / decoded_filename,
+        config.DATA_ROOT / "Results" / "4.OCR_results" / f"{base_name}.md",
+        config.DATA_ROOT / "Results" / "4.OCR_results" / f"{base_name}.txt",
+        
+        # 3. 세션 원본 문서 디렉토리
+        paths["doc_dir"] / decoded_filename,
+        
+        # 4. 글로벌 원본 문서 디렉토리
+        config.DEFAULT_DOC_DIR / decoded_filename
+    ]
+
+    file_path = None
+    for p in search_paths:
+        if p.exists() and p.is_file():
+            file_path = p
+            break
+            
+    if file_path is None:
+        logger.error(f"파일을 찾을 수 없음 (OCR/Doc 검색 실패): {decoded_filename}")
+        raise HTTPException(status_code=404, detail=f"파일을 찾을 수 없습니다: {decoded_filename}")
+    
+    try:
+        content = file_path.read_text(encoding="utf-8")
+        logger.info(f"파일 내용 로드 성공: {file_path}")
+        return FileContentResponse(filename=decoded_filename, content=content)
+    except Exception as e:
+        logger.error(f"파일 읽기 오류 ({decoded_filename}): {e}")
+        raise HTTPException(status_code=500, detail=f"파일 읽기 오류: {e}")
+
+@router.post("/search", response_model=SearchResponse)
+async def search_endpoint(query: SearchQuery):
+    """구글 검색 수행 API"""
+    logger.info(f"검색 요청: {query.query}")
+    try:
+        # skill.search.pipeline.search_google 함수 호출 (num 인자 사용)
+        results = perform_search(query.query, num=10)
+        return SearchResponse(results=results)
+    except Exception as e:
+        logger.error(f"검색 중 오류 발생: {e}")
+        raise HTTPException(status_code=500, detail=f"검색 오류: {e}")
+
+
+@router.post("/upload/docs", response_model=TaskCreationResponse)
+async def add_document_endpoint(request: Request, doc_req: AddDocumentRequest, background_tasks: BackgroundTasks):
+    """구글 검색 결과 중 하나를 문서화(크롤링)하고 인덱싱하는 API"""
+    task_id = str(uuid.uuid4())
+    session_id = getattr(request.state, "session_id", "default_session")
+    
+    tasks_dict = request.app.state.tasks
+    tasks_dict[task_id] = {"status": "pending", "message": "문서화 작업 대기 중..."}
+    
+    background_tasks.add_task(run_document_pipeline, task_id, doc_req.title, doc_req.link, session_id)
+    
+    return TaskCreationResponse(task_id=task_id, status="pending")
+
+
+@router.post("/cancel", response_model=Dict[str, Any])
+async def cancel_tasks_endpoint(request: Request, body: Dict[str, Any] = Body(...)):
+    """작업 취소 API"""
+    task_ids = body.get("task_ids", [])
+    if not task_ids:
+        raise HTTPException(status_code=400, detail="task_ids가 필요합니다.")
+        
+    cancelled_count = 0
+    for task_id in task_ids:
+        if cancel_task(task_id):
+            cancelled_count += 1
+            
+    return {"message": f"총 {len(task_ids)}개 중 {cancelled_count}개 작업에 대한 취소 요청이 전달되었습니다."}
+
+
+async def run_document_pipeline(task_id: str, title: str, link: str, session_id: Optional[str] = None):
+    """구글 검색 결과를 문서화하고 인덱싱하는 백그라운드 함수 (crawling_web 인자 및 결과 처리 수정)"""
+    from notebooklm.config import RAGConfig
+    config = RAGConfig()
+    
+    # 1. 경로 설정 (세션 및 글로벌)
+    if session_id:
+        doc_dir = config.get_session_doc_dir(session_id)
+    else:
+        doc_dir = config.DEFAULT_DOC_DIR
+
+    # 디렉토리 생성 보장
+    doc_dir.mkdir(parents=True, exist_ok=True)
+
+    logger.info(f"[{task_id}] 문서 파이프라인 시작 (session: {session_id}): {title}")
+    tasks[task_id].update({'status': 'processing', 'message': '웹 페이지 크롤링 중...'})
+    
+    try:
+        # 1. 크롤링 (result 딕셔너리 구성 및 output_dir 전달)
+        search_result = {
+            'title': title,
+            'link': link
+        }
+        
+        # crawling_web(result, output_dir) 호출
+        # 이 함수 내부에서 4.OCR_results로의 복사도 수행됨
+        saved_file_path = crawling_web(search_result, output_dir=str(doc_dir))
+        
+        if not saved_file_path:
+            raise ValueError("웹 페이지 크롤링 및 저장에 실패했습니다.")
+            
+        safe_title = sanitize_filename(title)
+        
+        # 3. 인덱싱 (Vector Store 저장)
+        # asyncio.run() 대신 직접 await 호출하여 루프 중첩 방지
+        await run_text_indexing(task_id, [f"{safe_title}.md"], session_id)
+        
+    except Exception as e:
+        logger.error(f"[{task_id}] 문서 파이프라인 실패: {e}")
+        tasks[task_id].update({'status': 'failed', 'error': str(e)})
 def get_session_paths(request: Request):
     """요청의 세션 ID를 바탕으로 동적 경로를 반환합니다."""
     from notebooklm.config import RAGConfig
@@ -452,17 +772,22 @@ async def run_processing_pipeline(task_id: str, file_names: List[str], session_i
 
 
 async def process_summarize_files(task_id: str, filenames: List[str], model_manager: Any, session_id: Optional[str] = None):
-    """지정된 파일들을 찾아 내용을 요약하는 백그라운드 함수 (LazyModelManager 사용)"""
+    """지정된 파일들을 찾아 내용을 요약하는 백그라운드 함수 (글로벌 + 세션 검색)"""
     from notebooklm.config import RAGConfig
     config = RAGConfig()
     
+    # 1. 경로 설정 (세션 및 글로벌)
+    session_ocr_dir = None
+    session_summarize_dir = None
     if session_id:
-        ocr_results_dir = config.get_session_results_dir(session_id, "4.OCR_results")
-        summarize_dir = config.get_session_results_dir(session_id, "6.summarize")
-    else:
-        # 하위 호환성 (상수 사용 가능 시)
-        ocr_results_dir = config.DATA_ROOT / "Results" / "4.OCR_results"
-        summarize_dir = config.DATA_ROOT / "Results" / "6.summarize"
+        session_ocr_dir = config.get_session_results_dir(session_id, "4.OCR_results")
+        session_summarize_dir = config.get_session_results_dir(session_id, "6.summarize")
+    
+    global_ocr_dir = config.DATA_ROOT / "Results" / "4.OCR_results"
+    global_summarize_dir = config.DATA_ROOT / "Results" / "6.summarize"
+    
+    # 결과가 저장될 디렉토리 (세션 우선, 없으면 글로벌)
+    summarize_dir = session_summarize_dir or global_summarize_dir
 
     logger.info(f"[{task_id}] 파일 요약 작업 시작 (session: {session_id}): {filenames}")
     tasks[task_id].update({"status": "running", "message": "요약할 파일을 찾는 중...", "progress": 10})
@@ -473,7 +798,6 @@ async def process_summarize_files(task_id: str, filenames: List[str], model_mana
         # AnswerGenerator 획득
         try:
             generator = model_manager.acquire("answer_generator")
-            # 모델이 실제 엔진을 로드하도록 보장
             if hasattr(generator, "load_model"):
                 if not generator.model_loaded:
                     generator.load_model()
@@ -489,23 +813,30 @@ async def process_summarize_files(task_id: str, filenames: List[str], model_mana
                 progress = 10 + int((i / len(filenames)) * 80)
                 tasks[task_id].update({"message": f"파일 처리 중... ({i+1}/{len(filenames)}): {filename}", "progress": progress})
 
-                # 4.OCR_results에서만 파일 검색
+                # 4.OCR_results에서 파일 검색 (세션 우선 후 글로벌)
                 base_name = Path(filename).stem
                 candidate_names = [filename, f"{base_name}.md"]
                 
                 file_to_summarize = None
                 for name in candidate_names:
-                    file_path = ocr_results_dir / name
-                    if file_path.exists():
-                        file_to_summarize = file_path
+                    # 세션 디렉토리 먼저 확인
+                    if session_ocr_dir:
+                        p = session_ocr_dir / name
+                        if p.exists():
+                            file_to_summarize = p
+                            break
+                    
+                    # 글로벌 디렉토리 확인
+                    p = global_ocr_dir / name
+                    if p.exists():
+                        file_to_summarize = p
                         break
                 
                 if file_to_summarize is None:
-                    logger.warning(f"[{task_id}] 4.OCR_results에서 파일을 찾을 수 없습니다: {filename}")
+                    logger.warning(f"[{task_id}] OCR 결과에서 파일을 찾을 수 없습니다: {filename}")
                     continue
 
                 try:
-                    # 파일 내용 읽기
                     with open(file_to_summarize, 'r', encoding='utf-8') as f:
                         content = f.read()
                     
@@ -513,7 +844,6 @@ async def process_summarize_files(task_id: str, filenames: List[str], model_mana
                         logger.warning(f"[{task_id}] 파일에 요약할 텍스트가 없습니다: {filename}")
                         continue
                         
-                    # 요약 생성
                     summary = generator.generate_answer(content)
                     
                     if summary and summary != "(관련된 구글 검색 결과를 찾을 수 없습니다)":
@@ -529,7 +859,6 @@ async def process_summarize_files(task_id: str, filenames: List[str], model_mana
             return
 
         final_summary = "\n\n---\n\n".join(summaries)
-        # 여러 파일 요약 시 파일명을 명확히 함
         safe_filenames_str = sanitize_summary_filename("_".join(filenames))
         result_file = summarize_dir / f"summary_{safe_filenames_str}.md"
         result_file.write_text(final_summary, encoding="utf-8")

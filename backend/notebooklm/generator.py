@@ -63,6 +63,10 @@ class SGLangGenerator:
             # RAGConfig에서 설정한 값 사용 (기본값 0.3)
             mem_fraction = getattr(self.config, 'GENERATOR_MEM_FRACTION', 0.3)
             try:
+                # signal.signal 관련 오류 방지를 위해 전역 Interpreter 체크 및 thread safety 확보
+                import threading
+                is_main_thread = threading.current_thread() is threading.main_thread()
+                
                 self.engine = sgl.Engine(
                     model_path=self.model_name,
                     mem_fraction_static=mem_fraction,  # 메모리 할당량 제한
