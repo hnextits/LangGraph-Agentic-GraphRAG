@@ -143,10 +143,10 @@ def batch_import_text_documents(client, documents: List[Dict[str, Any]], documen
                     "page_num": doc.get("page_num", 0),
                     "chunk_id": chunk_id,
                     "document_uuid": doc.get("document_uuid") or document_uuid,
-                    "session_id": session_id or "default",
+                    "session_id": session_id,  # 기본 파일들은 None으로 설정
                     "metadata": {
                         **(doc.get("metadata", {})),
-                        "session_id": session_id or "default"
+                        "session_id": session_id  # 기본 파일들은 None으로 설정
                     }
                 }
                 vector = doc.get("embedding")
@@ -418,6 +418,64 @@ def delete_document_by_filename(client: weaviate.Client, filename: str) -> bool:
     except Exception as e:
         logger.error(f"파일명으로 문서 삭제 중 오류 발생: {str(e)}", exc_info=True) # 상세 오류 로깅
         return False
+
+
+def get_document_uuid_map_with_session(client: weaviate.Client, filenames: List[str], session_id: str) -> Dict[str, str]:
+    """세션별 파일명 목록에 대해 document_uuid 매핑을 반환"""
+    logger.debug(f"get_document_uuid_map_with_session 호출됨: filenames={filenames}, session_id={session_id}")
+    if not filenames or client is None:
+        return {}
+
+    config = RAGConfig()
+    uuid_map: Dict[str, str] = {}
+    
+    # 세션별 디렉토리 경로 구성
+    session_doc_dir = config.get_session_doc_dir(session_id)
+    session_ocr_dir = config.get_session_results_dir(session_id, "4.OCR_results")
+    
+    for filename in filenames:
+        base_name = Path(filename).stem
+        
+        # 세션별 경로에서 파일 검색 (우선순위: OCR 결과 -> 원본)
+        metadata_candidates = []
+        
+        # 1. 세션 OCR 결과 디렉토리에서 검색
+        if session_ocr_dir.exists():
+            ocr_files = [
+                str(session_ocr_dir / f"{base_name}.md"),
+                str(session_ocr_dir / f"{base_name}.txt"),
+                str(session_ocr_dir / filename),
+            ]
+            metadata_candidates.extend(ocr_files)
+        
+        # 2. 세션 원본 디렉토리에서 검색
+        if session_doc_dir.exists():
+            doc_files = [
+                str(session_doc_dir / filename),
+                str(session_doc_dir / f"{base_name}.md"),
+            ]
+            metadata_candidates.extend(doc_files)
+        
+        # 3. 글로벌 디렉토리에서도 검색 (fallback)
+        global_candidates = [
+            str((NEXTITS_DATA_DIR / "doc" / filename)),
+            str((NEXTITS_DATA_DIR / "doc" / f"{base_name}.md")),
+            str((NEXTITS_DATA_DIR / "Results" / "4.OCR_results" / f"{base_name}.md")),
+        ]
+        metadata_candidates.extend(global_candidates)
+        
+        logger.debug(f"'{filename}'에 대한 UUID 검색 후보 경로: {metadata_candidates}")
+
+        document_uuids = _collect_document_uuids(client, metadata_candidates, chunk_prefix=base_name)
+        if document_uuids:
+            found_uuid = next(iter(document_uuids))
+            uuid_map[filename] = found_uuid
+            logger.info(f"'{filename}'에 대한 UUID '{found_uuid}' 매핑 완료 (session: {session_id}).")
+        else:
+            logger.warning(f"'{filename}'에 대한 UUID를 찾지 못했습니다 (session: {session_id}).")
+
+    logger.debug(f"get_document_uuid_map_with_session 결과: {uuid_map}")
+    return uuid_map
 
 
 def get_document_uuid_map(client: weaviate.Client, filenames: List[str]) -> Dict[str, str]:

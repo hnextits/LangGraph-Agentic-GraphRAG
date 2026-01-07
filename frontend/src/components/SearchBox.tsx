@@ -105,12 +105,10 @@ const SearchBox: React.FC<SearchBoxProps> = ({ open, onClose, onProcessingStart 
             res.data.title ||
             'Unknown Title',
         }));
-      if (successfulTasks.length > 0) {
-        alert(`${successfulTasks.length}개의 문서 처리가 시작되었습니다.`);
 
+      if (successfulTasks.length > 0) {
         onProcessingStart(successfulTasks);
         queryClient.invalidateQueries({ queryKey: ['files'] });
-
         onClose();
       } else {
         throw new Error('모든 문서 처리 시작에 실패했습니다.');
@@ -127,108 +125,121 @@ const SearchBox: React.FC<SearchBoxProps> = ({ open, onClose, onProcessingStart 
   // 모달 렌더링
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 space-y-4"
+        className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-bold">출처 탐색</h2>
-          <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200">
-            <X size={24} />
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold">출처 탐색</h2>
+          <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100">
+            <X size={20} />
           </button>
         </div>
 
-        {/* 검색어 입력 필드 */}
-        <div className="flex gap-2">
-          <input
-            type="text"
-            className="flex-grow border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            autoFocus
-            placeholder="검색어를 입력하세요."
-            onKeyPress={e => {
-              if (e.key === 'Enter') handleSearch();
-            }}
-          />
-          <button
-            onClick={handleSearch}
-            disabled={loading}
-            className="px-4 py-2 bg-blue-500 text-white font-semibold rounded-md hover:bg-blue-600 disabled:bg-gray-400 flex items-center justify-center"
-          >
-            {loading ? <Loader2 className="animate-spin" size={20} /> : '검색'}
-          </button>
-        </div>
+        {/* Body */}
+        <div className="p-6 space-y-4 overflow-y-auto">
+          {/* 검색어 입력 필드 */}
+          <div className="flex gap-2">
+            <input
+              type="text"
+              className="flex-grow border border-gray-300 rounded-md p-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              autoFocus
+              placeholder="검색어를 입력하세요."
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleSearch();
+              }}
+            />
+            <button
+              onClick={handleSearch}
+              disabled={loading}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            >
+              {loading && <Loader2 className="animate-spin" size={16} />}
+              검색
+            </button>
+          </div>
 
-        {/* 검색 결과 영역 */}
-        <div className="space-y-4">
+          {/* 검색 결과 영역 */}
           {loading && (
-            <div className="flex justify-center items-center space-x-2 text-gray-500">
-              <Loader2 className="animate-spin" size={20} />
+            <div className="flex justify-center items-center gap-2 text-gray-500 text-sm">
+              <Loader2 className="animate-spin" size={18} />
               <span>검색 중...</span>
             </div>
           )}
 
           {results.length > 0 && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex justify-between items-center border-b pb-2">
-                <label className="flex items-center space-x-2 cursor-pointer">
+                <label className="flex items-center gap-2 cursor-pointer text-sm">
                   <input
                     type="checkbox"
                     onChange={handleSelectAll}
-                    checked={checked.length === results.length && results.length > 0}
+                    checked={checked.length === results.length}
                     ref={input => {
                       if (input)
                         input.indeterminate = checked.length > 0 && checked.length < results.length;
                     }}
-                    className="rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                   <span className="font-medium">전체 선택</span>
                 </label>
                 <button
                   onClick={handleConfirm}
                   disabled={checked.length === 0 || loading}
-                  className="px-3 py-1.5 bg-blue-500 text-white text-sm font-semibold rounded-md hover:bg-blue-600 disabled:bg-gray-400 flex items-center"
+                  className="px-3 py-1.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
                 >
-                  {loading ? <Loader2 className="animate-spin mr-2" size={16} /> : null}
-                  <span>확인 ({checked.length})</span>
+                  {loading && <Loader2 className="animate-spin" size={14} />}
+                  확인 ({checked.length})
                 </button>
               </div>
 
-              <ul className="space-y-2 max-h-80 overflow-y-auto pr-2">
+              <ul className="space-y-2 max-h-80 overflow-y-auto pr-1">
                 {results.map((result, index) => (
                   <li
                     key={index}
                     onClick={handleToggle(index)}
-                    className="p-3 border rounded-md cursor-pointer hover:bg-gray-50 flex items-start space-x-3"
+                    className="p-3 border rounded-md bg-white shadow-sm cursor-pointer hover:bg-gray-50 flex items-start gap-3"
                   >
                     <input
                       type="checkbox"
-                      checked={checked.indexOf(index) !== -1}
+                      checked={checked.includes(index)}
                       onChange={handleToggle(index)}
-                      className="mt-1 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
                       onClick={e => e.stopPropagation()}
+                      className="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
-                    <div className="flex-grow">
+                    <div className="flex-grow min-w-0">
                       <a
                         href={result.link}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
-                        className="font-bold text-blue-600 hover:underline"
+                        className="block font-medium text-blue-600 truncate hover:underline"
                       >
                         {result.title}
                       </a>
-                      <p className="text-sm text-gray-600 mt-1">{result.snippet}</p>
+                      <p className="text-xs text-gray-600 mt-1 line-clamp-2">{result.snippet}</p>
                     </div>
                   </li>
                 ))}
               </ul>
             </div>
           )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-3 p-4 border-t border-gray-200">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50"
+          >
+            닫기
+          </button>
         </div>
       </div>
     </div>

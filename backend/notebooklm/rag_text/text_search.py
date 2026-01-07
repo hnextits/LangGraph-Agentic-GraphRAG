@@ -187,21 +187,31 @@ class TextSearcher:
                 # 필터 구성 (session_id + allowed_document_uuids)
                 filters = None
                 
-                # 1. 세션 필터 (session_id가 제공된 경우)
+                # 1. 세션 필터 (session_id가 제공된 경우) - 기본 파일들도 포함
                 if session_id:
-                    filters = Filter.by_property("session_id").equal(session_id)
+                    # 세션 검색 시에도 기본 파일들을 포함하기 위해 전체 검색 후 필터링
+                    filters = None  # 전체 검색
+                    logger.info(f"텍스트 검색: 세션 {session_id} + 기본 파일 포함 (전체 검색)")
+                else:
+                    logger.info("텍스트 검색: 전체 데이터베이스에서 검색")
                 
                 # 2. UUID 필터 (allowed_document_uuids가 제공된 경우)
                 if allowed_document_uuids:
                     uuids = [uuid for uuid in allowed_document_uuids if uuid]
+                    logger.info(f"DEBUG: Applying UUID filter with {len(uuids)} UUIDs: {uuids}")
                     uuid_filter = None
                     if len(uuids) == 1:
                         uuid_filter = Filter.by_property("document_uuid").equal(uuids[0])
+                        logger.info(f"DEBUG: Single UUID filter: {uuids[0]}")
                     elif len(uuids) > 1:
                         uuid_filter = Filter.by_property("document_uuid").contains_any(uuids)
+                        logger.info(f"DEBUG: Multiple UUID filter: {uuids}")
                     
                     if uuid_filter:
                         filters = filters & uuid_filter if filters else uuid_filter
+                        logger.info(f"DEBUG: Final filters configured: {filters}")
+                else:
+                    logger.info("DEBUG: No UUID filter applied (allowed_document_uuids is empty or None)")
                 
                 # 벡터 검색 실행
                 response = collection.query.near_vector(
@@ -226,6 +236,10 @@ class TextSearcher:
                 # 거리를 유사도 점수로 변환 (1 - 거리)
                 similarity_score = 1 - score if score <= 1 else 0
                 
+                # 모든 속성 출력해서 확인
+                logger.info(f"DEBUG: Object {i} all properties: {obj.properties}")
+                logger.info(f"DEBUG: Object {i} document_uuid from properties: {obj.properties.get('document_uuid')}")
+                
                 result = {
                     'score': similarity_score,
                     'index': i,
@@ -237,6 +251,7 @@ class TextSearcher:
                     'metadata': {},
                     'document_uuid': obj.properties.get("document_uuid"),
                 }
+                logger.info(f"DEBUG: Search result {i}: document_uuid={result['document_uuid']}, obj.uuid={obj.uuid}")
                 results.append(result)
             
             logger.info(f"쿼리 '{query}'에 대한 검색 완료, 결과 수: {len(results)}")
@@ -315,6 +330,14 @@ class TextSearcher:
                 self.shared_embedding.cleanup()
             except Exception as exc:
                 logger.error(f"공유 임베딩 정리 중 오류: {exc}")
+
+        if getattr(self, "client", None) is not None:
+            try:
+                self.client.close()
+            except Exception as exc:
+                logger.error(f"Weaviate 클라이언트 정리 중 오류: {exc}")
+            finally:
+                self.client = None
 
 if __name__ == "__main__":
     # 검색 테스트

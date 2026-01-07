@@ -178,6 +178,8 @@ const apiMethods = {
 
   // 채팅
   postChat: (query: string, sources: string[], config?: AxiosRequestConfig) => {
+    console.log('DEBUG: postChat called with:', { query, sources });
+    console.log('DEBUG: sources details:', sources.map((s, i) => ({ index: i, value: s, length: s.length, isUuid: /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(s) })));
     return api.post('/chat', { query, sources }, config);
   },
 

@@ -188,7 +188,8 @@ def run_rag_in_background(
     cancellation_event: threading.Event,
     tasks_dict: Dict[str, Any],
     running_tasks_dict: Dict[str, Any],
-    app_state: Any  # app.state를 직접 받음
+    app_state: Any,  # app.state를 직접 받음
+    session_id: Optional[str] = None,
 ):
     """백그라운드에서 RAG 파이프라인을 실행하고 결과를 app_state에 저장합니다."""
     import time
@@ -198,6 +199,7 @@ def run_rag_in_background(
     task_cache_timestamps = app_state.task_cache_timestamps
 
     tasks_dict[task_id].update({"status": "processing", "message": "RAG 파이프라인 실행 중..."})
+    logger.info(f"[Task {task_id}] Session ID for RAG: {session_id}")
     try:
         response_data = get_rag_response(
             query,
@@ -205,6 +207,7 @@ def run_rag_in_background(
             rag_pipeline,
             cancellation_event,
             source_filter_requested=source_filter_requested,
+            session_id=session_id,  # 세션 ID 전달
         )
         final_status = {
             "status": "completed",
@@ -259,6 +262,7 @@ def get_rag_response(
     rag_pipeline,
     cancellation_event: Optional[threading.Event] = None,
     source_filter_requested: bool = False,
+    session_id: Optional[str] = None,  # 세션 ID 추가
 ) -> Dict[str, Any]:
     """
     사용자 질문과 소스 정보를 받아 RAG 파이프라인을 통해 답변과 이미지를 생성합니다.
@@ -266,6 +270,9 @@ def get_rag_response(
     try:
         # RAG 파이프라인 실행 (취소 이벤트 전달)
         allowed_uuids: Set[str] = {src for src in sources if src}
+        
+        logger.info(f"get_rag_response called with session_id: {session_id}")
+        logger.info(f"source_filter_requested: {source_filter_requested}, allowed_uuids: {allowed_uuids}")
 
         if source_filter_requested and not allowed_uuids:
             logger.warning(
@@ -278,6 +285,7 @@ def get_rag_response(
             top_k=5,
             cancellation_event=cancellation_event,
             allowed_document_uuids=allowed_uuids or None,
+            session_id=session_id,  # 세션 ID 전달
         )
 
         if allowed_uuids:

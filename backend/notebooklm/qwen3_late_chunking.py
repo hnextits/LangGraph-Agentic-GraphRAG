@@ -348,13 +348,24 @@ class Qwen3LateChunker:
 
     def _perform_late_chunking(self, chunk_infos: List[ChunkInfo]) -> List[VectorEntry]:
         vector_entries = []
+        
+        # 임베딩 모델이 로드되지 않은 경우 명시적으로 로드
+        if not self.embedding_model.is_loaded:
+            logger.info("Embedding model not loaded, attempting to load...")
+            self.embedding_model.load_model()
+        
         if self.embedding_model._model is None:
-                logger.error("Shared embedding model is not loaded.")
-                return []
+            logger.error("Shared embedding model is still not loaded after attempting to load.")
+            return []
 
         for info in tqdm(chunk_infos, desc="Embedding chunks"):
             try:
                 embedding = self.embedding_model.generate_embedding(info.text, normalize=True)
+                
+                # 임베딩 유효성 검사
+                if embedding is None:
+                    logger.error(f"Embedding generation failed for chunk {info.chunk_id}: embedding is None")
+                    continue
                 
             except Exception as e:
                 logger.error(f"Error generating embedding for chunk {info.chunk_id}: {str(e)}")
@@ -364,18 +375,22 @@ class Qwen3LateChunker:
                     logger.error("Embedding dimension unknown, skipping chunk.")
                     continue
 
-            entry = VectorEntry(
-                id=info.chunk_id,
-                document_id=info.document_id,
-                chunk_id=info.chunk_id,
-                text=info.text,
-                raw_text=info.raw_text,
-                embedding=embedding,
-                content_type=info.content_type,
-                metadata=info.metadata,
-                created_at=datetime.now()
-            )
-            vector_entries.append(entry)
+            # 유효한 임베딩만 VectorEntry에 추가
+            if embedding is not None:
+                entry = VectorEntry(
+                    id=info.chunk_id,
+                    document_id=info.document_id,
+                    chunk_id=info.chunk_id,
+                    text=info.text,
+                    raw_text=info.raw_text,
+                    embedding=embedding,
+                    content_type=info.content_type,
+                    metadata=info.metadata,
+                    created_at=datetime.now()
+                )
+                vector_entries.append(entry)
+            else:
+                logger.warning(f"Skipping chunk {info.chunk_id} due to invalid embedding")
         return vector_entries
 
     def get_document_summary(self, document_id: str) -> Dict[str, Any]:

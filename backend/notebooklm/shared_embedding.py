@@ -45,14 +45,31 @@ class SharedEmbeddingModel:
         with self.__class__._lock:
             if self.__class__._model is not None:
                 return
+            
+            # GPU 메모리 정리 후 모델 로드
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                
             logger.info(
                 "Loading shared SentenceTransformer model: %s on device: %s",
                 self.model_name,
                 self.device,
             )
             try:
-                self.__class__._model = SentenceTransformer(self.model_name, device=self.device)
+                # 메모리 효율적인 설정으로 모델 로드
+                self.__class__._model = SentenceTransformer(
+                    self.model_name, 
+                    device=self.device,
+                    trust_remote_code=True
+                )
                 logger.info("Shared embedding model loaded successfully.")
+                
+                # 모델 로드 후 메모리 상태 로깅
+                if torch.cuda.is_available() and self.device.startswith("cuda"):
+                    memory_allocated = torch.cuda.memory_allocated()
+                    memory_reserved = torch.cuda.memory_reserved()
+                    logger.info(f"GPU memory after loading model: {memory_allocated/1024**3:.2f}GB allocated, {memory_reserved/1024**3:.2f}GB reserved")
+                    
             except Exception as e:
                 logger.error(f"Failed to load shared embedding model: {e}")
                 raise

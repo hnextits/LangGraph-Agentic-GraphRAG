@@ -10,7 +10,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 
 # 특정 모듈의 로그 레벨 조정
 logging.getLogger('transformers').setLevel(logging.WARNING)
-logging.getLogger('faiss').setLevel(logging.WARNING)
 logging.getLogger('PIL').setLevel(logging.WARNING)
 logging.getLogger('httpx').setLevel(logging.WARNING)
 logging.getLogger('filelock').setLevel(logging.WARNING)
@@ -59,19 +58,29 @@ class RAGConfig:
         self.SESSIONS_ROOT.mkdir(parents=True, exist_ok=True)
         self.DEFAULT_DOC_DIR.mkdir(parents=True, exist_ok=True)
         self.DEFAULT_METADATA_DIR.mkdir(parents=True, exist_ok=True)
-        self.INDEX_DIR = os.path.join(os.path.dirname(__file__), "faiss_test")
         self.CACHE_DIR = Path.home() / ".cache" / "huggingface" / "hub"
         
         #############################################
         # 1-1. Weaviate 설정
         #############################################
-        # Weaviate 호스트 설정 - 로컬호스트 사용
-        self.WEAVIATE_HOST = "127.0.0.1"
-        self.WEAVIATE_PORT = 8080
+        # 환경 변수 기반 Weaviate 설정 분리
+        env = os.getenv('ENVIRONMENT', 'production')  # 기본값: production
+        
+        if env == 'test':
+            # 테스트 환경 설정
+            self.WEAVIATE_HOST = os.getenv('TEST_WEAVIATE_HOST', "localhost")
+            self.WEAVIATE_PORT = int(os.getenv('TEST_WEAVIATE_PORT', "8080"))
+            self.WEAVIATE_TEXT_CLASS = "TestTextDocument"
+            self.WEAVIATE_IMAGE_CLASS = "TestImageDocument"
+        else:
+            # 운영 환경 설정
+            self.WEAVIATE_HOST = os.getenv('WEAVIATE_HOST', "127.0.0.1")
+            self.WEAVIATE_PORT = int(os.getenv('WEAVIATE_PORT', "8080"))
+            self.WEAVIATE_TEXT_CLASS = "TextDocument"
+            self.WEAVIATE_IMAGE_CLASS = "ImageDocument"
+            
         self.WEAVIATE_URL = f"http://{self.WEAVIATE_HOST}:{self.WEAVIATE_PORT}"
         self.WEAVIATE_BATCH_SIZE = 100
-        self.WEAVIATE_TEXT_CLASS = "TextDocument"
-        self.WEAVIATE_IMAGE_CLASS = "ImageDocument"
         self.WEAVIATE_VECTORIZER = "text2vec-model2vec"  # 컨테이너에서 설정한 vectorizer
         
         #############################################
@@ -111,7 +120,7 @@ class RAGConfig:
         
         # SGLang 설정 - Engine API 직접 사용
         self.SGLANG_USE_DIRECT_ENGINE = True  # SGLang Engine API directly
-        self.GENERATOR_MEM_FRACTION = 0.2     # Reduced from 0.3 to 0.2 (20% of GPU 0)
+        self.GENERATOR_MEM_FRACTION = 0.3     # 원래 값으로 복원 (30% of GPU memory)
         self.SUMMARIZER_MEM_FRACTION = 0.15    # Reduced from 0.2 to 0.15 (15% of GPU 0)
         self.GENERATOR_NUM_BEAMS = 1     # Disable beam search
         self.GENERATOR_PAD_TOKEN_ID = None  # 토크나이저에서 설정
@@ -497,103 +506,28 @@ class RAGConfig:
     
     @classmethod
     def load_embedding_model(cls, model_name=None, device=None, use_fp16=True, cache_dir=None):
-        """임베딩 모델 로드"""
-        # 이미 로드된 모델이 있으면 그것을 반환
-        if cls._is_embedding_loaded and cls._embedding_model is not None and cls._embedding_tokenizer is not None:
-            logger.debug("이미 로드된 임베딩 모델 사용")
-            return cls._embedding_model, cls._embedding_tokenizer
+        """임베딩 모델 로드 - SharedEmbeddingModel 사용으로 변경"""
+        logger.warning("RAGConfig.load_embedding_model()은 deprecated되었습니다. SharedEmbeddingModel을 사용하세요.")
         
-        # 설정에서 기본값 가져오기
-        config = cls()
-        if model_name is None:
-            model_name = config.EMBEDDING_MODEL
-        if device is None:
-            device = config.DEVICE
-            
-        from transformers import AutoModel, AutoTokenizer
+        # SharedEmbeddingModel 인스턴스 반환
+        from shared_embedding import SharedEmbeddingModel
+        shared_model = SharedEmbeddingModel()
+        shared_model.load_model()
         
-        try:
-            logger.info(f"임베딩 모델 로드 중: {model_name}")
-            
-            # 토크나이저 로드
-            tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=cache_dir)
-            
-            # GPU 메모리 상태 확인
-            if device == "cuda" and torch.cuda.is_available():
-                num_gpus = torch.cuda.device_count()
-                logger.info(f"사용 가능한 GPU 개수: {num_gpus}")
-                
-                # 메모리 정보 출력
-                for i in range(num_gpus):
-                    free_mem, total_mem = torch.cuda.mem_get_info(i)
-                    free_gb = free_mem / (1024**3)
-                    total_gb = total_mem / (1024**3)
-                    logger.info(f"GPU {i}: 사용 가능 메모리 {free_gb:.2f}GB / 전체 {total_gb:.2f}GB")
-                
-                # 가장 메모리가 많은 GPU 선택
-                max_free = 0
-                selected_gpu = 0
-                for i in range(num_gpus):
-                    free_mem, _ = torch.cuda.mem_get_info(i)
-                    if free_mem > max_free:
-                        max_free = free_mem
-                        selected_gpu = i
-                
-                logger.info(f"선택된 GPU: {selected_gpu} (사용 가능 메모리: {max_free / (1024**3):.2f}GB)")
-                device = f"cuda:{selected_gpu}"
-            
-            # 모델 로드 설정 - float16으로 통일
-            model_kwargs = {}
-            if device.startswith("cuda") and torch.cuda.is_available():
-                model_kwargs["torch_dtype"] = torch.float16  # 모든 GPU 모델을 float16으로 통일
-                model_kwargs["device_map"] = "cuda"  # 명시적으로 CUDA 디바이스에 로드
-                # device_map="auto" 대신 특정 GPU로 지정
-                # model_kwargs["device_map"] = "auto" 
-            else:
-                model_kwargs["torch_dtype"] = torch.float32  # CPU는 float32 사용
-            
-            # 메모리 정리
-            torch.cuda.empty_cache()
-            
-            # 모델 로드
-            model = AutoModel.from_pretrained(
-                model_name, cache_dir=cache_dir, **model_kwargs
-            ).to(device)  # 특정 디바이스로 모델 이동
-            
-            # 로드된 모델을 클래스 변수에 저장
-            cls._embedding_model = model
-            cls._embedding_tokenizer = tokenizer
-            cls._is_embedding_loaded = True
-            logger.info("임베딩 모델 로드 완료")
-            
-            return model, tokenizer
-        except Exception as e:
-            logger.error(f"임베딩 모델 로드 실패: {str(e)}")
-            raise
+        # 하위 호환성을 위해 더미 토크나이저 반환
+        return shared_model._model, None
     
     @classmethod
     def unload_embedding_model(cls):
-        """임베딩 모델 언로드"""
-        if cls._embedding_model is not None:
-            try:
-                # 메모리 해제
-                del cls._embedding_model
-                del cls._embedding_tokenizer
-                cls._embedding_model = None
-                cls._embedding_tokenizer = None
-                cls._is_embedding_loaded = False
-                
-                # 메모리 정리
-                import gc
-                gc.collect()
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-                     
-                logger.info("임베딩 모델 언로드 완료")
-                return True
-            except Exception as e:
-                logger.error(f"임베딩 모델 해제 실패: {str(e)}")
-        return False
+        """임베딩 모델 언로드 - SharedEmbeddingModel 사용으로 변경"""
+        logger.warning("RAGConfig.unload_embedding_model()은 deprecated되었습니다. SharedEmbeddingModel.cleanup()을 사용하세요.")
+        
+        # SharedEmbeddingModel 정리
+        from shared_embedding import SharedEmbeddingModel
+        shared_model = SharedEmbeddingModel()
+        shared_model.cleanup()
+        
+        return True
         
     @classmethod
     def get_weaviate_client(cls):

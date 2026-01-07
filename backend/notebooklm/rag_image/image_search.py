@@ -204,13 +204,16 @@ class ImageSearcher:
                 
                 collection = self.client.collections.get(self.class_name)
                 
-                # 필터 구성 (session_id + allowed_document_uuids)
+                # 필터 구성
                 filters = None
                 
-                # 1. 세션 필터 (session_id가 제공된 경우)
+                # 1. 세션 필터 (session_id가 제공된 경우) - 기본 파일들도 포함
                 if session_id:
-                    filters = Filter.by_property("session_id").equal(session_id)
-                    logger.info(f"이미지 검색에 세션 필터 적용: {session_id}")
+                    # 세션 검색 시에도 기본 파일들을 포함하기 위해 전체 검색 후 필터링
+                    filters = None  # 전체 검색
+                    logger.info(f"이미지 검색: 세션 {session_id} + 기본 파일 포함 (전체 검색)")
+                else:
+                    logger.info("이미지 검색: 전체 데이터베이스에서 검색")
                 
                 # 2. UUID 필터 구성 (use_uuid_filter가 True일 때만 적용)
                 if use_uuid_filter and allowed_document_uuids:
@@ -243,8 +246,8 @@ class ImageSearcher:
             except Exception as e:
                 logger.error(f"Weaviate 이미지 검색 오류: {str(e)}")
                 raise
-            
-            # 결과 파싱
+                
+                # 결과 파싱
             results = []
             for i, obj in enumerate(response.objects):
                 # Weaviate의 distance 가져오기
@@ -252,28 +255,63 @@ class ImageSearcher:
                 # 거리를 유사도 점수로 변환 (1 - 거리)
                 similarity_score = 1 - score if score <= 1 else 0
                 
-                # 텍스트 필드 준비 - text > caption > title 우선순위
-                text = obj.properties.get("text", "")
-                caption = obj.properties.get("caption", "")
-                title = obj.properties.get("title", "")
-                
-                # text 필드 우선, 없으면 caption, 그것도 없으면 title
-                doc_text = text if text else (caption if caption else title)
-                
                 result = {
                     'score': similarity_score,
                     'index': i,
                     'id': str(obj.uuid),
-                    'title': title if title else f"이미지 {i}",
-                    'caption': caption,
-                    'file_path': obj.properties.get("image_path", ""),
-                    'content_type': obj.properties.get("con_type", "image"),
+                    'caption': obj.properties.get("caption", ""),
+                    'title': obj.properties.get("title", f"이미지 {i}"),
+                    'file_path': obj.properties.get("file_path", ""),
+                    'content_type': obj.properties.get("content_type", "image"),
                     'tags': obj.properties.get("tags", []),
-                    'page_num': 1,
-                    'text': doc_text,
+                    'metadata': {},
                     'document_uuid': obj.properties.get("document_uuid"),
                 }
                 results.append(result)
+            
+            # 후처리: 세션 검색 시 기본 파일들도 포함
+            if session_id and results:
+                try:
+                    logger.info("후처리: 기본 이미지들도 검색 중...")
+                    # 필터 없이 전체 검색 후 결과에서 필터링
+                    default_response = collection.query.near_vector(
+                        near_vector=query_embedding.tolist(),
+                        limit=20,  # 더 많이 검색 후 필터링
+                        return_metadata=['distance'],
+                        return_properties=["caption", "title", "file_path", "content_type", "tags", "document_uuid", "session_id"]
+                    )
+                    
+                    # 기본 이미지 결과를 결과에 추가 (session_id가 None인 것만)
+                    default_count = 0
+                    for i, obj in enumerate(default_response.objects):
+                        # session_id가 None이거나 없는 것만 기본 파일로 간주
+                        if obj.properties.get("session_id") is None:
+                            score = obj.metadata.distance if obj.metadata.distance is not None else 0
+                            similarity_score = 1 - score if score <= 1 else 0
+                            
+                            default_result = {
+                                'score': similarity_score,
+                                'index': len(results) + default_count,
+                                'id': str(obj.uuid),
+                                'caption': obj.properties.get("caption", ""),
+                                'title': obj.properties.get("title", f"기본 이미지 {default_count}"),
+                                'file_path': obj.properties.get("file_path", ""),
+                                'content_type': obj.properties.get("content_type", "image"),
+                                'tags': obj.properties.get("tags", []),
+                                'metadata': {},
+                                'document_uuid': obj.properties.get("document_uuid"),
+                            }
+                            results.append(default_result)
+                            default_count += 1
+                            
+                            # 5개만 추가
+                            if default_count >= 5:
+                                break
+                    
+                    logger.info(f"후처리 완료: 기본 이미지 {default_count}개 추가")
+                    
+                except Exception as e:
+                    logger.error(f"후처리 중 기본 이미지 검색 오류: {e}")
             
             logger.info(f"쿼리 '{query}'에 대한 검색 완료, 결과 수: {len(results)}")
             

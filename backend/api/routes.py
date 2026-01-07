@@ -31,45 +31,29 @@ UUID_PATTERN = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-
 
 
 def _resolve_sources_to_document_uuids(raw_sources: Optional[List[str]]) -> List[str]:
-    """사용자 입력 소스를 document_uuid 목록으로 변환합니다."""
+    """UUID 목록만 받아서 검증하고 반환합니다."""
     logger.info("채팅 요청 소스(raw): %s", raw_sources)
+    print(f"DEBUG _resolve_sources_to_document_uuids called with: {raw_sources}")
 
     if not raw_sources:
+        print("DEBUG: raw_sources is empty or None")
         return []
 
+    # UUID만 허용
     uuid_list: List[str] = []
-    filenames: List[str] = []
-
-    for item in raw_sources:
+    
+    for i, item in enumerate(raw_sources):
+        print(f"DEBUG: Processing item {i}: '{item}' (type: {type(item)}, length: {len(item) if item else 'N/A'})")
         if not item:
+            print(f"DEBUG: Item {i} is empty, skipping")
             continue
+            
         if UUID_PATTERN.match(item):
+            print(f"DEBUG: Item {i} matches UUID pattern, adding to uuid_list")
             uuid_list.append(item)
         else:
-            filenames.append(item)
-
-    if filenames:
-        try:
-            from notebooklm.config import RAGConfig
-            from notebooklm.weaviate_utils import get_document_uuid_map
-
-            config = RAGConfig()
-            client = config.get_weaviate_client()
-            if client:
-                try:
-                    uuid_map = get_document_uuid_map(client, filenames)
-                    for filename in filenames:
-                        resolved = uuid_map.get(filename)
-                        if resolved:
-                            uuid_list.append(resolved)
-                        else:
-                            logger.warning("'%s' 파일에 대한 document_uuid를 찾을 수 없습니다.", filename)
-                finally:
-                    client.close()
-            else:
-                logger.warning("Weaviate 클라이언트를 초기화할 수 없어 파일명을 UUID로 변환하지 못했습니다.")
-        except Exception as exc:
-            logger.warning("파일명을 document_uuid로 변환하는 중 오류 발생: %s", exc)
+            print(f"DEBUG: Item {i} does not match UUID pattern, rejecting")
+            logger.warning("UUID 형식이 아닌 항목을 거부합니다: '%s'", item)
 
     # 중복 제거 및 순서 보존
     seen: Set[str] = set()
@@ -79,7 +63,8 @@ def _resolve_sources_to_document_uuids(raw_sources: Optional[List[str]]) -> List
             seen.add(value)
             unique_uuids.append(value)
 
-    logger.info("채팅 요청 소스 변환 후(UUID): %s", unique_uuids)
+    logger.info("최종 UUID 목록: %s", unique_uuids)
+    print(f"DEBUG: Final unique UUIDs: {unique_uuids}")
     return unique_uuids
 
 # 검색/크롤링 파이프라인에서 사용하는 공용 파일명 정규화
@@ -201,6 +186,10 @@ async def list_files(request: Request):
     config = RAGConfig()
     paths = get_session_paths(request)
     
+    # 세션 ID 추출
+    session_id = getattr(request.state, "session_id", "default_session")
+    logger.info(f"[/files] Session ID: {session_id}")
+    
     # LeftBox에는 원본 문서(doc) 디렉토리의 파일들만 표시
     search_dirs = [
         config.DEFAULT_DOC_DIR, # 글로벌 doc
@@ -221,14 +210,21 @@ async def list_files(request: Request):
     # 2. Weaviate에서 UUID 매핑 정보 가져오기
     uuid_map = {}
     try:
+        print(f"DEBUG: /files endpoint - files_list: {files_list}")
         client = config.get_weaviate_client()
         if client and files_list:
-            from notebooklm.weaviate_utils import get_document_uuid_map
-            uuid_map = get_document_uuid_map(client, files_list)
+            from notebooklm.weaviate_utils import get_document_uuid_map_with_session
+            print(f"DEBUG: Calling get_document_uuid_map_with_session with {len(files_list)} files")
+            uuid_map = get_document_uuid_map_with_session(client, files_list, session_id)
+            print(f"DEBUG: get_document_uuid_map_with_session returned: {uuid_map}")
             client.close()
+        else:
+            print(f"DEBUG: client is None or files_list is empty. client: {client}, files_list: {files_list}")
     except Exception as e:
         logger.warning(f"UUID 매핑 조회 실패: {e}")
+        print(f"DEBUG: UUID mapping error: {e}")
 
+    print(f"DEBUG: Final uuid_map to return: {uuid_map}")
     return FileListResponse(files=files_list, document_uuid_map=uuid_map)
 
 
@@ -898,11 +894,21 @@ async def summarize_files(request_data: SummarizeRequest, background_tasks: Back
 
 @router.post("/chat", response_model=ChatResponse, tags=["Chat"])
 async def chat(request: Request, query: ChatQuery, background_tasks: BackgroundTasks):
+    print("=== ROUTES.PY CHAT ENDPOINT CALLED ===")
+    logger.info("=== ROUTES.PY CHAT ENDPOINT CALLED ===")
     task_id = str(uuid.uuid4())
     cancellation_event = threading.Event()
     request.app.state.running_tasks[task_id] = cancellation_event
     logger.info(f"[Task {task_id}] 채팅 작업 시작: '{query.query}'")
     logger.info("[Task %s] 요청으로 전달된 sources(raw): %s", task_id, query.sources)
+    
+    # 세션 ID 추출
+    session_id = getattr(request.state, "session_id", "default_session")
+    logger.info(f"[Task {task_id}] Session ID: {session_id}")
+    
+    # DEBUG: UUID 형식 확인
+    for i, source in enumerate(query.sources):
+        logger.info(f"[Task {task_id}] Source[{i}]: '{source}' (length: {len(source)}, is_uuid: {bool(UUID_PATTERN.match(source))})")
 
     model_manager = getattr(request.app.state, "model_manager", None)
     if model_manager is None:
@@ -919,7 +925,51 @@ async def chat(request: Request, query: ChatQuery, background_tasks: BackgroundT
     # 백그라운드에서 RAG 파이프라인 실행
     resolved_sources = _resolve_sources_to_document_uuids(query.sources)
     logger.info("[Task %s] 변환된 document_uuid 목록: %s", task_id, resolved_sources)
+    
+    # 세션 기반 필터링 로직
+    # 1. 사용자가 특정 파일을 체크한 경우: 해당 파일들만 검색
+    # 2. 사용자가 특정 파일을 체크하지 않은 경우: 현재 세션의 파일들만 검색
     source_filter_requested = bool(query.sources)
+    
+    if not source_filter_requested:
+        logger.info(f"[Task {task_id}] No specific sources selected, will search within session {session_id} only")
+        # 현재 세션의 모든 파일 UUID들을 자동으로 가져오기
+        try:
+            from notebooklm.config import RAGConfig
+            config = RAGConfig()
+            paths = get_session_paths(request)
+            
+            # 세션 파일 목록 수집 (세션 + 글로벌 기본 파일들 모두 포함)
+            session_files = set()
+            
+            # 1. 세션 디렉토리 파일들 추가
+            for d in [paths["doc_dir"]]:
+                if d.exists():
+                    for f in d.iterdir():
+                        if f.is_file() and not f.name.startswith('.'):
+                            session_files.add(f.name)
+            
+            # 2. 글로벌 기본 파일들도 추가 (세션 사용자가 접근 가능한 파일들)
+            if config.DEFAULT_DOC_DIR.exists():
+                for f in config.DEFAULT_DOC_DIR.iterdir():
+                    if f.is_file() and not f.name.startswith('.'):
+                        session_files.add(f.name)
+            
+            if session_files:
+                # 세션별 UUID 매핑 가져오기
+                client = config.get_weaviate_client()
+                if client:
+                    from notebooklm.weaviate_utils import get_document_uuid_map_with_session
+                    session_uuid_map = get_document_uuid_map_with_session(client, list(session_files), session_id)
+                    client.close()
+                    
+                    # resolved_sources를 세션의 모든 파일 UUID로 교체
+                    resolved_sources = list(session_uuid_map.values())
+                    logger.info(f"[Task {task_id}] Auto-selected {len(resolved_sources)} files (session + default): {resolved_sources}")
+        except Exception as e:
+            logger.error(f"[Task {task_id}] Failed to auto-select session files: {e}")
+    else:
+        logger.info(f"[Task {task_id}] Specific sources selected: {len(resolved_sources)} files")
 
     try:
         rag_pipeline = model_manager.acquire("rag_pipeline")
@@ -937,7 +987,8 @@ async def chat(request: Request, query: ChatQuery, background_tasks: BackgroundT
             cancellation_event=cancellation_event,
             tasks_dict=tasks,  # app.state.tasks를 전달
             running_tasks_dict=request.app.state.running_tasks, # app.state.running_tasks를 전달
-            app_state=request.app.state  # app.state 전체를 전달
+            app_state=request.app.state,  # app.state 전체를 전달
+            session_id=session_id  # 세션 ID 전달
         )
     finally:
         # 주의: 백그라운드 작업이 끝난 후 release해야 하므로 

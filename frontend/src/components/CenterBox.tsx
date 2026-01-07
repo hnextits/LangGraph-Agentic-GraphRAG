@@ -100,6 +100,9 @@ const CenterBox: React.FC<CenterBoxProps> = React.memo(({ isFiles }) => {
 
   const handleSendMessage = async () => {
     if (input.trim() && !isStreaming) {
+      // UUID가 선택되지 않았더라도 백엔드에서 자동으로 세션의 모든 파일들을 처리하므로 에러를 표시하지 않음
+      // 백엔드에서 세션별 자동 선택 로직이 구현되어 있음
+
       const userMessage: Message = { 
         sender: 'user', 
         text: input,
@@ -110,9 +113,8 @@ const CenterBox: React.FC<CenterBoxProps> = React.memo(({ isFiles }) => {
       setIsStreaming(true);
 
       try {
-        const effectiveSources = checkedFileUuids.length > 0 ? checkedFileUuids : checkedFilenames;
-
-        const response = await api.postChat(input, effectiveSources);
+        // UUID만 사용하도록 수정
+        const response = await api.postChat(input, checkedFileUuids);
         if (response.data.task_id) {
           setCurrentTaskId(response.data.task_id);
         } else {

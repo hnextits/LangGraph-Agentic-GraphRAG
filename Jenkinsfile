@@ -77,29 +77,17 @@ pipeline {
                     
                     if (currentBranch.startsWith('dev') || currentBranch.startsWith('DEV')) {
                         if (isWebhookTrigger) {
-                            echo "⚠️ DEV 브랜치는 자동 배포하지 않습니다. 빌드를 건너뜁니다."
+                            echo "⚠️ DEV 브랜치 푸시는 아무런 행동을 수행하지 않습니다."
                             currentBuild.result = 'NOT_BUILT'
                             return
                         }
-                        env.AUTO_TEST_DEPLOY = 'false'
                         env.CURRENT_ACTION = params.ACTION
-                        if (params.ACTION != 'TEST_DEPLOY' && params.ACTION != 'DEV_TO_PROD_DEPLOY') {
-                            error "DEV 브랜치에서는 TEST_DEPLOY 또는 DEV_TO_PROD_DEPLOY만 허용됩니다."
-                        }
                     } else if (currentBranch.startsWith('test') || currentBranch.startsWith('TEST')) {
-                        if (isWebhookTrigger || params.AUTO_DEPLOY_TEST) {
-                            env.AUTO_TEST_DEPLOY = 'true'
-                            env.CURRENT_ACTION = 'TEST_DEPLOY'
-                        } else {
-                            env.AUTO_TEST_DEPLOY = 'false'
-                            env.CURRENT_ACTION = params.ACTION
-                        }
+                        env.CURRENT_ACTION = isWebhookTrigger ? 'TEST_DEPLOY' : params.ACTION
+                        echo "🚀 TEST 브랜치 액션: ${env.CURRENT_ACTION}"
                     } else if (currentBranch == 'main' || currentBranch == 'master') {
-                        if (!params.ACTION.startsWith('PROD_')) {
-                            error "MAIN 브랜치에서는 PROD_* 액션만 허용됩니다."
-                        }
-                        env.AUTO_TEST_DEPLOY = 'false'
-                        env.CURRENT_ACTION = params.ACTION
+                        env.CURRENT_ACTION = isWebhookTrigger ? 'PROD_DEPLOY' : params.ACTION
+                        echo "🚀 MAIN 브랜치 액션: ${env.CURRENT_ACTION}"
                     } else {
                         error "지원하지 않는 브랜치입니다: ${currentBranch}"
                     }
@@ -107,13 +95,10 @@ pipeline {
             }
         }
 
-        stage('Push DEV to TEST') {
+        stage('Push DEV to MAIN') {
             when { 
                 allOf {
-                    anyOf {
-                        expression { env.CURRENT_ACTION == 'TEST_DEPLOY' }
-                        expression { env.CURRENT_ACTION == 'DEV_TO_PROD_DEPLOY' }
-                    }
+                    expression { env.CURRENT_ACTION == 'DEV_TO_PROD_DEPLOY' }
                     expression { 
                         def currentBranch = env.BRANCH_NAME ?: env.GIT_BRANCH?.replace('origin/', '') ?: 'unknown'
                         return currentBranch.startsWith('dev') || currentBranch.startsWith('DEV')
@@ -122,7 +107,7 @@ pipeline {
             }
             steps {
                 script {
-                    echo "🔀 DEV → TEST 브랜치 푸시 시작..."
+                    echo "🔀 DEV → MAIN 브랜치 직접 푸시 시작..."
                     def gitUrl = scm.getUserRemoteConfigs()[0].getUrl()
                     withCredentials([string(credentialsId: 'github-pat', variable: 'GITHUB_TOKEN')]) {
                         sh """
@@ -131,9 +116,9 @@ pipeline {
                             GIT_URL_WITH_PAT=\$(echo "${gitUrl}" | sed "s|https://|https://\${GITHUB_TOKEN}@|")
                             git remote set-url origin "\$GIT_URL_WITH_PAT"
                             git fetch origin --prune
-                            git push origin HEAD:TEST --force
+                            git push origin HEAD:main --force || git push origin HEAD:master --force
                         """
-                        slackSend(channel: env.SLACK_CHANNEL, color: 'good', message: "🔀 [${env.JOB_NAME}] DEV → TEST 푸시 완료", tokenCredentialId: env.SLACK_CREDENTIAL_ID)
+                        slackSend(channel: env.SLACK_CHANNEL, color: 'good', message: "🔀 [${env.JOB_NAME}] DEV → MAIN 직접 푸시 완료", tokenCredentialId: env.SLACK_CREDENTIAL_ID)
                     }
                 }
             }
@@ -168,9 +153,12 @@ pipeline {
 
         stage('Merge TEST to MAIN') {
             when { 
-                anyOf {
+                allOf {
                     expression { env.CURRENT_ACTION == 'PROD_DEPLOY' }
-                    expression { env.CURRENT_ACTION == 'DEV_TO_PROD_DEPLOY' }
+                    expression { 
+                        def currentBranch = env.BRANCH_NAME ?: env.GIT_BRANCH?.replace('origin/', '') ?: 'unknown'
+                        return currentBranch.startsWith('test') || currentBranch.startsWith('TEST')
+                    }
                 }
             }
             steps {
@@ -307,7 +295,11 @@ pipeline {
                 anyOf {
                     expression { env.CURRENT_ACTION.endsWith('_START') }
                     expression { env.CURRENT_ACTION.endsWith('_RESTART') }
-                    expression { env.CURRENT_ACTION.endsWith('_DEPLOY') }
+                    // 수동 DEPLOY 시에만 헬스체크 수행
+                    expression { 
+                        env.CURRENT_ACTION.endsWith('_DEPLOY') && 
+                        currentBuild.getBuildCauses()[0]?._class.contains('UserIdCause') 
+                    }
                 }
             }
             steps {

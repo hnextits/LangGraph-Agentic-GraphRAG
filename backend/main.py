@@ -119,29 +119,29 @@ async def lifespan(app: FastAPI):
     app.state.model_manager = model_manager
     logger.info("LazyModelManager에 모델 등록 완료 (모든 모델은 Lazy Loading 지원)")
 
-    # 6. 메인 스레드에서 SGLang 엔진 사전 로드 (Signal 오류 방지)
+    # 6. 메인 스레드에서 SGLang 엔진 사전 로드 (비활성화 - 요청 시 로드로 변경)
     # SGLang Engine은 signal 핸들러를 등록하므로 반드시 메인 스레드에서 초기화되어야 합니다.
-    logger.info("SGLang 엔진 사전 로드를 시작합니다...")
-    try:
-        # RAG 파이프라인 획득 및 로드 (Eager Loading 강제)
-        rag_pipeline = model_manager.acquire("rag_pipeline")
+    logger.info("SGLang 엔진 사전 로드를 건너뜁니다 (요청 시 로드 방식).")
+    # try:
+    #     # RAG 파이프라인 획득 및 로드 (Eager Loading 강제)
+    #     rag_pipeline = model_manager.acquire("rag_pipeline")
         
-        # 비동기 context(lifespan) 내에서 동기 방식으로 엔진 로드하여 메인 스레드 유지
-        if hasattr(rag_pipeline, "load_engine_sync"):
-            rag_pipeline.load_engine_sync()
-            logger.info("RAG 파이프라인 SGLang 엔진 로드 완료")
-        elif hasattr(rag_pipeline, "load_engine"):
-            # 기존 async 버전 대응
-            import asyncio
-            # asyncio.run()이나 직접 호출은 이미 돌고 있는 루프 때문에 안 될 수 있으므로
-            # sync 메서드 호출을 권장
-            rag_pipeline.load_engine_sync()
+    #     # 비동기 context(lifespan) 내에서 동기 방식으로 엔진 로드하여 메인 스레드 유지
+    #     if hasattr(rag_pipeline, "load_engine_sync"):
+    #         rag_pipeline.load_engine_sync()
+    #         logger.info("RAG 파이프라인 SGLang 엔진 로드 완료")
+    #     elif hasattr(rag_pipeline, "load_engine"):
+    #         # 기존 async 버전 대응
+    #         import asyncio
+    #         # asyncio.run()이나 직접 호출은 이미 돌고 있는 루프 때문에 안 될 수 있으므로
+    #         # sync 메서드 호출을 권장
+    #         rag_pipeline.load_engine_sync()
             
-    except Exception as e:
-        logger.error(f"SGLang 엔진 사전 로드 중 오류 발생: {e}")
-    finally:
-        # 엔진 등록을 위해 acquire한 모델을 release하여 LazyManager 상태 유지
-        model_manager.release("rag_pipeline")
+    # except Exception as e:
+    #     logger.error(f"SGLang 엔진 사전 로드 중 오류 발생: {e}")
+    # finally:
+    #     # 엔진 등록을 위해 acquire한 모델을 release하여 LazyManager 상태 유지
+    #     model_manager.release("rag_pipeline")
 
     yield  # 애플리케이션 실행 중
 

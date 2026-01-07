@@ -1,18 +1,18 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from pydantic import BaseModel
 from typing import List, Any, Dict
 import asyncio
 import logging
 # RAG 서비스 및 의존성 주입 함수 임포트
-from services.rag_service import get_rag_response, get_rag_pipeline
+from services.rag_service import get_rag_response, build_rag_pipeline
 # 이미지 처리 유틸리티 임포트
 from utils.helpers import process_response_with_images
 
 # 검색 기능 임포트 (이미 main.py에서 경로 추가됨)
 try:
-    from search_test.crawler_pipeline import search as perform_search
+    from skill.search.pipeline import search_google as perform_search
 except ImportError as e:
-    logging.error(f"crawler_pipeline 모듈 가져오기 실패: {e}")
+    logging.error(f"search pipeline 모듈 가져오기 실패: {e}")
     perform_search = None
 
 logger = logging.getLogger(__name__)
@@ -27,18 +27,38 @@ class ChatResponse(BaseModel):
     images: List[str] = []  # base64 문자열 리스트
 
 @router.post("/chat", response_model=ChatResponse)
-async def handle_chat(request: ChatRequest, rag_pipeline: Any = Depends(get_rag_pipeline)):
+async def handle_chat(chat_request: ChatRequest, http_request: Request, rag_pipeline: Any = Depends(build_rag_pipeline)):
     """
     사용자 질문을 받아 RAG 파이프라인으로 전달하고 답변을 반환합니다.
     RAG 파이프라인은 의존성 주입을 통해 안전하게 전달받습니다.
     """
+    print("=== CHAT.PY ENDPOINT CALLED ===")
+    logger.info("=== CHAT.PY ENDPOINT CALLED ===")
+    logger.info(f"DEBUG: chat.py endpoint called with query: '{chat_request.query}'")
+    logger.info(f"DEBUG: chat.py sources received: {chat_request.sources}")
+    for i, source in enumerate(chat_request.sources):
+        logger.info(f"DEBUG: chat.py Source[{i}]: '{source}' (length: {len(source)})")
+    
+    # 세션 ID 추출
+    session_id = getattr(http_request.state, "session_id", "default_session")
+    logger.info(f"DEBUG: chat.py Session ID: {session_id}")
+    
+    # 소스 필터링 로직
+    source_filter_requested = bool(chat_request.sources)
+    if not source_filter_requested:
+        logger.info(f"DEBUG: chat.py No specific sources selected, will search within session {session_id} only")
+    else:
+        logger.info(f"DEBUG: chat.py Specific sources selected: {len(chat_request.sources)} files")
     try:
         # RAG 응답 생성
-        # 개선된 RAG 파이프라인을 직접 사용하여 응답 생성
-        response_data = await rag_pipeline.get_response(
-            query=request.query,
-            sources=request.sources,
-            use_image_search=True  # 이미지 검색 활성화
+        # RAG 파이프라인의 process_query 메서드 사용
+        import asyncio
+        response_data = await asyncio.to_thread(
+            rag_pipeline.process_query,
+            query=chat_request.query,
+            top_k=5,
+            allowed_document_uuids=set(chat_request.sources) if chat_request.sources else None,
+            session_id=session_id  # 세션 ID 전달
         )
         answer = response_data.get('answer', '답변을 생성하지 못했습니다.')
         
@@ -70,19 +90,27 @@ class ParallelResponse(BaseModel):
     
 
 @router.post("/parallel", response_model=ParallelResponse)
-async def handle_parallel(request: ParallelRequest, rag_pipeline: Any = Depends(get_rag_pipeline)):
+async def handle_parallel(parallel_request: ParallelRequest, http_request: Request, rag_pipeline: Any = Depends(build_rag_pipeline)):
     """
     RAG와 검색을 병렬로 수행하여 결과를 반환합니다.
     """
+    # 세션 ID 추출
+    session_id = getattr(http_request.state, "session_id", "default_session")
+    logger.info(f"DEBUG: parallel endpoint Session ID: {session_id}")
+    
     async def run_rag():
         """RAG 응답 생성 및 이미지 처리"""
         try:
-            # RAG 응답 생성
-            answer = get_rag_response(
-                query=request.query,
-                sources=request.sources,
-                rag_pipeline=rag_pipeline
+            # RAG 응답 생성 - process_query 사용
+            import asyncio
+            answer_data = await asyncio.to_thread(
+                rag_pipeline.process_query,
+                query=parallel_request.query,
+                top_k=5,
+                allowed_document_uuids=set(parallel_request.sources) if parallel_request.sources else None,
+                session_id=session_id  # 세션 ID 전달
             )
+            answer = answer_data.get('answer', 'RAG 처리 중 오류가 발생했습니다.')
             
             # 응답에서 이미지 추출 및 처리
             processed_response = process_response_with_images(answer)
@@ -100,14 +128,14 @@ async def handle_parallel(request: ParallelRequest, rag_pipeline: Any = Depends(
     
     async def run_search():
         """검색 수행"""
-        if not request.enable_search or perform_search is None:
+        if not parallel_request.enable_search or perform_search is None:
             return []
         
         try:
             # 비동기로 검색 수행 (새로운 이벤트 루프에서 실행)
             results = await asyncio.get_event_loop().run_in_executor(
                 None, 
-                lambda: perform_search(request.query, 10, [])
+                lambda: perform_search(parallel_request.query, 10, [])
             )
             return results if results else []
         except Exception as e:
