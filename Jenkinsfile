@@ -86,11 +86,17 @@ pipeline {
                     } else if (currentBranch.startsWith('test') || currentBranch.startsWith('TEST')) {
                         env.CURRENT_ACTION = isWebhookTrigger ? 'TEST_DEPLOY' : params.ACTION
                         echo "🚀 TEST 브랜치 액션: ${env.CURRENT_ACTION}"
-                    } else if (currentBranch == 'main' || currentBranch == 'master') {
+                    } else if (currentBranch == 'main' || currentBranch == 'master' || currentBranch == 'MAIN' || currentBranch == 'MASTER') {
                         env.CURRENT_ACTION = isWebhookTrigger ? 'PROD_DEPLOY' : params.ACTION
                         echo "🚀 MAIN 브랜치 액션: ${env.CURRENT_ACTION}"
                     } else {
-                        error "지원하지 않는 브랜치입니다: ${currentBranch}"
+                        // 기본적으로 수동 실행인 경우 파라미터 액션을 따름
+                        if (isManualTrigger) {
+                            env.CURRENT_ACTION = params.ACTION
+                            echo "🚀 수동 실행 액션 (${currentBranch}): ${env.CURRENT_ACTION}"
+                        } else {
+                            error "지원하지 않는 브랜치입니다: ${currentBranch}"
+                        }
                     }
                 }
             }
@@ -230,7 +236,8 @@ pipeline {
                 anyOf {
                     expression { env.CURRENT_ACTION.endsWith('_START') }
                     expression { env.CURRENT_ACTION.endsWith('_RESTART') }
-                    expression { env.CURRENT_ACTION.endsWith('_DEPLOY') }
+                    expression { env.CURRENT_ACTION == 'PROD_DEPLOY' } // PROD_DEPLOY만 서버 작업 포함
+                    expression { env.CURRENT_ACTION == 'TEST_DEPLOY' } // TEST_DEPLOY만 서버 작업 포함
                     expression { env.CURRENT_ACTION.endsWith('_STOP') }
                 }
             }
@@ -339,9 +346,9 @@ REMOTEEFFECT
                 anyOf {
                     expression { env.CURRENT_ACTION.endsWith('_START') }
                     expression { env.CURRENT_ACTION.endsWith('_RESTART') }
-                    // 수동 DEPLOY 시에만 헬스체크 수행
+                    // 수동 DEPLOY 시에만 헬스체크 수행 (DEV_TO_PROD_DEPLOY 제외)
                     expression { 
-                        env.CURRENT_ACTION.endsWith('_DEPLOY') && 
+                        (env.CURRENT_ACTION == 'PROD_DEPLOY' || env.CURRENT_ACTION == 'TEST_DEPLOY') && 
                         currentBuild.getBuildCauses()[0]?._class.contains('UserIdCause') 
                     }
                 }
