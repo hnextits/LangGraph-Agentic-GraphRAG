@@ -45,12 +45,13 @@ pipeline {
         PROD_PORT = '2223'
         PROD_USER = 'nextits'
         PROD_WORKSPACE = "/home/${PROD_USER}/workspace/${REPO_NAME}"
-        PROD_BACKEND_PORT = '8501'
-        PROD_FRONTEND_PORT = '8502'
+        PROD_BACKEND_PORT = '5004'
+        PROD_FRONTEND_PORT = '8504'
         
-        // Conda 환경명
+        // Conda 환경명 및 Python 버전
         TEST_CONDA_ENV = 'test_server'
         PROD_CONDA_ENV = 'prod'
+        PYTHON_VERSION = '3.11'
         
         // SSH Credentials
         TEST_SSH_CREDENTIAL = 'nextits_ai_4_ssh'
@@ -246,7 +247,7 @@ pipeline {
 
                     sshagent(credentials: [sshCredential]) {
                         sh """
-                            ssh -p ${port} ${user}@${server} << 'REMOTEEFFECT'
+                            ssh -tt -o BatchMode=yes -p ${port} ${user}@${server} << 'REMOTEEFFECT'
                                 cd ${workspace}
                                 source \$(conda info --base)/etc/profile.d/conda.sh
                                 conda activate ${condaEnv} || (conda create -n ${condaEnv} python=3.9 -y && conda activate ${condaEnv})
@@ -272,19 +273,24 @@ pipeline {
                                 # Backend 시작
                                 cd backend
                                 # Poetry 설치 확인 및 의존성 설치
-                                if ! command -v poetry &> /dev/null; then
+                                if ! command -v \$HOME/.local/bin/poetry &> /dev/null; then
                                     curl -sSL https://install.python-poetry.org | python3 -
-                                    export PATH="\$HOME/.local/bin:\$PATH"
                                 fi
+                                
+                                # 명시적 경로 설정
+                                POETRY_BIN="\$HOME/.local/bin/poetry"
+                                
+                                # Poetry가 Conda 가상환경 내의 Python을 사용하도록 설정
+                                \$POETRY_BIN config virtualenvs.create false
                                 
                                 # 프로젝트 루트(pyproject.toml 위치)로 이동하여 설치
                                 cd ..
-                                poetry install --only main --quiet
+                                \$POETRY_BIN install --only main --quiet
                                 
                                 # 다시 backend 폴더로 이동하여 실행
                                 cd backend
-                                # PORT 환경변수를 사용하여 poetry run으로 실행
-                                PORT=\$B_PORT nohup poetry run python main.py > /tmp/backend.log 2>&1 &
+                                # PORT 환경변수를 사용하여 실행 (Poetry가 Conda Python에 패키지를 설치했으므로 직접 실행 가능)
+                                PORT=\$B_PORT nohup python main.py > /tmp/backend.log 2>&1 &
                                 
                                 # Frontend 시작
                                 cd ../frontend
