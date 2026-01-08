@@ -246,23 +246,23 @@ pipeline {
 
                     sshagent(credentials: [sshCredential]) {
                         sh """
-                            ssh -p ${port} ${user}@${server} << 'EOF'
+                            ssh -p ${port} ${user}@${server} << 'REMOTEEFFECT'
                                 cd ${workspace}
-                                source \$(conda info --base)/etc/profile.d/conda.sh
+                                source $(conda info --base)/etc/profile.d/conda.sh
                                 conda activate ${condaEnv} || (conda create -n ${condaEnv} python=3.9 -y && conda activate ${condaEnv})
                                 
                                 # 포트 결정
                                 if [ "${isTestServer}" = "true" ]; then
-                                    B_PORT=\$(for p in \$(seq ${env.TEST_BACKEND_PORT_MIN} ${env.TEST_BACKEND_PORT_MAX}); do if ! netstat -tln | grep -q ":\$p "; then echo \$p; break; fi; done)
-                                    F_PORT=\$(for p in \$(seq ${env.TEST_FRONTEND_PORT_MIN} ${env.TEST_FRONTEND_PORT_MAX}); do if ! netstat -tln | grep -q ":\$p "; then echo \$p; break; fi; done)
+                                    B_PORT=$(for p in $(seq ${env.TEST_BACKEND_PORT_MIN} ${env.TEST_BACKEND_PORT_MAX}); do if ! netstat -tln | grep -q ":$p "; then echo $p; break; fi; done)
+                                    F_PORT=$(for p in $(seq ${env.TEST_FRONTEND_PORT_MIN} ${env.TEST_FRONTEND_PORT_MAX}); do if ! netstat -tln | grep -q ":$p "; then echo $p; break; fi; done)
                                 else
                                     B_PORT=${env.PROD_BACKEND_PORT}
                                     F_PORT=${env.PROD_FRONTEND_PORT}
                                 fi
 
                                 # 프로세스 정리
-                                lsof -ti:\$B_PORT | xargs -r kill -9 || true
-                                lsof -ti:\$F_PORT | xargs -r kill -9 || true
+                                lsof -ti:$B_PORT | xargs -r kill -9 || true
+                                lsof -ti:$F_PORT | xargs -r kill -9 || true
                                 
                                 if [ "${isStop}" = "true" ]; then
                                     echo "✅ 서버 중지 완료"
@@ -271,19 +271,31 @@ pipeline {
 
                                 # Backend 시작
                                 cd backend
-                                pip install -r requirements.txt --quiet
-                                PORT=\$B_PORT nohup python main.py > /tmp/backend.log 2>&1 &
+                                # Poetry 설치 확인 및 의존성 설치
+                                if ! command -v poetry &> /dev/null; then
+                                    curl -sSL https://install.python-poetry.org | python3 -
+                                    export PATH="$HOME/.local/bin:$PATH"
+                                fi
+                                
+                                # 프로젝트 루트(pyproject.toml 위치)로 이동하여 설치
+                                cd ..
+                                poetry install --only main --quiet
+                                
+                                # 다시 backend 폴더로 이동하여 실행
+                                cd backend
+                                # PORT 환경변수를 사용하여 poetry run으로 실행
+                                PORT=$B_PORT nohup poetry run python main.py > /tmp/backend.log 2>&1 &
                                 
                                 # Frontend 시작
                                 cd ../frontend
                                 npm install --silent
                                 if [ "${isTestServer}" = "true" ]; then
-                                    PORT=\$F_PORT nohup npm run dev > /tmp/frontend.log 2>&1 &
+                                    PORT=$F_PORT nohup npm run dev > /tmp/frontend.log 2>&1 &
                                 else
                                     npm run build
-                                    PORT=\$F_PORT nohup npm run start > /tmp/frontend.log 2>&1 &
+                                    PORT=$F_PORT nohup npm run start > /tmp/frontend.log 2>&1 &
                                 fi
-                            EOF
+REMOTEEFFECT
                         """
                     }
                 }
