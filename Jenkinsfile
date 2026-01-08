@@ -50,7 +50,7 @@ pipeline {
         
         // Conda 환경명 및 Python 버전
         TEST_CONDA_ENV = 'test_server'
-        PROD_CONDA_ENV = 'prod'
+        PROD_CONDA_ENV = 'space'
         PYTHON_VERSION = '3.11'
         
         // SSH Credentials

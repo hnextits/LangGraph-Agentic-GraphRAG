@@ -1,13 +1,24 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  swcMinify: true,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+    styledComponents: true,
+  },
   env: {
     PORT: process.env.NEXT_PUBLIC_PORT
   },
-  // Next.js 서버 포트 설정
   experimental: {
-    serverComponentsExternalPackages: []
-  }
+    optimizePackageImports: [
+      '@mui/material',
+      '@mui/icons-material',
+      'lucide-react',
+      'react-syntax-highlighter'
+    ],
+  },
+  // 정적 자원 압축 및 캐싱 최적화
+  compress: true,
 };
 
 module.exports = nextConfig;
