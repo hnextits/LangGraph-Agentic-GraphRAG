@@ -116,7 +116,7 @@ pipeline {
                             GIT_URL_WITH_PAT=\$(echo "${gitUrl}" | sed "s|https://|https://\${GITHUB_TOKEN}@|")
                             git remote set-url origin "\$GIT_URL_WITH_PAT"
                             git fetch origin --prune
-                            git push origin HEAD:main --force || git push origin HEAD:master --force
+                            git push origin HEAD:refs/heads/MAIN --force
                         """
                         slackSend(channel: env.SLACK_CHANNEL, color: 'good', message: "🔀 [${env.JOB_NAME}] DEV → MAIN 직접 푸시 완료", tokenCredentialId: env.SLACK_CREDENTIAL_ID)
                     }
@@ -172,7 +172,7 @@ pipeline {
                             cd \$TEMP_DIR/repo
                             git config user.email "jenkins@nextits.com"
                             git config user.name "Jenkins CI"
-                            git checkout main || git checkout master
+                            git checkout MAIN
                             git merge origin/TEST --no-commit --no-ff
                             git commit -m "Merge TEST to MAIN for production deployment by ${env.DEPLOYER_NAME}"
                             git push origin HEAD
