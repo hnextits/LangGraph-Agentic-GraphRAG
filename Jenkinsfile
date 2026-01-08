@@ -243,88 +243,156 @@ pipeline {
                     def workspace = isTestServer ? env.TEST_WORKSPACE : env.PROD_WORKSPACE
                     def condaEnv = isTestServer ? env.TEST_CONDA_ENV : env.PROD_CONDA_ENV
                     def sshCredential = isTestServer ? env.TEST_SSH_CREDENTIAL : env.PROD_SSH_CREDENTIAL
-                    def isStop = env.CURRENT_ACTION.endsWith('_STOP')
 
-                    sshagent(credentials: [sshCredential]) {
-                        sh """
-                            ssh -tt -o BatchMode=yes -p ${port} ${user}@${server} << 'REMOTEEFFECT'
-                                # 1. Conda 초기화 및 환경 리스트 확인
-                                # conda가 PATH에 없을 경우를 대비하여 일반적인 경로 추가
-                                export PATH="/home/${user}/anaconda3/bin:/home/${user}/miniconda3/bin:\$PATH"
-                                
-                                CONDA_BASE=\$(conda info --base 2>/dev/null || echo "")
-                                if [ -z "\$CONDA_BASE" ]; then
-                                    echo "❌ Conda를 찾을 수 없습니다. 설치 경로를 확인해주세요."
-                                    exit 1
-                                fi
-                                
-                                source "\$CONDA_BASE/etc/profile.d/conda.sh"
-                                
-                                # 2. 지정된 Conda 환경 존재 여부 확인 및 생성
-                                if ! conda env list | grep -q "^${condaEnv} "; then
-                                    echo "🚀 ${condaEnv} 환경이 존재하지 않아 새로 생성합니다. (Python ${env.PYTHON_VERSION})"
-                                    # --yes 옵션을 명시적으로 사용하고 에러 발생 시 로그 출력
-                                    conda create -n ${condaEnv} python=${env.PYTHON_VERSION} -y || {
-                                        echo "❌ Conda 환경 생성 실패. 상세 에러를 확인하세요."
-                                        exit 1
-                                    }
-                                fi
-                                
-                                # 3. Conda 환경 활성화
-                                conda activate ${condaEnv} || {
-                                    echo "❌ Conda 환경 활성화 실패: ${condaEnv}"
-                                    exit 1
-                                }                                
-                                # 포트 결정
-                                if [ "${isTestServer}" = "true" ]; then
-                                    B_PORT=\$(for p in \$(seq ${env.TEST_BACKEND_PORT_MIN} ${env.TEST_BACKEND_PORT_MAX}); do if ! netstat -tln | grep -q ":\$p "; then echo \$p; break; fi; done)
-                                    F_PORT=\$(for p in \$(seq ${env.TEST_FRONTEND_PORT_MIN} ${env.TEST_FRONTEND_PORT_MAX}); do if ! netstat -tln | grep -q ":\$p "; then echo \$p; break; fi; done)
+                        withCredentials([string(credentialsId: 'github-pat', variable: 'GITHUB_TOKEN')]) {
+                            def deployScript = """
+                                set -e
+                                GIT_URL_WITH_PAT=\$(echo "${gitUrl}" | sed "s|https://|https://\${GITHUB_TOKEN}@|")
+                                if [ -d "${targetWorkspace}/.git" ]; then
+                                    cd "${targetWorkspace}"
+                                    git remote set-url origin "\$GIT_URL_WITH_PAT"
+                                    git fetch origin --force --prune
+                                    git reset --hard origin/${deployBranch}
+                                    git clean -fd
                                 else
-                                    B_PORT=${env.PROD_BACKEND_PORT}
-                                    F_PORT=${env.PROD_FRONTEND_PORT}
+                                    mkdir -p "${targetWorkspace}"
+                                    git clone -b ${deployBranch} "\$GIT_URL_WITH_PAT" "${targetWorkspace}"
                                 fi
+                            """
+                            writeFile file: 'deploy.sh', text: deployScript
+                            sshagent(credentials: [sshCredential]) {
+                                sh "scp -P ${targetPort} deploy.sh ${targetUser}@${targetServer}:/tmp/deploy.sh"
+                                sh "ssh -p ${targetPort} ${targetUser}@${targetServer} 'GITHUB_TOKEN=${GITHUB_TOKEN} bash /tmp/deploy.sh'"
+                            }
+                        }
+                    }
+                }
+            }
 
-                                # 프로세스 정리
-                                lsof -ti:\$B_PORT | xargs -r kill -9 || true
-                                lsof -ti:\$F_PORT | xargs -r kill -9 || true
-                                
-                                if [ "${isStop}" = "true" ]; then
-                                    echo "✅ 서버 중지 완료"
+            stage('Server Operations') {
+                when {
+                    anyOf {
+                        expression { env.CURRENT_ACTION.endsWith('_START') }
+                        expression { env.CURRENT_ACTION.endsWith('_RESTART') }
+                        expression { env.CURRENT_ACTION.endsWith('_DEPLOY') }
+                        expression { env.CURRENT_ACTION.endsWith('_STOP') }
+                    }
+                }
+                steps {
+                    script {
+                        def isTestServer = env.CURRENT_ACTION.startsWith('TEST_')
+                        def server = isTestServer ? env.TEST_SERVER : env.PROD_SERVER
+                        def port = isTestServer ? env.TEST_PORT : env.PROD_PORT
+                        def user = isTestServer ? env.TEST_USER : env.PROD_USER
+                        def workspace = isTestServer ? env.TEST_WORKSPACE : env.PROD_WORKSPACE
+                        def condaEnv = isTestServer ? env.TEST_CONDA_ENV : env.PROD_CONDA_ENV
+                        def sshCredential = isTestServer ? env.TEST_SSH_CREDENTIAL : env.PROD_SSH_CREDENTIAL
+                        def isStop = env.CURRENT_ACTION.endsWith('_STOP')
+
+                        sshagent(credentials: [sshCredential]) {
+                            sh """
+                                ssh -tt -o BatchMode=yes -p ${port} ${user}@${server} << 'REMOTEEFFECT'
+                                    # 워크스페이스로 확실하게 이동
+                                    cd "${workspace}" || { echo "❌ 워크스페이스 이동 실패: ${workspace}"; exit 1; }
+                                    
+                                    # 1. Conda 초기화 및 환경 리스트 확인
+                                    export PATH="/home/${user}/anaconda3/bin:/home/${user}/miniconda3/bin:\$PATH"
+                                    CONDA_BASE=\$(conda info --base 2>/dev/null || echo "")
+                                    if [ -z "\$CONDA_BASE" ]; then
+                                        echo "❌ Conda를 찾을 수 없습니다. 설치 경로를 확인해주세요."
+                                        exit 1
+                                    fi
+                                    
+                                    source "\$CONDA_BASE/etc/profile.d/conda.sh"
+                                    
+                                    # 2. 지정된 Conda 환경 존재 여부 확인 및 생성
+                                    if ! conda env list | grep -q "^${condaEnv} "; then
+                                        echo "🚀 ${condaEnv} 환경 생성 중... (Python ${env.PYTHON_VERSION})"
+                                        conda create -n ${condaEnv} python=${env.PYTHON_VERSION} -y || exit 1
+                                    fi
+                                    
+                                    # 3. Conda 환경 활성화
+                                    conda activate ${condaEnv} || exit 1
+                                    
+                                    # 포트 결정
+                                    if [ "${isTestServer}" = "true" ]; then
+                                        B_PORT=\$(for p in \$(seq ${env.TEST_BACKEND_PORT_MIN} ${env.TEST_BACKEND_PORT_MAX}); do if ! netstat -tln | grep -q ":\$p "; then echo \$p; break; fi; done)
+                                        F_PORT=\$(for p in \$(seq ${env.TEST_FRONTEND_PORT_MIN} ${env.TEST_FRONTEND_PORT_MAX}); do if ! netstat -tln | grep -q ":\$p "; then echo \$p; break; fi; done)
+                                    else
+                                        B_PORT=${env.PROD_BACKEND_PORT}
+                                        F_PORT=${env.PROD_FRONTEND_PORT}
+                                    fi
+
+                                    # 프로세스 정리
+                                    lsof -ti:\$B_PORT | xargs -r kill -9 || true
+                                    lsof -ti:\$F_PORT | xargs -r kill -9 || true
+                                    
+                                    if [ "${isStop}" = "true" ]; then
+                                        echo "✅ 서버 중지 완료"
+                                        exit 0
+                                    fi
+
+                                    # 4. Backend 빌드 및 Poetry 인스톨
+                                    # 프로젝트 루트(pyproject.toml 위치)에서 실행
+                                    if ! command -v \$HOME/.local/bin/poetry &> /dev/null; then
+                                        curl -sSL https://install.python-poetry.org | python3 -
+                                    fi
+                                    POETRY_BIN="\$HOME/.local/bin/poetry"
+                                    
+                                    \$POETRY_BIN config virtualenvs.create false
+                                    echo "📦 의존성 설치 중..."
+                                    \$POETRY_BIN install --only main --quiet
+                                    
+                                    # 5. 실행
+                                    cd backend || { echo "❌ backend 디렉토리 미발견"; exit 1; }
+                                    echo "🚀 Backend 실행 중 (Port: \$B_PORT)..."
+                                    PORT=\$B_PORT nohup python main.py > /tmp/backend.log 2>&1 &
+                                    disown
+                                    
+                                    # Frontend 시작
+                                    cd ../frontend || { echo "❌ frontend 디렉토리 미발견"; exit 1; }
+                                    echo "📦 Frontend 의존성 설치 및 빌드 중..."
+                                    npm install --silent
+                                    
+                                    if [ "${isTestServer}" = "false" ] && [ "${env.CURRENT_ACTION.endsWith('_DEPLOY')}" = "true" ]; then
+                                        npm run build
+                                    fi
+                                    
+                                    if [ "${isTestServer}" = "true" ]; then
+                                        PORT=\$F_PORT nohup npm run dev > /tmp/frontend.log 2>&1 &
+                                    else
+                                        PORT=\$F_PORT nohup npm run start > /tmp/frontend.log 2>&1 &
+                                    fi
+                                    disown
                                     exit 0
                                 fi
 
-                                # Backend 시작
-                                cd backend
-                                # Poetry 설치 확인 및 의존성 설치
+                                # 4. Backend 빌드 및 Poetry 인스톨
+                                # 프로젝트 루트(pyproject.toml 위치)에서 실행
                                 if ! command -v \$HOME/.local/bin/poetry &> /dev/null; then
                                     curl -sSL https://install.python-poetry.org | python3 -
                                 fi
-                                
-                                # 명시적 경로 설정
                                 POETRY_BIN="\$HOME/.local/bin/poetry"
                                 
-                                # Poetry가 Conda 가상환경 내의 Python을 사용하도록 설정
                                 \$POETRY_BIN config virtualenvs.create false
-                                
-                                # 프로젝트 루트(pyproject.toml 위치)로 이동하여 설치
-                                cd ..
+                                echo "📦 의존성 설치 중..."
                                 \$POETRY_BIN install --only main --quiet
                                 
-                                # 다시 backend 폴더로 이동하여 실행
-                                cd backend
-                                # PORT 환경변수를 사용하여 실행
-                                # nohup 실행 시 세션 종료 후에도 유지되도록 disown 처리
+                                # 5. 실행
+                                cd backend || { echo "❌ backend 디렉토리 미발견"; exit 1; }
+                                echo "🚀 Backend 실행 중 (Port: \$B_PORT)..."
                                 PORT=\$B_PORT nohup python main.py > /tmp/backend.log 2>&1 &
                                 disown
                                 
                                 # Frontend 시작
-                                cd ../frontend
-                                # 운영 서버일 때만 빌드 수행 (배포 효율화)
+                                cd ../frontend || { echo "❌ frontend 디렉토리 미발견"; exit 1; }
+                                echo "📦 Frontend 의존성 설치 및 빌드 중..."
+                                npm install --silent
+                                
                                 if [ "${isTestServer}" = "false" ] && [ "${env.CURRENT_ACTION.endsWith('_DEPLOY')}" = "true" ]; then
                                     npm run build
                                 fi
                                 
-                                npm install --silent
                                 if [ "${isTestServer}" = "true" ]; then
                                     PORT=\$F_PORT nohup npm run dev > /tmp/frontend.log 2>&1 &
                                 else
@@ -332,10 +400,8 @@ pipeline {
                                 fi
                                 disown
                                 
-                                # 프로세스가 정상적으로 백그라운드에 안착하도록 약간의 대기
                                 sleep 5
-                                echo "🚀 서버 프로세스 실행 완료 (Backend: \$B_PORT, Frontend: \$F_PORT)"
-                                # 명시적으로 정상 종료를 알림
+                                echo "✅ 서버 프로세스 실행 완료 (Backend: \$B_PORT, Frontend: \$F_PORT)"
                                 exit 0
 REMOTEEFFECT
                         """
@@ -365,7 +431,7 @@ REMOTEEFFECT
                     
                     sshagent(credentials: [isTestServer ? env.TEST_SSH_CREDENTIAL : env.PROD_SSH_CREDENTIAL]) {
                         sh """
-                            ssh -p ${port} ${user}@${server} << 'EOF'
+                            ssh -p ${port} ${user}@${server} << 'REMOTEEFFECT'
                                 echo "=== Health Check (10s wait) ==="
                                 sleep 10
                                 if [ "${isTestServer}" = "true" ]; then
@@ -375,7 +441,7 @@ REMOTEEFFECT
                                     curl -s http://localhost:${env.PROD_BACKEND_PORT} > /dev/null && echo "✅ Backend OK" || echo "❌ Backend Fail"
                                     curl -s http://localhost:${env.PROD_FRONTEND_PORT} > /dev/null && echo "✅ Frontend OK" || echo "❌ Frontend Fail"
                                 fi
-                            EOF
+REMOTEEFFECT
                         """
                     }
                 }

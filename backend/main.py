@@ -158,6 +158,7 @@ allowed_origins = [
     "http://127.0.0.1:3000",
     "http://127.0.0.1:6004",
     "http://127.0.0.1:6005",
+    "https://quantuss.hnextits.com",
 ]
 
 app.add_middleware(
