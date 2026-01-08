@@ -243,127 +243,48 @@ pipeline {
                     def workspace = isTestServer ? env.TEST_WORKSPACE : env.PROD_WORKSPACE
                     def condaEnv = isTestServer ? env.TEST_CONDA_ENV : env.PROD_CONDA_ENV
                     def sshCredential = isTestServer ? env.TEST_SSH_CREDENTIAL : env.PROD_SSH_CREDENTIAL
+                    def isStop = env.CURRENT_ACTION.endsWith('_STOP')
 
-                        withCredentials([string(credentialsId: 'github-pat', variable: 'GITHUB_TOKEN')]) {
-                            def deployScript = """
-                                set -e
-                                GIT_URL_WITH_PAT=\$(echo "${gitUrl}" | sed "s|https://|https://\${GITHUB_TOKEN}@|")
-                                if [ -d "${targetWorkspace}/.git" ]; then
-                                    cd "${targetWorkspace}"
-                                    git remote set-url origin "\$GIT_URL_WITH_PAT"
-                                    git fetch origin --force --prune
-                                    git reset --hard origin/${deployBranch}
-                                    git clean -fd
-                                else
-                                    mkdir -p "${targetWorkspace}"
-                                    git clone -b ${deployBranch} "\$GIT_URL_WITH_PAT" "${targetWorkspace}"
+                    sshagent(credentials: [sshCredential]) {
+                        sh """
+                            ssh -tt -o BatchMode=yes -p ${port} ${user}@${server} << 'REMOTEEFFECT'
+                                # 워크스페이스로 확실하게 이동
+                                cd "${workspace}" || { echo "❌ 워크스페이스 이동 실패: ${workspace}"; exit 1; }
+                                
+                                # 1. Conda 초기화 및 환경 리스트 확인
+                                export PATH="/home/${user}/anaconda3/bin:/home/${user}/miniconda3/bin:\$PATH"
+                                CONDA_BASE=\$(conda info --base 2>/dev/null || echo "")
+                                if [ -z "\$CONDA_BASE" ]; then
+                                    echo "❌ Conda를 찾을 수 없습니다. 설치 경로를 확인해주세요."
+                                    exit 1
                                 fi
-                            """
-                            writeFile file: 'deploy.sh', text: deployScript
-                            sshagent(credentials: [sshCredential]) {
-                                sh "scp -P ${targetPort} deploy.sh ${targetUser}@${targetServer}:/tmp/deploy.sh"
-                                sh "ssh -p ${targetPort} ${targetUser}@${targetServer} 'GITHUB_TOKEN=${GITHUB_TOKEN} bash /tmp/deploy.sh'"
-                            }
-                        }
-                    }
-                }
-            }
+                                
+                                source "\$CONDA_BASE/etc/profile.d/conda.sh"
+                                
+                                # 2. 지정된 Conda 환경 존재 여부 확인 및 생성
+                                if ! conda env list | grep -q "^${condaEnv} "; then
+                                    echo "🚀 ${condaEnv} 환경 생성 중... (Python ${env.PYTHON_VERSION})"
+                                    conda create -n ${condaEnv} python=${env.PYTHON_VERSION} -y || exit 1
+                                fi
+                                
+                                # 3. Conda 환경 활성화
+                                conda activate ${condaEnv} || exit 1
+                                
+                                # 포트 결정
+                                if [ "${isTestServer}" = "true" ]; then
+                                    B_PORT=\$(for p in \$(seq ${env.TEST_BACKEND_PORT_MIN} ${env.TEST_BACKEND_PORT_MAX}); do if ! netstat -tln | grep -q ":\$p "; then echo \$p; break; fi; done)
+                                    F_PORT=\$(for p in \$(seq ${env.TEST_FRONTEND_PORT_MIN} ${env.TEST_FRONTEND_PORT_MAX}); do if ! netstat -tln | grep -q ":\$p "; then echo \$p; break; fi; done)
+                                else
+                                    B_PORT=${env.PROD_BACKEND_PORT}
+                                    F_PORT=${env.PROD_FRONTEND_PORT}
+                                fi
 
-            stage('Server Operations') {
-                when {
-                    anyOf {
-                        expression { env.CURRENT_ACTION.endsWith('_START') }
-                        expression { env.CURRENT_ACTION.endsWith('_RESTART') }
-                        expression { env.CURRENT_ACTION.endsWith('_DEPLOY') }
-                        expression { env.CURRENT_ACTION.endsWith('_STOP') }
-                    }
-                }
-                steps {
-                    script {
-                        def isTestServer = env.CURRENT_ACTION.startsWith('TEST_')
-                        def server = isTestServer ? env.TEST_SERVER : env.PROD_SERVER
-                        def port = isTestServer ? env.TEST_PORT : env.PROD_PORT
-                        def user = isTestServer ? env.TEST_USER : env.PROD_USER
-                        def workspace = isTestServer ? env.TEST_WORKSPACE : env.PROD_WORKSPACE
-                        def condaEnv = isTestServer ? env.TEST_CONDA_ENV : env.PROD_CONDA_ENV
-                        def sshCredential = isTestServer ? env.TEST_SSH_CREDENTIAL : env.PROD_SSH_CREDENTIAL
-                        def isStop = env.CURRENT_ACTION.endsWith('_STOP')
-
-                        sshagent(credentials: [sshCredential]) {
-                            sh """
-                                ssh -tt -o BatchMode=yes -p ${port} ${user}@${server} << 'REMOTEEFFECT'
-                                    # 워크스페이스로 확실하게 이동
-                                    cd "${workspace}" || { echo "❌ 워크스페이스 이동 실패: ${workspace}"; exit 1; }
-                                    
-                                    # 1. Conda 초기화 및 환경 리스트 확인
-                                    export PATH="/home/${user}/anaconda3/bin:/home/${user}/miniconda3/bin:\$PATH"
-                                    CONDA_BASE=\$(conda info --base 2>/dev/null || echo "")
-                                    if [ -z "\$CONDA_BASE" ]; then
-                                        echo "❌ Conda를 찾을 수 없습니다. 설치 경로를 확인해주세요."
-                                        exit 1
-                                    fi
-                                    
-                                    source "\$CONDA_BASE/etc/profile.d/conda.sh"
-                                    
-                                    # 2. 지정된 Conda 환경 존재 여부 확인 및 생성
-                                    if ! conda env list | grep -q "^${condaEnv} "; then
-                                        echo "🚀 ${condaEnv} 환경 생성 중... (Python ${env.PYTHON_VERSION})"
-                                        conda create -n ${condaEnv} python=${env.PYTHON_VERSION} -y || exit 1
-                                    fi
-                                    
-                                    # 3. Conda 환경 활성화
-                                    conda activate ${condaEnv} || exit 1
-                                    
-                                    # 포트 결정
-                                    if [ "${isTestServer}" = "true" ]; then
-                                        B_PORT=\$(for p in \$(seq ${env.TEST_BACKEND_PORT_MIN} ${env.TEST_BACKEND_PORT_MAX}); do if ! netstat -tln | grep -q ":\$p "; then echo \$p; break; fi; done)
-                                        F_PORT=\$(for p in \$(seq ${env.TEST_FRONTEND_PORT_MIN} ${env.TEST_FRONTEND_PORT_MAX}); do if ! netstat -tln | grep -q ":\$p "; then echo \$p; break; fi; done)
-                                    else
-                                        B_PORT=${env.PROD_BACKEND_PORT}
-                                        F_PORT=${env.PROD_FRONTEND_PORT}
-                                    fi
-
-                                    # 프로세스 정리
-                                    lsof -ti:\$B_PORT | xargs -r kill -9 || true
-                                    lsof -ti:\$F_PORT | xargs -r kill -9 || true
-                                    
-                                    if [ "${isStop}" = "true" ]; then
-                                        echo "✅ 서버 중지 완료"
-                                        exit 0
-                                    fi
-
-                                    # 4. Backend 빌드 및 Poetry 인스톨
-                                    # 프로젝트 루트(pyproject.toml 위치)에서 실행
-                                    if ! command -v \$HOME/.local/bin/poetry &> /dev/null; then
-                                        curl -sSL https://install.python-poetry.org | python3 -
-                                    fi
-                                    POETRY_BIN="\$HOME/.local/bin/poetry"
-                                    
-                                    \$POETRY_BIN config virtualenvs.create false
-                                    echo "📦 의존성 설치 중..."
-                                    \$POETRY_BIN install --only main --quiet
-                                    
-                                    # 5. 실행
-                                    cd backend || { echo "❌ backend 디렉토리 미발견"; exit 1; }
-                                    echo "🚀 Backend 실행 중 (Port: \$B_PORT)..."
-                                    PORT=\$B_PORT nohup python main.py > /tmp/backend.log 2>&1 &
-                                    disown
-                                    
-                                    # Frontend 시작
-                                    cd ../frontend || { echo "❌ frontend 디렉토리 미발견"; exit 1; }
-                                    echo "📦 Frontend 의존성 설치 및 빌드 중..."
-                                    npm install --silent
-                                    
-                                    if [ "${isTestServer}" = "false" ] && [ "${env.CURRENT_ACTION.endsWith('_DEPLOY')}" = "true" ]; then
-                                        npm run build
-                                    fi
-                                    
-                                    if [ "${isTestServer}" = "true" ]; then
-                                        PORT=\$F_PORT nohup npm run dev > /tmp/frontend.log 2>&1 &
-                                    else
-                                        PORT=\$F_PORT nohup npm run start > /tmp/frontend.log 2>&1 &
-                                    fi
-                                    disown
+                                # 프로세스 정리
+                                lsof -ti:\$B_PORT | xargs -r kill -9 || true
+                                lsof -ti:\$F_PORT | xargs -r kill -9 || true
+                                
+                                if [ "${isStop}" = "true" ]; then
+                                    echo "✅ 서버 중지 완료"
                                     exit 0
                                 fi
 
