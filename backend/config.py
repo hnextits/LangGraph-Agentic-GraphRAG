@@ -56,7 +56,7 @@ from config import RAGConfig
 
 # 환경 변수 설정
 HOST = '0.0.0.0'  # 모든 네트워크 인터페이스에서 수신
-PORT = int(os.getenv('PORT', '5004'))
+PORT = int(os.getenv('PORT', '8505'))
 
 # RAG 시스템 경로 설정
 RAG_SYSTEM_PATH = os.getenv('RAG_SYSTEM_PATH', '../notebooklm')

@@ -45,7 +45,7 @@ pipeline {
         PROD_PORT = '2223'
         PROD_USER = 'nextits'
         PROD_WORKSPACE = "/home/${PROD_USER}/workspace/${REPO_NAME}"
-        PROD_BACKEND_PORT = '5004'
+        PROD_BACKEND_PORT = '8505'
         PROD_FRONTEND_PORT = '8504'
         
         // Conda 환경명 및 Python 버전
