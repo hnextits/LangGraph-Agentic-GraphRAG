@@ -248,10 +248,33 @@ pipeline {
                     sshagent(credentials: [sshCredential]) {
                         sh """
                             ssh -tt -o BatchMode=yes -p ${port} ${user}@${server} << 'REMOTEEFFECT'
-                                cd ${workspace}
-                                source \$(conda info --base)/etc/profile.d/conda.sh
-                                conda activate ${condaEnv} || (conda create -n ${condaEnv} python=3.9 -y && conda activate ${condaEnv})
+                                # 1. Conda 초기화 및 환경 리스트 확인
+                                # conda가 PATH에 없을 경우를 대비하여 일반적인 경로 추가
+                                export PATH="/home/${user}/anaconda3/bin:/home/${user}/miniconda3/bin:\$PATH"
                                 
+                                CONDA_BASE=\$(conda info --base 2>/dev/null || echo "")
+                                if [ -z "\$CONDA_BASE" ]; then
+                                    echo "❌ Conda를 찾을 수 없습니다. 설치 경로를 확인해주세요."
+                                    exit 1
+                                fi
+                                
+                                source "\$CONDA_BASE/etc/profile.d/conda.sh"
+                                
+                                # 2. 지정된 Conda 환경 존재 여부 확인 및 생성
+                                if ! conda env list | grep -q "^${condaEnv} "; then
+                                    echo "🚀 ${condaEnv} 환경이 존재하지 않아 새로 생성합니다. (Python ${env.PYTHON_VERSION})"
+                                    # --yes 옵션을 명시적으로 사용하고 에러 발생 시 로그 출력
+                                    conda create -n ${condaEnv} python=${env.PYTHON_VERSION} -y || {
+                                        echo "❌ Conda 환경 생성 실패. 상세 에러를 확인하세요."
+                                        exit 1
+                                    }
+                                fi
+                                
+                                # 3. Conda 환경 활성화
+                                conda activate ${condaEnv} || {
+                                    echo "❌ Conda 환경 활성화 실패: ${condaEnv}"
+                                    exit 1
+                                }                                
                                 # 포트 결정
                                 if [ "${isTestServer}" = "true" ]; then
                                     B_PORT=\$(for p in \$(seq ${env.TEST_BACKEND_PORT_MIN} ${env.TEST_BACKEND_PORT_MAX}); do if ! netstat -tln | grep -q ":\$p "; then echo \$p; break; fi; done)
@@ -289,18 +312,31 @@ pipeline {
                                 
                                 # 다시 backend 폴더로 이동하여 실행
                                 cd backend
-                                # PORT 환경변수를 사용하여 실행 (Poetry가 Conda Python에 패키지를 설치했으므로 직접 실행 가능)
+                                # PORT 환경변수를 사용하여 실행
+                                # nohup 실행 시 세션 종료 후에도 유지되도록 disown 처리
                                 PORT=\$B_PORT nohup python main.py > /tmp/backend.log 2>&1 &
+                                disown
                                 
                                 # Frontend 시작
                                 cd ../frontend
+                                # 운영 서버일 때만 빌드 수행 (배포 효율화)
+                                if [ "${isTestServer}" = "false" ] && [ "${env.CURRENT_ACTION.endsWith('_DEPLOY')}" = "true" ]; then
+                                    npm run build
+                                fi
+                                
                                 npm install --silent
                                 if [ "${isTestServer}" = "true" ]; then
                                     PORT=\$F_PORT nohup npm run dev > /tmp/frontend.log 2>&1 &
                                 else
-                                    npm run build
                                     PORT=\$F_PORT nohup npm run start > /tmp/frontend.log 2>&1 &
                                 fi
+                                disown
+                                
+                                # 프로세스가 정상적으로 백그라운드에 안착하도록 약간의 대기
+                                sleep 5
+                                echo "🚀 서버 프로세스 실행 완료 (Backend: \$B_PORT, Frontend: \$F_PORT)"
+                                # 명시적으로 정상 종료를 알림
+                                exit 0
 REMOTEEFFECT
                         """
                     }
