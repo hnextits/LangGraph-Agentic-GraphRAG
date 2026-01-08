@@ -196,7 +196,7 @@ pipeline {
                     def targetUser = isTestServer ? env.TEST_USER : env.PROD_USER
                     def targetWorkspace = isTestServer ? env.TEST_WORKSPACE : env.PROD_WORKSPACE
                     def sshCredential = isTestServer ? env.TEST_SSH_CREDENTIAL : env.PROD_SSH_CREDENTIAL
-                    def deployBranch = isTestServer ? 'TEST' : 'main'
+                    def deployBranch = isTestServer ? 'TEST' : 'MAIN'
                     def gitUrl = scm.getUserRemoteConfigs()[0].getUrl()
 
                     withCredentials([string(credentialsId: 'github-pat', variable: 'GITHUB_TOKEN')]) {
