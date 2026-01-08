@@ -302,7 +302,10 @@ pipeline {
                                 # 5. 실행
                                 cd backend || { echo "❌ backend 디렉토리 미발견"; exit 1; }
                                 echo "🚀 Backend 실행 중 (Port: \$B_PORT)..."
+                                # nohup과 & 를 사용하여 백그라운드 실행 시, stdout/stderr를 파일로 리다이렉트하고 
+                                # 프로세스 그룹을 분리하여 Jenkins 세션 종료 시 같이 종료되지 않게 함
                                 PORT=\$B_PORT nohup python main.py > /tmp/backend.log 2>&1 &
+                                sleep 2 # 프로세스가 시작될 시간을 줌
                                 disown
                                 
                                 # Frontend 시작
@@ -319,10 +322,10 @@ pipeline {
                                 else
                                     PORT=\$F_PORT nohup npm run start > /tmp/frontend.log 2>&1 &
                                 fi
+                                sleep 2 # 프로세스가 시작될 시간을 줌
                                 disown
                                 
-                                sleep 5
-                                echo "✅ 서버 프로세스 실행 완료 (Backend: \$B_PORT, Frontend: \$F_PORT)"
+                                echo "✅ 서버 프로세스 실행 명령 전송 완료 (Backend: \$B_PORT, Frontend: \$F_PORT)"
                                 exit 0
 REMOTEEFFECT
                         """
