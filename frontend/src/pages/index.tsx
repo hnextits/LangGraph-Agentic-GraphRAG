@@ -30,9 +30,6 @@ export default function Home() {
   const files = filesData?.files ?? [];
   const documentUuidMap = filesData?.document_uuid_map;
 
-  // 파일 있는지 확인
-  const isFiles = files.length !== 0;
-
   const { width } = useWindowSize();
 
   // 파일 선택 상태를 여기서 관리
