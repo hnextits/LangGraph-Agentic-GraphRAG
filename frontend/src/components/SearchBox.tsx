@@ -98,13 +98,13 @@ const SearchBox: React.FC<SearchBoxProps> = ({ open, onClose, onProcessingStart 
       const responses = await Promise.all(promises);
       const successfulTasks = responses
         .filter(res => res.data && res.data.task_id)
-        .map(res => ({
-          ...res.data,
-          title:
-            selectedDocs.find(d => d.link === res.data.link)?.title ||
-            res.data.title ||
-            'Unknown Title',
-        }));
+        .map((res, idx) => {
+          const selectedDoc = selectedDocs[idx];
+          return {
+            ...res.data,
+            title: res.data.title || selectedDoc.title || 'Unknown Title',
+          };
+        });
 
       if (successfulTasks.length > 0) {
         onProcessingStart(successfulTasks);

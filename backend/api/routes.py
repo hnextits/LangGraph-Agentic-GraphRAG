@@ -171,6 +171,8 @@ class TaskStatusResponse(BaseModel):
     progress: Optional[int] = None
     result: Optional[Any] = None
     error: Optional[str] = None
+    stdout: Optional[str] = None
+    stderr: Optional[str] = None
 class SummarizeResponse(BaseModel):
     summary: str
     files: List[str]
@@ -286,7 +288,9 @@ async def get_task_status(request: Request, task_id: str):
             message=status_data.get("message"),
             progress=status_data.get("progress"),
             result=status_data.get("result"),
-            error=status_data.get("error")
+            error=status_data.get("error"),
+            stdout=status_data.get("stdout"),
+            stderr=status_data.get("stderr"),
         )
     
     # 2. GPU 작업 큐에서 확인
@@ -297,7 +301,10 @@ async def get_task_status(request: Request, task_id: str):
             task_id=task_id,
             status=queue_status["status"],
             message=queue_status["message"],
-            progress=5 if queue_status["status"] == "pending" else 20
+            progress=5 if queue_status["status"] == "pending" else 20,
+            error=queue_status.get("error"),
+            stdout=queue_status.get("stdout"),
+            stderr=queue_status.get("stderr"),
         )
         
     raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다.")
@@ -359,16 +366,16 @@ async def upload_files(request: Request, background_tasks: BackgroundTasks, file
         uploaded_file_names.append(file.filename)
         file_info_list.append(FileTaskInfo(filename=file.filename, task_id=task_id))
         
-    # 백그라운드 처리 파이프라인 시작
-    background_tasks.add_task(run_processing_pipeline, task_id, uploaded_file_names, session_id)
-    
-    # 작업 상태 초기화
+    # 작업 상태 초기화 (백그라운드 등록보다 먼저 수행: 레이스 컨디션 방지)
     tasks_dict = request.app.state.tasks
     tasks_dict[task_id] = {
         "status": "pending",
         "message": "파일 업로드 완료, 처리 대기 중...",
         "progress": 0
     }
+
+    # 백그라운드 처리 파이프라인 시작
+    background_tasks.add_task(run_processing_pipeline, task_id, uploaded_file_names, tasks_dict, session_id)
     
     return UploadResponse(
         task_id=task_id,
@@ -447,7 +454,7 @@ async def add_document_endpoint(request: Request, doc_req: AddDocumentRequest, b
     tasks_dict = request.app.state.tasks
     tasks_dict[task_id] = {"status": "pending", "message": "문서화 작업 대기 중..."}
     
-    background_tasks.add_task(run_document_pipeline, task_id, doc_req.title, doc_req.link, session_id)
+    background_tasks.add_task(run_document_pipeline, task_id, doc_req.title, doc_req.link, tasks_dict, session_id)
     
     return TaskCreationResponse(task_id=task_id, status="pending")
 
@@ -467,7 +474,7 @@ async def cancel_tasks_endpoint(request: Request, body: Dict[str, Any] = Body(..
     return {"message": f"총 {len(task_ids)}개 중 {cancelled_count}개 작업에 대한 취소 요청이 전달되었습니다."}
 
 
-async def run_document_pipeline(task_id: str, title: str, link: str, session_id: Optional[str] = None):
+async def run_document_pipeline(task_id: str, title: str, link: str, tasks_dict: Dict[str, Any], session_id: Optional[str] = None):
     """구글 검색 결과를 문서화하고 인덱싱하는 백그라운드 함수 (crawling_web 인자 및 결과 처리 수정)"""
     from notebooklm.config import RAGConfig
     config = RAGConfig()
@@ -482,7 +489,7 @@ async def run_document_pipeline(task_id: str, title: str, link: str, session_id:
     doc_dir.mkdir(parents=True, exist_ok=True)
 
     logger.info(f"[{task_id}] 문서 파이프라인 시작 (session: {session_id}): {title}")
-    tasks[task_id].update({'status': 'processing', 'message': '웹 페이지 크롤링 중...'})
+    tasks_dict[task_id].update({'status': 'processing', 'message': '웹 페이지 크롤링 중...'})
     
     try:
         # 1. 크롤링 (result 딕셔너리 구성 및 output_dir 전달)
@@ -502,11 +509,11 @@ async def run_document_pipeline(task_id: str, title: str, link: str, session_id:
         
         # 3. 인덱싱 (Vector Store 저장)
         # asyncio.run() 대신 직접 await 호출하여 루프 중첩 방지
-        await run_text_indexing(task_id, [f"{safe_title}.md"], session_id)
+        await run_text_indexing(task_id, [f"{safe_title}.md"], tasks_dict, session_id)
         
     except Exception as e:
         logger.error(f"[{task_id}] 문서 파이프라인 실패: {e}")
-        tasks[task_id].update({'status': 'failed', 'error': str(e)})
+        tasks_dict[task_id].update({'status': 'failed', 'error': str(e)})
 def get_session_paths(request: Request):
     """요청의 세션 ID를 바탕으로 동적 경로를 반환합니다."""
     from notebooklm.config import RAGConfig
@@ -526,39 +533,31 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 NEXTITS_DATA_DIR = BASE_DIR / "nextits_data"
     
 # --- 유틸리티 함수 ---
-def check_and_handle_pause(task_id: str) -> bool:
+def check_and_handle_pause(task_id: str, tasks_dict: Dict[str, Any]) -> bool:
     """작업 취소 상태를 확인하고 처리합니다."""
     if is_cancelled(task_id):
-        if tasks.get(task_id, {}).get('status') != 'cancelled':
-            tasks[task_id].update({
+        if tasks_dict.get(task_id, {}).get('status') != 'cancelled':
+            tasks_dict[task_id].update({
                 'status': 'cancelled',
             })
             logger.info(f"[Task {task_id}] 작업이 취소 상태로 변경되었습니다.")
         return True
     return False
 
-def check_and_handle_pause(task_id: str) -> bool:
+def check_and_handle_pause_legacy(task_id: str, tasks_dict: Dict[str, Any]) -> bool:
     """
     취소 상태를 확인하고 처리합니다.
-    
-    Args:
-        task_id (str): 작업 ID
-        task_id: 작업 ID
-        
-    Returns:
-        bool: 작업이 취소되었으면 True, 계속 진행해야 하면 False
     """
-    # 취소 상태 확인
     if is_cancelled(task_id):
-        if tasks.get(task_id, {}).get('status') != 'cancelled':
-            tasks[task_id]['status'] = 'cancelled'
-            tasks[task_id]['message'] = '작업이 취소되었습니다.'
+        if tasks_dict.get(task_id, {}).get('status') != 'cancelled':
+            tasks_dict[task_id]['status'] = 'cancelled'
+            tasks_dict[task_id]['message'] = '작업이 취소되었습니다.'
             logger.info(f"[Task {task_id}] 작업이 취소되었습니다.")
         return True
     
     return False
 
-def run_text_indexing(task_id: str, file_names: List[str], session_id: Optional[str] = None):
+async def run_text_indexing(task_id: str, file_names: List[str], tasks_dict: Dict[str, Any], session_id: Optional[str] = None):
     """텍스트 인덱싱 실행 함수 - 세션별 OCR 결과 디렉토리에서 검색"""
     from notebooklm.config import RAGConfig
     config = RAGConfig()
@@ -569,14 +568,14 @@ def run_text_indexing(task_id: str, file_names: List[str], session_id: Optional[
         ocr_results_dir = config.DATA_ROOT / "Results" / "4.OCR_results"
 
     logger.info(f"[{task_id}] 텍스트 인덱싱 시작 (session: {session_id}): {file_names}")
-    tasks[task_id].update({
+    tasks_dict[task_id].update({
         'status': 'indexing',
         'message': '데이터 인덱싱 준비 중...',
         'progress': 75
     })
 
     try:
-        if check_and_handle_pause(task_id): return
+        if check_and_handle_pause(task_id, tasks_dict): return
         
         # 1. 파일 찾기 및 처리
         processed_files = []
@@ -589,10 +588,26 @@ def run_text_indexing(task_id: str, file_names: List[str], session_id: Optional[
                 if p.exists():
                     processed_files.append(str(p))
                     break
+
+            # fallback: OCR 결과가 원본 파일명이 아닌 변환 산출물 폴더명으로 생성되는 경우 대응
+            if not any(Path(x).stem == base_name for x in processed_files):
+                base_variants = {
+                    base_name,
+                    base_name.replace(" ", "_"),
+                    base_name.replace("_", " "),
+                }
+                matched = []
+                for v in base_variants:
+                    matched.extend(list(ocr_results_dir.glob(f"{v}*.md")))
+                    matched.extend(list(ocr_results_dir.glob(f"{v}*.txt")))
+
+                if matched:
+                    matched_sorted = sorted(matched, key=lambda p: p.stat().st_mtime, reverse=True)
+                    processed_files.append(str(matched_sorted[0]))
         
         if not processed_files:
             logger.warning(f"[{task_id}] 인덱싱할 처리된 파일을 찾지 못했습니다.")
-            tasks[task_id].update({'status': 'index_skipped', 'message': '인덱싱할 파일을 찾지 못해 건너뜁니다.', 'progress': 100})
+            tasks_dict[task_id].update({'status': 'index_skipped', 'message': '인덱싱할 파일을 찾지 못해 건너뜁니다.', 'progress': 100})
             return
 
         # 2. qwen3_late_chunking 실행
@@ -613,7 +628,7 @@ def run_text_indexing(task_id: str, file_names: List[str], session_id: Optional[
             # late chunking 프로세스 실행 (session_id 전달)
             process_markdown_files(client, processed_files, session_id=session_id)
             
-            tasks[task_id].update({
+            tasks_dict[task_id].update({
                 'status': 'index_completed',
                 'message': '파일 처리 및 인덱싱 완료',
                 'progress': 100
@@ -623,9 +638,9 @@ def run_text_indexing(task_id: str, file_names: List[str], session_id: Optional[
             client.close()
     except Exception as e:
         logger.error(f"[{task_id}] 텍스트 인덱싱 실패: {e}", exc_info=True)
-        tasks[task_id].update({'status': 'index_failed', 'error': str(e), 'progress': 100})
+        tasks_dict[task_id].update({'status': 'index_failed', 'error': str(e), 'progress': 100})
 
-async def run_text_indexing(task_id: str, file_names: List[str], session_id: Optional[str] = None):
+async def run_text_indexing_v2(task_id: str, file_names: List[str], tasks_dict: Dict[str, Any], session_id: Optional[str] = None):
     """텍스트 인덱싱 파이프라인 (Vector Store 저장)"""
     from notebooklm.config import RAGConfig
     config = RAGConfig()
@@ -636,14 +651,14 @@ async def run_text_indexing(task_id: str, file_names: List[str], session_id: Opt
         ocr_results_dir = config.DATA_ROOT / "Results" / "4.OCR_results"
 
     logger.info(f"[{task_id}] 텍스트 인덱싱 시작 (session: {session_id}): {file_names}")
-    tasks[task_id].update({
+    tasks_dict[task_id].update({
         'status': 'indexing',
         'message': '데이터 인덱싱 준비 중...',
         'progress': 75
     })
 
     try:
-        if await asyncio.to_thread(check_and_handle_pause, task_id): return
+        if await asyncio.to_thread(check_and_handle_pause, task_id, tasks_dict): return
         
         # 1. 파일 찾기 및 처리
         processed_files = []
@@ -656,10 +671,26 @@ async def run_text_indexing(task_id: str, file_names: List[str], session_id: Opt
                 if p.exists():
                     processed_files.append(str(p))
                     break
+
+            # fallback: OCR 결과가 원본 파일명이 아닌 변환 산출물 폴더명으로 생성되는 경우 대응
+            if not any(Path(x).stem == base_name for x in processed_files):
+                base_variants = {
+                    base_name,
+                    base_name.replace(" ", "_"),
+                    base_name.replace("_", " "),
+                }
+                matched = []
+                for v in base_variants:
+                    matched.extend(list(ocr_results_dir.glob(f"{v}*.md")))
+                    matched.extend(list(ocr_results_dir.glob(f"{v}*.txt")))
+
+                if matched:
+                    matched_sorted = sorted(matched, key=lambda p: p.stat().st_mtime, reverse=True)
+                    processed_files.append(str(matched_sorted[0]))
         
         if not processed_files:
             logger.warning(f"[{task_id}] 인덱싱할 처리된 파일을 찾지 못했습니다.")
-            tasks[task_id].update({'status': 'index_skipped', 'message': '인덱싱할 파일을 찾지 못해 건너뜁니다.', 'progress': 100})
+            tasks_dict[task_id].update({'status': 'index_skipped', 'message': '인덱싱할 파일을 찾지 못해 건너뜁니다.', 'progress': 100})
             return
 
         # 메타데이터 업데이트 실행
@@ -693,7 +724,7 @@ async def run_text_indexing(task_id: str, file_names: List[str], session_id: Opt
             # late chunking 프로세스 실행 (session_id 전달)
             await asyncio.to_thread(process_markdown_files, client, processed_files, session_id=session_id)
             
-            tasks[task_id].update({
+            tasks_dict[task_id].update({
                 'status': 'index_completed',
                 'message': '파일 처리 및 인덱싱 완료',
                 'progress': 100
@@ -703,9 +734,9 @@ async def run_text_indexing(task_id: str, file_names: List[str], session_id: Opt
             client.close()
     except Exception as e:
         logger.error(f"[{task_id}] 텍스트 인덱싱 실패: {e}", exc_info=True)
-        tasks[task_id].update({'status': 'index_failed', 'error': str(e), 'progress': 100})
+        tasks_dict[task_id].update({'status': 'index_failed', 'error': str(e), 'progress': 100})
 
-async def run_processing_pipeline(task_id: str, file_names: List[str], session_id: Optional[str] = None):
+async def run_processing_pipeline(task_id: str, file_names: List[str], tasks_dict: Dict[str, Any], session_id: Optional[str] = None):
     """(업로드된 파일) 처리 및 인덱싱 파이프라인 (GPU 작업 큐 사용)"""
     from notebooklm.config import RAGConfig
     from utils.task_queue import gpu_task_queue
@@ -717,7 +748,7 @@ async def run_processing_pipeline(task_id: str, file_names: List[str], session_i
         doc_dir = config.DEFAULT_DOC_DIR
 
     logger.info(f"[{task_id}] 파일 처리 파이프라인 큐 등록 (session: {session_id}): {file_names}")
-    tasks[task_id].update({'status': 'queued', 'message': '대기열에 등록되었습니다. GPU 리소스 확보 중...', 'progress': 5})
+    tasks_dict[task_id].update({'status': 'queued', 'message': '대기열에 등록되었습니다. GPU 리소스 확보 중...', 'progress': 5})
 
     try:
         script_path = NEXTITS_DATA_DIR / "pipe" / "run_file_processor.py"
@@ -741,33 +772,46 @@ async def run_processing_pipeline(task_id: str, file_names: List[str], session_i
         while True:
             status_info = gpu_task_queue.get_queue_status(task_id)
             if status_info["status"] == "processing":
-                tasks[task_id].update({
+                tasks_dict[task_id].update({
                     'status': 'processing', 
                     'message': status_info["message"],
-                    'progress': 20
+                    'progress': 20,
+                    'stdout': status_info.get('stdout'),
+                    'stderr': status_info.get('stderr'),
                 })
             elif status_info["status"] == "pending":
-                tasks[task_id].update({
+                tasks_dict[task_id].update({
                     'status': 'queued', 
                     'message': status_info["message"],
-                    'progress': 5
+                    'progress': 5,
+                    'stdout': status_info.get('stdout'),
+                    'stderr': status_info.get('stderr'),
                 })
             elif status_info["status"] == "completed":
+                # 서브프로세스 출력 로그를 task 상태에 반영
+                tasks_dict[task_id].update({
+                    'stdout': status_info.get('stdout'),
+                    'stderr': status_info.get('stderr'),
+                })
                 break
             elif status_info["status"] == "failed":
+                tasks_dict[task_id].update({
+                    'stdout': status_info.get('stdout'),
+                    'stderr': status_info.get('stderr'),
+                })
                 raise RuntimeError(status_info.get("error", "알 수 없는 작업 오류"))
             
             await asyncio.sleep(2)
 
         # 인덱싱 단계 진행
-        await run_text_indexing(task_id, file_names, session_id)
+        await run_text_indexing_v2(task_id, file_names, tasks_dict, session_id)
 
     except Exception as e:
         logger.error(f"[{task_id}] 파일 처리 파이프라인 실패: {e}", exc_info=True)
-        tasks[task_id].update({'status': 'failed', 'error': str(e), 'progress': 100})
+        tasks_dict[task_id].update({'status': 'failed', 'error': str(e), 'progress': 100})
 
 
-async def process_summarize_files(task_id: str, filenames: List[str], model_manager: Any, session_id: Optional[str] = None):
+async def process_summarize_files(task_id: str, filenames: List[str], model_manager: Any, tasks_dict: Dict[str, Any], session_id: Optional[str] = None):
     """지정된 파일들을 찾아 내용을 요약하는 백그라운드 함수 (글로벌 + 세션 검색)"""
     from notebooklm.config import RAGConfig
     config = RAGConfig()
@@ -786,7 +830,7 @@ async def process_summarize_files(task_id: str, filenames: List[str], model_mana
     summarize_dir = session_summarize_dir or global_summarize_dir
 
     logger.info(f"[{task_id}] 파일 요약 작업 시작 (session: {session_id}): {filenames}")
-    tasks[task_id].update({"status": "running", "message": "요약할 파일을 찾는 중...", "progress": 10})
+    tasks_dict[task_id].update({"status": "running", "message": "요약할 파일을 찾는 중...", "progress": 10})
     
     try:
         summaries, sources = [], []
@@ -799,15 +843,15 @@ async def process_summarize_files(task_id: str, filenames: List[str], model_mana
                     generator.load_model()
         except Exception as e:
             logger.error(f"[{task_id}] 요약 모델 획득 실패: {e}")
-            tasks[task_id].update({"status": "failed", "error": f"요약 모델 로드 실패: {e}"})
+            tasks_dict[task_id].update({"status": "failed", "error": f"요약 모델 로드 실패: {e}"})
             return
 
         try:
             for i, filename in enumerate(filenames):
-                if await asyncio.to_thread(check_and_handle_pause, task_id): return
+                if await asyncio.to_thread(check_and_handle_pause, task_id, tasks_dict): return
                 
                 progress = 10 + int((i / len(filenames)) * 80)
-                tasks[task_id].update({"message": f"파일 처리 중... ({i+1}/{len(filenames)}): {filename}", "progress": progress})
+                tasks_dict[task_id].update({"message": f"파일 처리 중... ({i+1}/{len(filenames)}): {filename}", "progress": progress})
 
                 # 4.OCR_results에서 파일 검색 (세션 우선 후 글로벌)
                 base_name = Path(filename).stem
@@ -851,7 +895,7 @@ async def process_summarize_files(task_id: str, filenames: List[str], model_mana
             model_manager.release("answer_generator")
 
         if not summaries:
-            tasks[task_id].update({"status": "completed", "message": "요약할 내용이 있는 파일을 찾지 못했습니다.", "progress": 100, "result": {"summary": "요약할 내용이 없습니다.", "sources": []}})
+            tasks_dict[task_id].update({"status": "completed", "message": "요약할 내용이 있는 파일을 찾지 못했습니다.", "progress": 100, "result": {"summary": "요약할 내용이 없습니다.", "sources": []}})
             return
 
         final_summary = "\n\n---\n\n".join(summaries)
@@ -859,7 +903,7 @@ async def process_summarize_files(task_id: str, filenames: List[str], model_mana
         result_file = summarize_dir / f"summary_{safe_filenames_str}.md"
         result_file.write_text(final_summary, encoding="utf-8")
         
-        tasks[task_id].update({
+        tasks_dict[task_id].update({
             "status": "completed", "message": "요약이 완료되었습니다.", "progress": 100,
             "result": {"summary": final_summary, "sources": sources, "result_file": str(result_file)}
         })
@@ -867,7 +911,7 @@ async def process_summarize_files(task_id: str, filenames: List[str], model_mana
 
     except Exception as e:
         logger.error(f"[{task_id}] 파일 요약 파이프라인 실패: {e}", exc_info=True)
-        tasks[task_id].update({"status": "failed", "message": f"오류 발생: {e}", "progress": 100, "error": str(e)})
+        tasks_dict[task_id].update({"status": "failed", "message": f"오류 발생: {e}", "progress": 100, "error": str(e)})
 
 @router.post("/summarize", response_model=TaskCreationResponse)
 async def summarize_files(request_data: SummarizeRequest, background_tasks: BackgroundTasks, request: Request) -> TaskCreationResponse:
@@ -876,7 +920,8 @@ async def summarize_files(request_data: SummarizeRequest, background_tasks: Back
     logger.info(f"요약 요청 받음: {file_names}")
     
     task_id = str(uuid.uuid4())
-    tasks[task_id] = {"task_id": task_id, "status": "pending", "message": "요약 작업이 대기 중입니다."}
+    tasks_dict = request.app.state.tasks
+    tasks_dict[task_id] = {"task_id": task_id, "status": "pending", "message": "요약 작업이 대기 중입니다."}
     
     model_manager = getattr(request.app.state, "model_manager", None)
     session_id = getattr(request.state, "session_id", "default_session")
@@ -886,6 +931,7 @@ async def summarize_files(request_data: SummarizeRequest, background_tasks: Back
         task_id, 
         file_names, 
         model_manager, 
+        tasks_dict,
         session_id=session_id
     )
     

@@ -14,7 +14,6 @@ _PIPE_DIR = Path(__file__).parent
 if str(_PIPE_DIR) not in sys.path:
     sys.path.insert(0, str(_PIPE_DIR))
 
-from pipeline_sound import run_sound_pipeline
 from parser import convert_to_pdf, is_office_file, SUPPORTED_OFFICE_EXTENSIONS
 
 load_dotenv()
@@ -29,7 +28,7 @@ def log_stage_event(stage: str, status: str, message: str = ""):
     prefix = f"[PIPELINE][{stage}] {status}"
     if message:
         prefix += f" - {message}"
-    print(prefix)
+    print(prefix, flush=True)
 
 
 def is_pdf_file(file_path: str) -> bool:
@@ -154,10 +153,13 @@ def process_file(file_path: str, skip_existing: bool = True, resume: bool = True
         converted_pdf = convert_to_pdf(file_path, output_dir=str(pdf_output_dir))
         if converted_pdf:
             print(f"변환된 PDF로 처리 진행: {converted_pdf}")
-            process_pdf_file(converted_pdf, skip_existing=skip_existing, resume=resume, results_base=results_base)
+            pdf_ok = process_pdf_file(converted_pdf, skip_existing=skip_existing, resume=resume, results_base=results_base)
+            if not pdf_ok:
+                raise RuntimeError(f"PDF 처리(PDF→PNG) 실패: {converted_pdf}")
             file_type = "PDF"
         else:
             print(f"Office → PDF 변환 실패: {file_path}")
+            raise RuntimeError(f"Office → PDF 변환 실패: {file_path}")
 
     elif is_image_file(file_path):
         file_type = "이미지"
@@ -304,8 +306,8 @@ def process_sound_file(file_path: str, skip_existing: bool = True, resume: bool 
             log_stage_event("STT", "SKIPPED", Path(file_path).stem)
             return True
 
-        # STT 파이프라인 실행 (markdown_dir 없이)
-        from pipeline_sound import run_sound_pipeline  # torchaudio 미사용 시 import 지연
+        # STT 파이프라인 실행 (필요할 때만 import)
+        from pipeline_sound import run_sound_pipeline
         result = run_sound_pipeline(file_path, markdown_dir=None)
 
         if not result or not result.get("text_path") or not result.get("markdown_path"):
@@ -470,22 +472,37 @@ def run_layout_detection(input_dir=None, output_dir=None, skip_existing=True, re
         print(f"레이아웃 감지 실행 중... (입력 디렉토리: {input_dir}, 출력 디렉토리: {output_dir})")
         print(f"옵션: 이미 처리된 파일 건너뛰기={skip_existing}, 중단된 작업 이어서 처리하기={resume}")
         
-        result = subprocess.run(
+        # subprocess.run 대신 Popen을 사용하여 실시간 로그 출력 보장
+        process = subprocess.Popen(
             cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, # stderr를 stdout으로 통합
             text=True,
-            check=False
+            bufsize=1 # Line buffering
         )
+
+        # read1/read fallback: 줄바꿈 없는 출력(tqdm 등)도 바로 전달되도록 chunk 단위로 읽는다
+        while True:
+            chunk = process.stdout.read(1024)
+            if not chunk:
+                if process.poll() is not None:
+                    break
+                # 프로세스는 아직 살아있고 출력이 없으면 잠깐 쉰다
+                time.sleep(0.05)
+                continue
+            print(chunk, end='', flush=True)
+
+        returncode = process.wait()
+        
         print(f"레이아웃 감지 소요 시간: {time.time() - start}초")
         # 결과 출력
-        if result.returncode == 0:
+        if returncode == 0:
             print("레이아웃 감지 성공!")
-            if result.stdout:
-                print(result.stdout)
             log_stage_event("LAYOUT_DETECTION", "SUCCESS")
             return True
         else:
-            print(f"레이아웃 감지 실패: {result.stderr}")
-            log_stage_event("LAYOUT_DETECTION", "FAILED", result.stderr.strip())
+            print(f"레이아웃 감지 실패: returncode={returncode}")
+            log_stage_event("LAYOUT_DETECTION", "FAILED", f"returncode={returncode}")
             return False
             
     except Exception as e:
@@ -751,10 +768,13 @@ def main():
                 file_type = process_file(file_path, skip_existing=args.skip_existing, resume=args.resume, results_base=results_base)
                 print(f"\n파일 유형: {file_type}")
                 
-                # PDF 파일이 처리되었다면 레이아웃 감지 실행
-                if file_type == "PDF":
+                # PDF 또는 이미지 파일인 경우 레이아웃 감지 및 OCR 실행
+                if file_type in ["PDF", "이미지"]:
                     input_dir = results_base / '1.Converted_images'
                     output_dir = results_base / '2.LayoutDetection'
+                    
+                    # 이미지 파일의 경우 1.Converted_images/IMG 하위를 참조해야 할 수도 있음
+                    # 하지만 현재 구조상 1.Converted_images 전체를 input으로 쓰는 것이 안전
                     if run_layout_detection(input_dir, output_dir, args.skip_existing, args.resume):
                         # OCR 처리 실행 (입력 소스: 변환된 이미지 디렉토리)
                         ocr_results_dir = results_base / '4.OCR_results'
@@ -768,8 +788,17 @@ def main():
                         if ocr_success:
                             # 이미지 파이프라인 실행
                             run_image_pipeline(results_base=results_base)
+                        else:
+                            raise RuntimeError("OCR 처리 실패 또는 산출물 없음")
+                    else:
+                        raise RuntimeError("레이아웃 감지 실패")
+                elif file_type == "음성":
+                    print("음성 파일 처리 완료 (STT 파이프라인)")
+                else:
+                    raise RuntimeError(f"지원되지 않거나 처리 실패한 파일 유형: {file_type}")
             else:
                 print(f"오류: 유효한 파일이 아닙니다: {file_path}")
+                raise RuntimeError(f"유효하지 않은 파일 경로: {file_path}")
             
     except Exception as e:
         print(f"오류 발생: {str(e)}")

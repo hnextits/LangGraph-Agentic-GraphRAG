@@ -3,7 +3,10 @@ import sys
 import logging
 from pathlib import Path
 from dotenv import load_dotenv
-import torch
+try:
+    import torch  # type: ignore
+except Exception as e:
+    torch = None
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -52,7 +55,7 @@ notebooklm_path = os.path.join(BACKEND_DIR, "notebooklm")
 if notebooklm_path not in sys.path:
     sys.path.insert(0, notebooklm_path)
 
-from config import RAGConfig
+from notebooklm.config import RAGConfig
 
 # 환경 변수 설정
 HOST = '0.0.0.0'  # 모든 네트워크 인터페이스에서 수신

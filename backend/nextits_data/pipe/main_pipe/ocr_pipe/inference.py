@@ -5,6 +5,8 @@ import sys
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import glob
 import re
+import time
+import traceback
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from pathlib import Path
 from PIL import Image
@@ -35,7 +37,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
 
 # ============= 설정 구간 =============
 CONFIG = {
-    "input_image_folder": str(BASE_DIR / "backend" / "nextits_data" / "Results" / "1.Converted_images" / "PDF" / "원가관리회계"),  # 입력 이미지 폴더 경로
+    "input_image_folder": str(BASE_DIR / "backend" / "nextits_data" / "Results" / "1.Converted_images" / "PDF" / "RL_Slides_13_RLHF_DPO_r2"),  # 입력 이미지 폴더 경로
     "output_folder": str(BASE_DIR / "backend" / "nextits_data" / "Results" / "4.OCR_results"),  # 출력 폴더 경로
     "model": "ChatDOC/OCRFlux-3B",  # 모델 경로
     "batch_size": 256,  # 배치 크기
@@ -48,17 +50,20 @@ CONFIG = {
 # 전역 모델 인스턴스
 LLM_MODEL = None
 
+def _log(msg: str):
+    print(msg, flush=True)
+
 def load_model(config):
     """모델을 한 번만 로드하여 전역 변수에 저장 (메모리 프로파일링 에러 발생 시 재시도 로직 포함)"""
     global LLM_MODEL
     if LLM_MODEL is None:
-        import time
         max_retries = 3
         retry_delay = 2
-        
+
         for attempt in range(max_retries):
             try:
-                print(f"Loading vLLM model (attempt {attempt + 1}/{max_retries})...")
+                t0 = time.time()
+                _log(f"Loading vLLM model (attempt {attempt + 1}/{max_retries})...")
                 LLM_MODEL = LLM(
                     model=config["model"],
                     gpu_memory_utilization=config["gpu_memory_utilization"],
@@ -67,16 +72,17 @@ def load_model(config):
                     enforce_eager=True,
                     # VLLM v1에서 프로파일링 에러를 줄이기 위한 추가 설정이 필요할 수 있음
                 )
-                print("vLLM model loaded successfully.")
+                _log(f"vLLM model loaded successfully. elapsed={time.time() - t0:.1f}s")
                 break
             except AssertionError as e:
                 if "memory profiling" in str(e) and attempt < max_retries - 1:
-                    print(f"Memory profiling error detected: {e}. Retrying in {retry_delay}s...")
+                    _log(f"Memory profiling error detected: {e}. Retrying in {retry_delay}s...")
                     time.sleep(retry_delay)
                     continue
                 raise
             except Exception as e:
-                print(f"Error loading vLLM model: {e}")
+                _log(f"Error loading vLLM model: {e}")
+                _log(traceback.format_exc())
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay)
                     continue
@@ -111,7 +117,8 @@ def collect_image_files(folder_path: str, supported_extensions: list) -> list:
     if not folder_path.exists():
         raise ValueError(f"Image folder does not exist: {folder_path}")
     
-    print(f"Scanning folder: {folder_path}")
+    t0 = time.time()
+    _log(f"Scanning folder: {folder_path}")
     
     for ext in supported_extensions:
         # 대소문자 구분 없이 검색
@@ -131,9 +138,9 @@ def collect_image_files(folder_path: str, supported_extensions: list) -> list:
                 img.verify()  # 이미지 데이터가 유효한지 확인
             valid_image_files.append(str(img_file))
         except (IOError, SyntaxError) as e:
-            print(f"Skipping invalid image file: {img_file} ({e})")
-    
-    print(f"Found {len(valid_image_files)} valid image files")
+            _log(f"Skipping invalid image file: {img_file} ({e})")
+
+    _log(f"Found {len(valid_image_files)} valid image files. elapsed={time.time() - t0:.1f}s")
     return valid_image_files
 
 def create_batches(image_files: list, batch_size: int) -> list:
@@ -142,8 +149,8 @@ def create_batches(image_files: list, batch_size: int) -> list:
     for i in range(0, len(image_files), batch_size):
         batch = image_files[i:i + batch_size]
         batches.append(batch)
-    
-    print(f"Created {len(batches)} batches with batch size {batch_size}")
+
+    _log(f"Created {len(batches)} batches with batch size {batch_size}")
     return batches
 
 def safe_json_parse(json_str: str) -> dict:
@@ -237,16 +244,17 @@ def process_single_response(response_tuple):
         return result
         
     except Exception as e:
-        print(f"Error processing {Path(image_path).name}: {e}")
+        _log(f"Error processing {Path(image_path).name}: {e}")
+        _log(f"Raw output causing error: {response.outputs[0].text[:500]}...") # 원본 출력 로깅 추가
         return {
             "image_path": image_path,
             "image_name": Path(image_path).name,
-            "markdown_text": f"# {Path(image_path).stem}\n\n[처리 실패: {str(e)}]"
+            "markdown_text": f"# {Path(image_path).stem}\n\n[처리 실패: {str(e)}]\n\nRaw: {response.outputs[0].text[:200]}"
         }
 
 def process_image_batch(llm, image_batch: list) -> list:
     """이미지 배치를 처리하여 마크다운 결과 반환"""
-    print(f"Processing batch of {len(image_batch)} images...")
+    _log(f"Processing batch of {len(image_batch)} images...")
     # 병렬로 쿼리 생성 (전처리)
     query_list = []
     valid_images = []
@@ -256,7 +264,7 @@ def process_image_batch(llm, image_batch: list) -> list:
             # 각 스레드에서 쿼리를 생성
             return image_path, build_image_to_markdown_query(image_path)
         except Exception as e:
-            print(f"Failed to create query for {image_path}: {e}")
+            _log(f"Failed to create query for {image_path}: {e}")
             return image_path, None
 
     with ThreadPoolExecutor() as executor:
@@ -269,7 +277,7 @@ def process_image_batch(llm, image_batch: list) -> list:
             valid_images.append(image_path)
     
     if not query_list:
-        print("No valid queries in batch")
+        _log("No valid queries in batch")
         return []
     
     # 샘플링 파라미터 설정
@@ -281,14 +289,21 @@ def process_image_batch(llm, image_batch: list) -> list:
     )
     
     # vLLM으로 배치 생성
+    t0 = time.time()
+    _log(f"vLLM generate start: queries={len(query_list)}")
     responses = llm.generate(query_list, sampling_params=sampling_params)
+    _log(f"vLLM generate done. elapsed={time.time() - t0:.1f}s")
 
 
     # ProcessPoolExecutor를 사용하여 CPU 바운드 후처리 작업을 병렬화 (GIL 우회)
+    t1 = time.time()
+    _log("Postprocess start")
     with ProcessPoolExecutor() as executor:
         processed_results = executor.map(process_single_response, zip(responses, valid_images))
 
-    return [res for res in processed_results if res is not None]
+    processed_list = [res for res in processed_results if res is not None]
+    _log(f"Postprocess done. results={len(processed_list)} elapsed={time.time() - t1:.1f}s")
+    return processed_list
 
 def save_results(results: list, output_folder: str, input_folder_name: str):
     """결과를 하나의 마크다운 파일로 저장 (폴더명 사용)"""
@@ -317,21 +332,22 @@ def save_results(results: list, output_folder: str, input_folder_name: str):
     # 마크다운 파일 저장
     with open(md_filepath, "w", encoding='utf-8') as f:
         f.write(final_markdown)
-    
-    print(f"Saved combined markdown: {md_filepath}")
-    print(f"Total images processed: {len(results)}")
+
+    _log(f"Saved combined markdown: {md_filepath}")
+    _log(f"Total images processed: {len(results)}")
 
 def process_image_folder(config):
     """이미지 폴더 전체를 처리하는 메인 함수"""
-    print("=== OCRFlux Image Folder Processing ===")
-    print(f"Input folder: {config['input_image_folder']}")
-    print(f"Output folder: {config['output_folder']}")
-    print(f"Batch size: {config['batch_size']}")
-    print(f"Model: {config['model']}")
+    total_t0 = time.time()
+    _log("=== OCRFlux Image Folder Processing ===")
+    _log(f"Input folder: {config['input_image_folder']}")
+    _log(f"Output folder: {config['output_folder']}")
+    _log(f"Batch size: {config['batch_size']}")
+    _log(f"Model: {config['model']}")
     
     # 입력 폴더명 추출
     input_folder_name = Path(config["input_image_folder"]).name
-    print(f"Output file will be: {input_folder_name}.md")
+    _log(f"Output file will be: {input_folder_name}.md")
     
     # 이미지 파일 수집
     try:
@@ -340,11 +356,12 @@ def process_image_folder(config):
             config["supported_image_extensions"]
         )
     except Exception as e:
-        print(f"Error collecting image files: {e}")
+        _log(f"Error collecting image files: {e}")
+        _log(traceback.format_exc())
         return
     
     if not image_files:
-        print("No valid image files found!")
+        _log("No valid image files found!")
         return
     
     # vLLM 모델 로드 (전역 인스턴스 사용)
@@ -356,16 +373,18 @@ def process_image_folder(config):
     # 각 배치 처리
     all_results = []
     for i, batch in enumerate(batches):
-        print(f"\n--- Processing batch {i+1}/{len(batches)} ---")
+        _log(f"\n--- Processing batch {i+1}/{len(batches)} ---")
+        _log(f"Progress: {i}/{len(batches)} batches done, {len(all_results)}/{len(image_files)} images done")
         batch_results = process_image_batch(llm, batch)
         all_results.extend(batch_results)
     
     # 결과를 하나의 MD 파일로 저장
-    print(f"\n--- Saving {len(all_results)} results to single MD file ---")
+    _log(f"\n--- Saving {len(all_results)} results to single MD file ---")
     save_results(all_results, config["output_folder"], input_folder_name)
     
-    print("=== Processing completed ===")
-    print(f"Results saved as: {config['output_folder']}/{input_folder_name}.md")
+    _log("=== Processing completed ===")
+    _log(f"Results saved as: {config['output_folder']}/{input_folder_name}.md")
+    _log(f"Total elapsed: {time.time() - total_t0:.1f}s")
 
 if __name__ == '__main__':
     config = CONFIG

@@ -1,7 +1,10 @@
 import os
 import json
 import logging
-import torch
+try:
+    import torch  # type: ignore
+except Exception:
+    torch = None
 from pathlib import Path
 
 
@@ -279,7 +282,8 @@ class RAGConfig:
         # 7. 디바이스 설정
         #############################################
         # 기본 디바이스 설정
-        self.DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+        cuda_available = bool(torch and hasattr(torch, "cuda") and torch.cuda.is_available())
+        self.DEVICE = "cuda" if cuda_available else "cpu"
         
         # ⚠️ 테스트 모드 설정 (GPU 배치 전환)
         # True: SGLang=GPU1, Transformers=GPU0 (테스트용)
@@ -322,7 +326,7 @@ class RAGConfig:
         
         # 요약 모델 설정 (md_summarizer 사용)
         self.SUMMARIZER_MODEL = "Qwen/Qwen3-4B-Instruct-2507"
-        self.SUMMARIZER_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+        self.SUMMARIZER_DEVICE = "cuda" if cuda_available else "cpu"
         self.SEARCH_CHUNK_LENGTH = 3600  # 크롤링 데이터 나눠서 요약할 크기
         
         # 크롤링 설정
