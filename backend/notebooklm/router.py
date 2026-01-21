@@ -53,13 +53,17 @@ class RAGRouter:
             if CrossEncoder is None:
                 logger.warning("sentence-transformers 가 설치되지 않아 CrossEncoder 기능을 비활성화합니다.")
         
-        # 쿼리 재작성기 초기화 (먼저 초기화)
-        self.query_rewriter = QueryRewriter()  # 쿼리 재작성기 인스턴스 생성
+        # 쿼리 재작성기 조건부 초기화
+        self.query_rewriter = QueryRewriter() if self.rag_config.use_query_rewriter else None
+        if self.query_rewriter:
+            logger.info("QueryRewriter 초기화 완료")
+        else:
+            logger.info("QueryRewriter 사용 안함 (config.use_query_rewriter=False)")
         
         # 병렬 검색 조정기 초기화 (쿼리 재작성기 전달)
         self.parallel_searcher = ParallelSearcher(self.rag_config, self.searchers, self.query_rewriter)
         
-        logger.info("RAGRouter 초기화 완료 (QueryRewriter 포함)")
+        logger.info("RAGRouter 초기화 완료")
 
     def cleanup(self):
         """라우터가 로드한 모든 서브 컴포넌트를 정리합니다."""

@@ -3,7 +3,7 @@
 
 """
 RAG 시스템 정제기 - 최종 답변을 사용자에게 적합하게 다듬습니다.
-Qwen3-1.7B 전용 모델 사용 (최적화됨)
+SGLang을 사용하여 로컬에서 모델을 로드하고 추론합니다.
 """
 
 import os
@@ -11,11 +11,10 @@ import json
 import logging
 import time
 import threading
-import torch
-import importlib
+import re
 import sys
 from typing import List, Dict, Any, Optional
-from transformers import AutoModelForCausalLM, AutoTokenizer
+import sglang as sgl
 
 # config.py 임포트
 from config import RAGConfig
@@ -45,75 +44,97 @@ logger = logging.getLogger(__name__)
 class Refiner:
     """
     RAG 시스템 정제기
-    Qwen3-1.7B 전용 모델을 사용하여 답변을 정제합니다.
-    (즉시 로딩)
+    SGLang을 사용하여 답변을 정제합니다.
     """
     
-    def __init__(self, generator, config: RAGConfig = None):
+    def __init__(self, config: RAGConfig = None):
         """
-        정제기 초기화 (모델 즉시 로딩)
+        정제기 초기화
         
         Args:
-            generator: Generator 인스턴스 (디바이스 정보만 참조)
             config: RAGConfig 인스턴스
         """
         if config is None:
             config = RAGConfig()
         
         self.config = config
-        self.generator = generator  # 디바이스 정보 참조용
+        self.model_name = self.config.REFINER_MODEL
+        self.engine = None
+        self.model_loaded = False
         
-        # Refiner 전용 모델 설정
-        self.refiner_model_name = self.config.REFINER_MODEL # 'self.config.' 를 추가하여 수정
-        self.device = self.config.REFINER_DEVICE # Refiner 전용 디바이스 설정을 사용하도록 변경
-        self.torch_dtype = self.config.GENERATOR_TORCH_DTYPE  # generator에서 가져오는 대신 config에서 가져오도록 수정
-        
-        # 모델 즉시 로딩
-        self.refiner_model = None
-        self.refiner_tokenizer = None
-        self.model_loaded_on_gpu = False
-        
-        self._load_tokenizer()
-        self._load_model()
-        
-        logger.info(f"Refiner 초기화 및 모델 로딩 완료: {self.refiner_model_name}")
-
-    def _load_tokenizer(self):
-        """Refiner 전용 토크나이저 로드"""
-        try:
-            self.refiner_tokenizer = AutoTokenizer.from_pretrained(
-                self.refiner_model_name,
-                cache_dir=self.config.CACHE_DIR,
-                local_files_only=False
-            )
-            if self.refiner_tokenizer.pad_token_id is None:
-                self.refiner_tokenizer.pad_token_id = self.refiner_tokenizer.eos_token_id
-            logger.info(f"Refiner 토크나이저 로딩 완료: {self.refiner_model_name}")
-        except Exception as e:
-            logger.error(f"Refiner 토크나이저 로딩 실패: {e}")
-            raise
+        logger.info(f"Refiner 초기화 완료 (모델은 최초 요청 시 로드): {self.model_name}")
 
     def _load_model(self):
-        """Refiner 모델을 GPU에 로드"""
-        logger.info(f"Refiner 모델을 GPU에 로딩 중: {self.refiner_model_name}")
-        start_time = time.time()
+        """SGLang Engine 초기화"""
         try:
-            model_kwargs = {"torch_dtype": self.torch_dtype}
+            logger.info(f"Refiner SGLang Engine 초기화 중: {self.model_name}")
             
-            self.refiner_model = AutoModelForCausalLM.from_pretrained(
-                self.refiner_model_name,
-                cache_dir=self.config.CACHE_DIR,
-                local_files_only=False,
-                attn_implementation="flash_attention_2",
-                **model_kwargs
-            ).to(self.device)
+            # PyTorch를 사용하여 GPU 메모리 정리
+            import torch
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+                logger.info("GPU 캐시 메모리 정리 완료")
             
-            load_time = time.time() - start_time
-            logger.info(f"Refiner 모델 GPU 로딩 완료: {self.refiner_model_name} ({load_time:.1f}초)")
+            # Config에서 디바이스 설정 가져오기
+            device = self.config.REFINER_DEVICE
+            logger.info(f"Refiner SGLang Engine 디바이스 설정: {device}")
+            
+            # device가 "cuda:N" 형식이면 환경 변수로 설정
+            original_cuda_visible = os.environ.get('CUDA_VISIBLE_DEVICES')
+            if device != "auto" and device.startswith("cuda:"):
+                gpu_id = device.split(":")[1]
+                os.environ['CUDA_VISIBLE_DEVICES'] = gpu_id
+                logger.info(f"CUDA_VISIBLE_DEVICES 설정: {gpu_id}")
+            
+            # Engine 클래스를 사용하여 모델 초기화
+            mem_fraction = getattr(self.config, 'REFINER_MEM_FRACTION', 0.2)
+            try:
+                self.engine = sgl.Engine(
+                    model_path=self.model_name,
+                    mem_fraction_static=mem_fraction,
+                    disable_cuda_graph=True,
+                    trust_remote_code=True,
+                    dtype="auto"
+                )
+            finally:
+                # 환경 변수 복원
+                if original_cuda_visible is not None:
+                    os.environ['CUDA_VISIBLE_DEVICES'] = original_cuda_visible
+                elif 'CUDA_VISIBLE_DEVICES' in os.environ:
+                    del os.environ['CUDA_VISIBLE_DEVICES']
+            
+            self.model_loaded = True
+            logger.info("Refiner SGLang Engine 초기화 완료")
         except Exception as e:
-            logger.error(f"Refiner 모델 GPU 로딩 실패: {e}")
-            self.refiner_model = None
+            logger.error(f"Refiner SGLang Engine 초기화 실패: {e}")
+            self.model_loaded = False
             raise
+    
+    def _ensure_model_loaded(self):
+        """모델이 로드되지 않았다면 로드합니다."""
+        if not self.model_loaded or self.engine is None:
+            self._load_model()
+    
+    def cleanup_model(self):
+        """SGLang 엔진과 GPU 리소스를 정리"""
+        try:
+            if self.engine is not None:
+                shutdown = getattr(self.engine, "shutdown", None)
+                if callable(shutdown):
+                    shutdown()
+                self.engine = None
+            self.model_loaded = False
+
+            try:
+                import torch
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+            except Exception:
+                logger.exception("GPU 캐시 정리 중 오류")
+
+            logger.info("Refiner 리소스 정리 완료")
+        except Exception as exc:
+            logger.error("Refiner cleanup 실패: %s", exc, exc_info=True)
 
     def refine_answer(self, query: str, answer: str, cancellation_event: Optional[threading.Event] = None) -> str:
         """
@@ -264,74 +285,58 @@ class Refiner:
     
     def _generate_with_refiner_model(self, system_prompt: str, user_prompt: str, cancellation_event: Optional[threading.Event] = None) -> str:
         """
-        Refiner 전용 Qwen3-1.7B 모델을 사용하여 텍스트를 생성합니다.
+        SGLang Engine을 사용하여 텍스트를 생성합니다.
         
         Args:
             system_prompt: 시스템 프롬프트
             user_prompt: 사용자 프롬프트
+            cancellation_event: 취소 이벤트
             
         Returns:
             생성된 텍스트
         """
+        self._ensure_model_loaded()
+        
         try:
-            model = self.refiner_model
+            logger.info("Refiner SGLang Engine으로 텍스트 생성 시작")
             
-            # Qwen3 공식 권장 방식: messages 형식으로 구성
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ]
+            # 취소 확인
+            if cancellation_event and cancellation_event.is_set():
+                raise InterruptedError("Operation cancelled before refinement generation")
             
-            # apply_chat_template 사용 (enable_thinking=False로 설정)
-            text = self.refiner_tokenizer.apply_chat_template(
-                messages,
-                tokenize=False,
-                add_generation_prompt=True,
-                enable_thinking=False  # 중요: thinking 모드 비활성화
-            )
+            # 채팅 형식 프롬프트 구성
+            prompt = f"""<|im_start|>system
+{system_prompt}<|im_end|>
+<|im_start|>user
+{user_prompt}<|im_end|>
+<|im_start|>assistant
+"""
             
-            logger.info(f"Refiner 전용 모델({self.refiner_model_name})로 텍스트 생성 중")
-            
-            # 토크나이징 및 디바이스 이동
-            model_inputs = self.refiner_tokenizer([text], return_tensors="pt").to(self.device)
-            
-            # Qwen3 공식 권장 파라미터 (non-thinking 모드)
-            generation_params = {
+            # 샘플링 파라미터 설정
+            sampling_params = {
+                "temperature": 0.3,
+                "top_p": 0.9,
                 "max_new_tokens": self.config.REFINER_MAX_TOKENS,
-                "do_sample": True,  # Qwen3에서는 항상 샘플링 권장
-                "temperature": 0.3,  # 공식 권장값
-                "pad_token_id": self.refiner_tokenizer.eos_token_id,
-                "num_beams": 1,     # 샘플링과 빔서치 동시 사용 불가
+                "stop": ["<|im_end|>", "</think>"]
             }
-
-            # 취소 확인
-            if cancellation_event and cancellation_event.is_set():
-                raise InterruptedError("Operation cancelled before refinement generation")
-
-            # 취소 확인
-            if cancellation_event and cancellation_event.is_set():
-                raise InterruptedError("Operation cancelled before refinement generation")
-
-            with torch.no_grad():
-                generated_ids = model.generate(**model_inputs, **generation_params)
             
-            # Qwen3 공식 방식: 입력 길이를 제외한 새로운 토큰만 추출
-            output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist()
+            # SGLang Engine으로 텍스트 생성
+            result = self.engine.generate(prompt=prompt, sampling_params=sampling_params)
+            response = result["text"]
             
-            # 디코딩
-            response = self.refiner_tokenizer.decode(output_ids, skip_special_tokens=True)
+            # <think> 태그 제거
+            response = re.sub(r'<[tT]hink>.*?</[tT]hink>', '', response, flags=re.DOTALL)
+            
+            # 불필요한 공백/줄바꿈 정리
+            response = response.strip()
             
             if not response:
                 logger.warning("Refiner가 빈 응답을 생성했습니다.")
                 return ""
             
-
-            
             logger.info(f"Refiner 텍스트 생성 완료 - 응답 길이: {len(response)}")
-            return response.strip()
+            return response
             
         except Exception as e:
-            logger.error(f"Refiner 모델 텍스트 생성 실패: {str(e)}", exc_info=True)
+            logger.error(f"Refiner 텍스트 생성 실패: {str(e)}", exc_info=True)
             raise
-    
-

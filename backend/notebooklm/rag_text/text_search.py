@@ -275,7 +275,6 @@ class TextSearcher:
                             query, 
                             results, 
                             top_k=rerank_top_k, 
-                            min_score=config.RELEVANCE_THRESHOLD, 
                             cancellation_event=cancellation_event
                         )
                         

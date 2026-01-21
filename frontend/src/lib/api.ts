@@ -13,6 +13,9 @@ export interface SummarizeRequest {
 // API 기본 URL 설정 (환경 변수에서 가져오거나 기본값 사용)
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
+// 디버깅: API URL 확인
+console.log('[API Config] Base URL:', API_URL);
+
 // Axios 인스턴스 생성
 const api = axios.create({
   baseURL: API_URL,
@@ -47,7 +50,7 @@ api.interceptors.request.use(
 // 응답 인터셉터
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    console.log(`API 응답: ${response.status} ${response.config.url}`);
+    console.log(`✓ API 응답 성공: ${response.status} ${response.config.url}`, response.data);
     
     // 백엔드에서 생성한 세션 ID가 헤더로 내려오면 저장
     const sessionId = response.headers['x-session-id'];
@@ -62,16 +65,17 @@ api.interceptors.response.use(
     return response;
   },
   (error: any) => {
+    console.error('✗ API 에러 발생:', error);
+    
     // Axios 요청 취소 에러인지 확인
     if (axios.isCancel(error)) {
       console.log('API 요청이 사용자에 의해 취소되었습니다.', error.message);
-      // 취소 에러는 그대로 다시 throw하여 각 컴포넌트의 catch 블록에서 처리하도록 함
       return Promise.reject(error);
     }
 
     // 네트워크 오류 또는 기타 응답이 없는 에러
     if (!error.response) {
-      console.error('네트워크 오류 또는 응답 없는 에러:', error.message);
+      console.error('네트워크 오류 또는 응답 없는 에러:', error.message, error);
       return Promise.reject(new Error('네트워크 오류가 발생했습니다. 서버 상태를 확인해주세요.'));
     }
 

@@ -5,13 +5,17 @@ import sys
 import shutil
 from pathlib import Path
 import threading
+import subprocess
+import time
 
 import uuid
 from fastapi import FastAPI, Request, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
 
-running_tasks = {} 
+running_tasks = {}
+embedding_server_process = None  # SGLang 임베딩 서버 프로세스
+reranker_server_process = None   # SGLang 리랭커 서버 프로세스 
 
 
 # 현재 작업 디렉토리를 sys.path에 추가하여 모듈 검색 경로에 포함
@@ -57,6 +61,11 @@ async def lifespan(app: FastAPI):
     """
     애플리케이션 시작 및 종료 시의 수명 주기 이벤트를 관리합니다.
     """
+    global embedding_server_process, reranker_server_process
+    
+    # SGLang 서버들은 이제 요청 시 자동으로 시작됩니다
+    logger.info("SGLang 서버들은 첫 요청 시 자동으로 시작됩니다.")
+    
     # 1. Startup: 세션 데이터 초기화 (휘발성 유지)
     from notebooklm.config import RAGConfig
     config = RAGConfig()
@@ -145,7 +154,11 @@ async def lifespan(app: FastAPI):
 
     yield  # 애플리케이션 실행 중
 
-    # 6. Shutdown: 필요한 정리 작업 (현재는 없음)
+    # 6. Shutdown: SGLang 서버들은 백그라운드에서 계속 실행됩니다
+    logger.info("SGLang 서버들은 백그라운드에서 계속 실행됩니다.")
+    logger.info("서버를 종료하려면 수동으로 프로세스를 종료하세요: pkill -f sglang.launch_server")
+    
+    # 7. Shutdown: 필요한 정리 작업
     logger.info("서버가 종료됩니다.")
 
 # FastAPI 앱 초기화 시 lifespan 설정 적용
@@ -167,7 +180,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["set-cookie"],  # 브라우저가 Set-Cookie 헤더를 볼 수 있게 노출
+    expose_headers=["set-cookie", "X-Session-ID"],  # 브라우저가 헤더를 볼 수 있게 노출
 )
 
 app.title = "챗봇 API"

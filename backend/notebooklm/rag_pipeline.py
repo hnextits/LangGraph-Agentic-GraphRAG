@@ -52,10 +52,20 @@ class RAGPipeline:
         # 컴포넌트 초기화
         self.router = RAGRouter(self.config)
         self.generator = Generator(self.config)
-        self.evaluator = Evaluator(self.config)
-        # 환경 문제로 인해 Refiner 사용 안함
-        self.refiner = None
-        logger.info("환경 문제로 인해 Refiner를 사용하지 않습니다.")
+        
+        # Evaluator 조건부 초기화
+        self.evaluator = Evaluator(self.config) if self.config.use_evaluator else None
+        if self.evaluator:
+            logger.info("Evaluator 초기화 완료")
+        else:
+            logger.info("Evaluator 사용 안함 (config.use_evaluator=False)")
+        
+        # Refiner 조건부 초기화
+        self.refiner = Refiner(self.config) if self.config.use_refiner else None
+        if self.refiner:
+            logger.info("Refiner 초기화 완료 (SGLang 사용)")
+        else:
+            logger.info("Refiner 사용 안함 (config.use_refiner=False)")
         
         logger.info("RAG 파이프라인 초기화 완료")
     

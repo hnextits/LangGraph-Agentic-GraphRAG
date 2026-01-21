@@ -1,8 +1,8 @@
 ### 명령어 cd /home/nextits2/.conda/envs/workbox
-### python embedding_system.py --json data/combined_metadata_2.json --type image
-### python embedding_system.py --json data/test_text_2.json --type text
+### python embedding_image.py --json data/combined_metadata_2.json --type image
+### python embedding_image.py --json data/test_text_2.json --type text
 
-# python /home/jeonghs/workspace/nextitslm/backend/notebooklm/embedding_system.py --type image --recreate
+# python /home/jeonghs/workspace/nextitslm/backend/notebooklm/embedding_image.py --type image --recreate
 
 import os
 import re
@@ -887,6 +887,6 @@ if __name__ == "__main__":
         parser.print_help()
         print("\n예시:")
         print("  # 이미지 메타데이터 JSON 파일 처리 (기존 스키마에 추가)")
-        print("  python embedding_system.py --json /path/to/image_metadata.json --type image")
+        print("  python embedding_image.py --json /path/to/image_metadata.json --type image")
         print("\n  # 디렉토리 내의 모든 JSON/TXT 파일 재귀적으로 처리 (스키마 재생성)")
-        print("  python embedding_system.py --json /home/jeonghs/workspace/nextitslm/backend/nextits_data/Results/5.Completion_results/image --recreate")
+        print("  python embedding_image.py --json /home/jeonghs/workspace/nextitslm/backend/nextits_data/Results/5.Completion_results/image --recreate")

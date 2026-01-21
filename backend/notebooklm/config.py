@@ -123,8 +123,8 @@ class RAGConfig:
         
         # SGLang 설정 - Engine API 직접 사용
         self.SGLANG_USE_DIRECT_ENGINE = True  # SGLang Engine API directly
-        self.GENERATOR_MEM_FRACTION = 0.3     # 원래 값으로 복원 (30% of GPU memory)
-        self.SUMMARIZER_MEM_FRACTION = 0.15    # Reduced from 0.2 to 0.15 (15% of GPU 0)
+        self.GENERATOR_MEM_FRACTION = 0.2     # 20% of GPU memory
+        self.SUMMARIZER_MEM_FRACTION = 0.15    # 15% of GPU memory
         self.GENERATOR_NUM_BEAMS = 1     # Disable beam search
         self.GENERATOR_PAD_TOKEN_ID = None  # 토크나이저에서 설정
         self.GENERATOR_ENABLE_THINKING = False
@@ -160,6 +160,8 @@ class RAGConfig:
         self.debug_mode = False
         self.use_feedback_loop = False  # Disabled feedback loop to save resources
         self.use_refiner = False        # Explicitly disabled
+        self.use_evaluator = False      # Evaluator 비활성화
+        self.use_query_rewriter = False # QueryRewriter 비활성화
         self.separate_image_text_results = True  # 이미지와 텍스트 결과 분리 여부
         
         # 메모리 관리 설정
@@ -519,7 +521,7 @@ class RAGConfig:
         shared_model.load_model()
         
         # 하위 호환성을 위해 더미 토크나이저 반환
-        return shared_model._model, None
+        return shared_model._engine, None
     
     @classmethod
     def unload_embedding_model(cls):

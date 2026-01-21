@@ -354,7 +354,7 @@ class Qwen3LateChunker:
             logger.info("Embedding model not loaded, attempting to load...")
             self.embedding_model.load_model()
         
-        if self.embedding_model._model is None:
+        if not self.embedding_model.is_loaded:
             logger.error("Shared embedding model is still not loaded after attempting to load.")
             return []
 

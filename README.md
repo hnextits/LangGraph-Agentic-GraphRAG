@@ -11,6 +11,7 @@ NextITSLM SGLang은 RAG (Retrieval-Augmented Generation) 기술을 기반으로 
 - **고속 실시간 응답**: SGLang 기반의 LLM 서비스로 응답 속도 달성 최적화
 - **지능형 질의 라우팅**: 질의 유형을 분석하여 텍스트/이미지 검색기를 병렬로 실행
 - **답변 정제 및 평가**: 검색된 컨텍스트를 활용한 정확한 답변 생성, 답변 품질 자동 평가 및 정제 기능
+- **자동 서버 관리**: SGLang 임베딩/리랭커 서버가 첫 요청 시 자동으로 시작되어 지속적으로 실행
 
 ### 데이터 처리 및 인프라
 - **문서 처리 파이프라인**: OCR, 레이아웃 분석, Late Chunking을 통한 문서 구조화 및 배치 처리
@@ -22,11 +23,13 @@ NextITSLM SGLang은 RAG (Retrieval-Augmented Generation) 기술을 기반으로 
 
 ## 시스템 아키텍처
 
-> #### 최근 업데이트: Lazy Loading & GPU Cleanup
-> - FastAPI `main.py`에서 `LazyModelManager`가 Answer/RAG/Mindmap 모델을 `idle_timeout=20s`로 등록합니다.
-> - `LazyModelManager.acquire/release` 호출 후 참조 카운트가 0이 되면 20초 뒤 자동 언로드되며, `cleanup_rag_pipeline()`이 RAGRouter·검색기·QueryRewriter·SharedEmbedding·리랭커까지 정리합니다.
-> - `/api/v1/chat` 요청이 끝난 뒤 로그에 `LazyModel[...] 언로드 진행`, `RAG 파이프라인 리소스를 정리합니다.` 메시지가 보이면 GPU 메모리가 회수된 것입니다.
-> - GPU 상태 확인 절차: (1) 요청 실행 → (2) 20초 대기 → (3) 로그 확인 → (4) `nvidia-smi`로 메모리 감소 여부 확인.
+> #### 최근 업데이트: SGLang 서버 자동 시작 & 메모리 최적화
+> - **SGLang 서버 자동 관리**: 임베딩 및 리랭커 서버가 첫 요청 시 자동으로 시작되어 백그라운드에서 지속 실행
+> - **메모리 최적화**: Generator(20%), Summarizer(15%), Embedding(15%), Reranker(15%)로 GPU 메모리 효율적 분배
+> - **Lazy Loading**: `LazyModelManager`가 Answer/RAG/Mindmap 모델을 `idle_timeout=20s`로 등록
+> - **GPU Cleanup**: `cleanup_rag_pipeline()`이 RAGRouter·검색기·QueryRewriter·SharedEmbedding·리랭커까지 정리
+> - **서버 시작 로그**: 첫 문서 업로드 시 `임베딩 서버 시작 중...`, 첫 리랭킹 시 `리랭커 서버 시작 중...` 메시지 확인
+> - GPU 상태 확인: (1) 요청 실행 → (2) 20초 대기 → (3) 로그 확인 → (4) `nvidia-smi`로 메모리 확인
 
 NextITSLM SGL은 모듈화된 3-Tier 아키텍처로 설계되었습니다.
 
@@ -36,11 +39,11 @@ NextITSLM SGL은 모듈화된 3-Tier 아키텍처로 설계되었습니다.
 │   Frontend      │    │   Backend API   │    │   LLM Service   │
 │   (React)       │◄──►│   (FastAPI)     │◄──►│   (SGLang)      │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
-                                │
-                       ┌─────────────────┐
-                       │   Weaviate      │
-                       │   (Vector DB)   │
-                       └─────────────────┘
+                               │
+                      ┌─────────────────┐
+                      │   Weaviate      │
+                      │   (Vector DB)   │
+                      └─────────────────┘
 ```
 
 ```TSX
@@ -62,7 +65,9 @@ nextitslm/
 │   │   └── pause_api.py       # 일시정지 API
 │   ├── notebooklm/             # RAG 시스템 핵심 모듈
 │   │   ├── rag_pipeline.py    # RAG 파이프라인 오케스트레이터
-│   │   ├── embedding_system.py # 임베딩 시스템
+│   │   ├── shared_embedding.py # SGLang 임베딩 서버 클라이언트
+│   │   ├── embedding_text.py  # 텍스트 임베딩 파이프라인 (Weaviate 업서트)
+│   │   ├── embedding_image.py # 이미지 임베딩 파이프라인 (Weaviate 업서트)
 │   │   ├── generator.py       # LLM 답변 생성기
 │   │   ├── evaluator.py       # 답변 품질 평가기
 │   │   ├── refiner.py         # 답변 정제기
@@ -110,11 +115,17 @@ nextitslm/
   - 텍스트/이미지 검색 결과 통합 및 base64 이미지 변환
   - 피드백 루프 및 답변 정제 기능
 
-- **`embedding_system.py`**: 통합 임베딩 시스템
-  - 텍스트와 이미지 검색에서 동일한 임베딩 모델 공유로 메모리 효율성 극대화
-  - Qwen 모델 기반 고품질 임베딩 생성
-  - Late Chunking 기법 적용으로 컨텍스트 보존
-  - GPU 메모리 사용량 모니터링 및 최적화
+- **`shared_embedding.py`**: SGLang 기반 임베딩 시스템
+  - SGLang 서버를 OpenAI 호환 API로 호출하는 클라이언트
+  - 첫 요청 시 SGLang 임베딩 서버 자동 시작 (포트 30001)
+  - Qwen3-Embedding-4B 모델 사용 (GPU 메모리 15% 할당)
+  - 싱글톤 패턴으로 구현되어 전역적으로 공유
+  - 서버 상태 자동 확인 및 재시작 기능
+
+- **`embedding_text.py` / `embedding_image.py`**: 데이터 업서트 파이프라인
+  - `shared_embedding`을 통해 SGLang 임베딩 서버에 질의하여 벡터 생성
+  - 텍스트/이미지 청크를 전처리하고 Weaviate에 업서트
+  - Late Chunking, 정규화 등 RAG 파이프라인 전용 로직 유지
 
 - **`qwen3_late_chunking.py`**: Late Chunking 구현
   - 문서를 청킹한 후 임베딩하는 대신, 전체 문서를 임베딩한 후 청킹
@@ -139,10 +150,13 @@ nextitslm/
 #### 검색 시스템
 - **텍스트 검색** (`rag_text/`)
   - `text_search.py`: Weaviate 기반 시맨틱 검색
-  - `text_reranker_improved_2.py`: 검색 결과 재순위화
+  - `text_reranker_improved_2.py`: SGLang 기반 리랭커 (Qwen3-Reranker-4B)
+    - 첫 요청 시 SGLang 리랭커 서버 자동 시작 (포트 30002)
+    - GPU 메모리 15% 할당으로 효율적 운영
 - **이미지 검색** (`rag_image/`)
   - `image_search.py`: 이미지 임베딩 기반 유사도 검색
-  - `image_reranker.py`: 이미지 검색 결과 재순위화
+  - `image_reranker.py`: SGLang 기반 이미지 리랭커 (Qwen3-Reranker-8B)
+    - 텍스트 리랭커와 동일한 서버 공유 (포트 30002)
 - **병렬 검색** (`parallel_search.py`): 다중 검색기 동시 실행으로 성능 최적화
 
 #### 설정 관리 (`config.py`)
@@ -229,6 +243,8 @@ cp .env.sample .env
 3. **서버 실행**
 ```bash
 python main.py
+# SGLang 임베딩/리랭커 서버는 첫 요청 시 자동으로 시작됩니다
+# 로그에서 "임베딩 서버 시작 중..." 메시지를 확인하세요
 ```
 
 ### 프론트엔드 설정
@@ -253,21 +269,24 @@ npm start
 ## 주요 설정
 
 ### 모델 설정
-- **임베딩 모델**: Qwen 시리즈 모델 (Qwen2.5-7B-Instruct 등)
-- **생성 모델**: SGLang 기반 LLM 서비스 (Qwen, Llama, Gemma 등)
-- **디바이스**: CUDA GPU 자동 감지 및 활용
+- **임베딩 모델**: Qwen3-Embedding-4B (SGLang 서버, GPU 메모리 15%)
+- **리랭커 모델**: Qwen3-Reranker-4B/8B (SGLang 서버, GPU 메모리 15%)
+- **생성 모델**: Qwen3-8B (SGLang Engine, GPU 메모리 20%)
+- **요약 모델**: Qwen3-4B-Instruct-2507 (SGLang Engine, GPU 메모리 15%)
+- **디바이스**: GPU 1 (임베딩/리랭커), GPU 0 (생성/요약)
 - **Late Chunking**: 컨텍스트 보존을 위한 청킹 기법 적용
 
 ### 성능 최적화
 
+- **SGLang 서버 자동 관리**: 임베딩/리랭커 서버가 첫 요청 시 자동 시작되어 지속 실행
+- **메모리 효율화**: GPU 메모리를 Generator(20%), Summarizer(15%), Embedding(15%), Reranker(15%)로 최적 분배
 - **Late Chunking**: 컨텍스트 보존으로 검색 품질 향상
-- **병렬 검색**: 텍스트/이미지 검색 실행
+- **병렬 검색**: 텍스트/이미지 검색 동시 실행
 - **캐싱**: 작업 상태 1시간 캐시 유지
 - **비동기 처리**: 백그라운드 작업 처리
 - **Lazy Loading**: `LazyModelManager`가 RAG/Answer/Mindmap 모델을 요청 시점에만 로드
-- **GPU Cleanup**: `cleanup_rag_pipeline()` → `RAGPipeline.cleanup()` → Router/Searcher/QueryRewriter/SharedEmbedding/리랭커까지 모두 해제
+- **GPU Cleanup**: `cleanup_rag_pipeline()`이 모든 리소스 자동 해제
 - **벡터 검색 최적화**: Weaviate 인덱싱 최적화
-- **리소스 관리**: 메모리 효율적 사용
 
 ### 확장성
 - **모듈화**: 각 컴포넌트 독립적 개발 및 테스트 가능
@@ -298,11 +317,13 @@ npm start
 - **성능 메트릭**: 응답 시간, 메모리 사용량 추적
 - **오류 추적**: 예외 상황 자동 로깅 및 알림
 - **작업 상태**: 비동기 작업 진행 상황 실시간 모니터링
+- **SGLang 서버 로그**: `sglang_embedding_server.log`, `sglang_reranker_server.log` 파일 확인
 - **GPU 상태 확인 절차**
   1. `/api/v1/chat` 등 RAG 요청 수행 후 응답 완료까지 대기
-  2. 20초 동안 추가 요청이 없으면 LazyModelManager가 모델 언로드 (로그 확인)
-  3. `nvidia-smi`로 GPU 사용량을 재확인하여 메모리가 회수되었는지 검증
-  4. 필요 시 `request.app.state.model_manager.acquire()`/`release()` 사용 구간을 점검하여 참조 누수가 없는지 확인
+  2. 첫 요청 시 "임베딩 서버 시작 중...", "리랭커 서버 시작 중..." 로그 확인
+  3. 20초 동안 추가 요청이 없으면 LazyModelManager가 모델 언로드
+  4. `nvidia-smi`로 GPU 사용량 확인 (GPU 0: Generator+Summarizer, GPU 1: Embedding+Reranker)
+  5. SGLang 서버는 백그라운드에서 계속 실행됨 (종료: `pkill -f sglang.launch_server`)
 
 ## 보안 및 안정성
 

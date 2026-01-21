@@ -211,6 +211,7 @@ async def list_files(request: Request):
     
     # 2. Weaviate에서 UUID 매핑 정보 가져오기
     uuid_map = {}
+    client = None
     try:
         print(f"DEBUG: /files endpoint - files_list: {files_list}")
         client = config.get_weaviate_client()
@@ -219,12 +220,14 @@ async def list_files(request: Request):
             print(f"DEBUG: Calling get_document_uuid_map_with_session with {len(files_list)} files")
             uuid_map = get_document_uuid_map_with_session(client, files_list, session_id)
             print(f"DEBUG: get_document_uuid_map_with_session returned: {uuid_map}")
-            client.close()
         else:
             print(f"DEBUG: client is None or files_list is empty. client: {client}, files_list: {files_list}")
     except Exception as e:
         logger.warning(f"UUID 매핑 조회 실패: {e}")
         print(f"DEBUG: UUID mapping error: {e}")
+    finally:
+        if client:
+            client.close()
 
     print(f"DEBUG: Final uuid_map to return: {uuid_map}")
     return FileListResponse(files=files_list, document_uuid_map=uuid_map)
@@ -610,12 +613,12 @@ async def run_text_indexing(task_id: str, file_names: List[str], tasks_dict: Dic
             tasks_dict[task_id].update({'status': 'index_skipped', 'message': '인덱싱할 파일을 찾지 못해 건너뜁니다.', 'progress': 100})
             return
 
-        # 2. qwen3_late_chunking 실행
-        from notebooklm.qwen3_late_chunking import process_markdown_files
+        # 2. embedding_text 실행 (텍스트 임베딩 및 청킹)
+        from notebooklm.embedding_text import process_markdown_files
         from shared_embedding import shared_embedding
         
         # 모델 로드 보장
-        if shared_embedding._model is None:
+        if not shared_embedding.is_loaded:
             logger.info(f"[{task_id}] Embedding 모델 로드 시작...")
             shared_embedding.load_model()
         
@@ -706,12 +709,12 @@ async def run_text_indexing_v2(task_id: str, file_names: List[str], tasks_dict: 
         except Exception as meta_err:
             logger.error(f"[{task_id}] 메타데이터 업데이트 중 오류 발생: {meta_err}")
 
-        # 2. qwen3_late_chunking 실행
-        from notebooklm.qwen3_late_chunking import process_markdown_files
+        # 2. embedding_text 실행 (텍스트 임베딩 및 청킹)
+        from notebooklm.embedding_text import process_markdown_files
         from shared_embedding import shared_embedding
         
         # 모델 로드 보장
-        if shared_embedding._model is None:
+        if not shared_embedding.is_loaded:
             logger.info(f"[{task_id}] Embedding 모델 로드 시작...")
             await asyncio.to_thread(shared_embedding.load_model)
         
@@ -1003,14 +1006,18 @@ async def chat(request: Request, query: ChatQuery, background_tasks: BackgroundT
             
             if session_files:
                 # 세션별 UUID 매핑 가져오기
-                client = config.get_weaviate_client()
-                if client:
-                    from notebooklm.weaviate_utils import get_document_uuid_map_with_session
-                    session_uuid_map = get_document_uuid_map_with_session(client, list(session_files), session_id)
-                    client.close()
-                    
-                    # resolved_sources를 세션의 모든 파일 UUID로 교체
-                    resolved_sources = list(session_uuid_map.values())
+                client = None
+                try:
+                    client = config.get_weaviate_client()
+                    if client:
+                        from notebooklm.weaviate_utils import get_document_uuid_map_with_session
+                        session_uuid_map = get_document_uuid_map_with_session(client, list(session_files), session_id)
+                        
+                        # resolved_sources를 세션의 모든 파일 UUID로 교체
+                        resolved_sources = list(session_uuid_map.values())
+                finally:
+                    if client:
+                        client.close()
                     logger.info(f"[Task {task_id}] Auto-selected {len(resolved_sources)} files (session + default): {resolved_sources}")
         except Exception as e:
             logger.error(f"[Task {task_id}] Failed to auto-select session files: {e}")
