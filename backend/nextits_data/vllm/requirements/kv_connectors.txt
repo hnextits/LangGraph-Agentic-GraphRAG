@@ -1,2 +1,0 @@
-lmcache
-nixl >= 0.5.1 # Required for disaggregated prefill
