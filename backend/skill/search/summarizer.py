@@ -1,0 +1,452 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+요약 기능 모듈
+SGLang Engine을 직접 사용하여 독립적으로 작동
+md_summarizer 없이도 완전히 독립적으로 작동 가능
+"""
+
+import sglang as sgl
+import logging
+import re
+import json
+import os
+
+# 토큰 카운팅을 위한 tiktoken 임포트
+try:
+    import tiktoken
+    TOKENIZER = tiktoken.get_encoding("cl100k_base")  # GPT-4/Qwen 호환 인코더
+    logger = logging.getLogger(__name__)
+    logger.info("tiktoken 모듈 로드 성공")
+except ImportError:
+    TOKENIZER = None
+    logger = logging.getLogger(__name__)
+    logger.warning("tiktoken 모듈을 찾을 수 없습니다. 문자 수 기반 추정을 사용합니다.")
+
+# 로깅 설정
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# 토큰 카운팅 및 청킹 유틸리티 함수
+def count_tokens(text: str) -> int:
+    """텍스트의 토큰 수를 계산합니다."""
+    if TOKENIZER:
+        return len(TOKENIZER.encode(text))
+    else:
+        # tiktoken이 없으면 문자 수 기반 추정 (1 토큰 ≈ 4 문자)
+        return len(text) // 4
+
+def chunk_text_by_tokens(text: str, max_tokens: int = 20000, overlap_tokens: int = 500) -> list:
+    """
+    텍스트를 토큰 수 기반으로 청킹합니다.
+    
+    Args:
+        text: 청킹할 텍스트
+        max_tokens: 청크당 최대 토큰 수
+        overlap_tokens: 청크 간 오버랩 토큰 수
+        
+    Returns:
+        list: 청크 리스트
+    """
+    if TOKENIZER:
+        tokens = TOKENIZER.encode(text)
+        chunks = []
+        start = 0
+        
+        while start < len(tokens):
+            end = min(start + max_tokens, len(tokens))
+            chunk_tokens = tokens[start:end]
+            chunk_text = TOKENIZER.decode(chunk_tokens)
+            chunks.append(chunk_text)
+            
+            # 오버랩을 고려하여 다음 시작 위치 설정
+            start = end - overlap_tokens if end < len(tokens) else end
+            
+        return chunks
+    else:
+        # tiktoken이 없으면 문자 수 기반 청킹
+        max_chars = max_tokens * 4
+        overlap_chars = overlap_tokens * 4
+        chunks = []
+        start = 0
+        
+        while start < len(text):
+            end = min(start + max_chars, len(text))
+            chunks.append(text[start:end])
+            start = end - overlap_chars if end < len(text) else end
+            
+        return chunks
+
+
+class AnswerGenerator:
+    """MD 문서 요약을 위한 생성기 (SGLang Engine 직접 로드 방식)"""
+    
+    def __init__(self, model_name: str = "Qwen/Qwen3-4B-Instruct-2507"):
+        """
+        초기화
+        
+        Args:
+            model_name: 사용할 모델 이름
+        """
+        self.model_name = model_name
+        self.engine = None
+        self.model_loaded = False
+    
+    def load_model(self):
+        """SGLang Engine 초기화"""
+        try:
+            logger.info(f"SGLang Engine 초기화 중: {self.model_name}")
+            
+            # PyTorch를 사용하여 GPU 메모리 정리
+            import torch
+            if torch.cuda.is_available():
+                # 미사용 캐시 메모리 해제
+                torch.cuda.empty_cache()
+                logger.info("GPU 캐시 메모리 정리 완료")
+            
+            logger.info("SGLang Engine API 직접 사용 - 모델 직접 로드")
+            
+            # Config에서 디바이스 설정 가져오기 (TEST_MODE 지원)
+            from notebooklm.config import RAGConfig
+            import os
+            config = RAGConfig()
+            device = config.TEXT_GENERATOR_DEVICE
+            logger.info(f"SGLang Engine 디바이스 설정: {device}")
+            
+            # device가 "cuda:N" 형식이면 환경 변수로 설정
+            original_cuda_visible = os.environ.get('CUDA_VISIBLE_DEVICES')
+            if device != "auto" and device.startswith("cuda:"):
+                gpu_id = device.split(":")[1]
+                os.environ['CUDA_VISIBLE_DEVICES'] = gpu_id
+                logger.info(f"CUDA_VISIBLE_DEVICES 설정: {gpu_id}")
+            
+            # Engine 클래스를 사용하여 모델 초기화
+            # mem_fraction_static: SGLang이 사용할 GPU 메모리 비율
+            # RAGConfig에서 설정한 값 사용 (기본값 0.2)
+            mem_fraction = getattr(config, 'SUMMARIZER_MEM_FRACTION', 0.2)
+            try:
+                self.engine = sgl.Engine(
+                    model_path=self.model_name,
+                    mem_fraction_static=mem_fraction,  # 메모리 할당량 제한
+                    disable_cuda_graph=True,  # CUDA 그래프 비활성화로 안정성 향상
+                    trust_remote_code=True,   # 원격 코드 신뢰
+                    dtype="auto"              # 자동으로 적절한 dtype 선택
+                )
+            finally:
+                # 환경 변수 복원
+                if original_cuda_visible is not None:
+                    os.environ['CUDA_VISIBLE_DEVICES'] = original_cuda_visible
+                elif 'CUDA_VISIBLE_DEVICES' in os.environ:
+                    del os.environ['CUDA_VISIBLE_DEVICES']
+            
+            self.model_loaded = True
+            logger.info("SGLang Engine 초기화 완료")
+            return True
+        except Exception as e:
+            logger.error(f"SGLang Engine 초기화 실패: {e}")
+            self.model_loaded = False
+            return False
+    
+    def cleanup_model(self):
+        """모델 메모리 정리"""
+        try:
+            if self.engine is not None:
+                del self.engine
+                self.engine = None
+            
+            self.model_loaded = False
+            logger.info("모델 메모리 정리 완료")
+        except Exception as e:
+            logger.error(f"모델 메모리 정리 중 오류: {e}")
+    
+    def generate_answer(self, content: str, max_tokens: int = 8192) -> str:
+        """
+        MD 문서 요약 생성
+        
+        Args:
+            content: 요약할 문서 내용
+            max_tokens: 최대 생성 토큰 수
+            
+        Returns:
+            str: 생성된 요약 텍스트
+        """
+        if not content or content.isspace():
+            return "(관련된 구글 검색 결과를 찾을 수 없습니다)"
+        
+        # 모델이 로드되지 않았으면 로드
+        if not self.model_loaded:
+            if not self.load_model():
+                return "모델 로딩에 실패하여 답변을 생성할 수 없습니다."
+        
+        # 토큰 수 체크 및 청킹 처리
+        token_count = count_tokens(content)
+        logger.info(f"입력 토큰 수: {token_count}")
+        
+        if token_count > 20000:
+            logger.info(f"토큰 수({token_count})가 20000을 초과하여 청킹 처리를 시작합니다.")
+            return self._generate_answer_with_chunking(content, max_tokens)
+        
+        # 토큰 수가 적으면 바로 요약
+        return self._generate_single_answer(content, max_tokens)
+    
+    def _generate_answer_with_chunking(self, content: str, max_tokens: int = 8192) -> str:
+        """
+        긴 문서를 청킹하여 요약 생성
+        
+        Args:
+            content: 요약할 문서 내용
+            max_tokens: 최대 생성 토큰 수
+            
+        Returns:
+            str: 생성된 요약 텍스트
+        """
+        try:
+            # 텍스트를 청크로 분할
+            chunks = chunk_text_by_tokens(content, max_tokens=20000, overlap_tokens=500)
+            logger.info(f"총 {len(chunks)}개의 청크로 분할되었습니다.")
+            
+            # 각 청크를 개별적으로 요약
+            chunk_summaries = []
+            for i, chunk in enumerate(chunks):
+                logger.info(f"청크 {i+1}/{len(chunks)} 요약 시작... (토큰 수: {count_tokens(chunk)})")
+                try:
+                    chunk_summary = self._generate_single_answer(chunk, max_tokens=4096)
+                    chunk_summaries.append(chunk_summary)
+                    logger.info(f"청크 {i+1}/{len(chunks)} 요약 완료 (요약 길이: {len(chunk_summary)} 문자)")
+                except Exception as e:
+                    logger.error(f"청크 {i+1}/{len(chunks)} 요약 실패: {str(e)}")
+                    raise Exception(f"청크 {i+1} 요약 중 오류 발생: {str(e)}")
+            
+            # 청크 요약들을 다시 합쳐서 최종 요약 생성
+            combined_summaries = "\n\n---\n\n".join(chunk_summaries)
+            final_token_count = count_tokens(combined_summaries)
+            logger.info(f"청크 요약 합계 토큰 수: {final_token_count}")
+            
+            # 합친 요약이 여전히 크면 한 번 더 요약
+            if final_token_count > 20000:
+                logger.info("청크 요약 합계가 여전히 크므로 재요약을 수행합니다.")
+                return self._generate_single_answer(combined_summaries, max_tokens=max_tokens)
+            else:
+                # 청크 요약들을 최종 요약으로 통합
+                summary_prompt = f"다음은 긴 문서를 여러 부분으로 나누어 요약한 내용입니다. 이를 하나의 일관된 요약으로 통합해주세요:\n\n{combined_summaries}"
+                return self._generate_single_answer(summary_prompt, max_tokens=max_tokens)
+        
+        except Exception as e:
+            logger.error(f"청킹 요약 중 오류 발생: {e}")
+            return f"청킹 요약에 실패했습니다: {str(e)}"
+    
+    def _generate_single_answer(self, content: str, max_tokens: int = 8192) -> str:
+        """
+        단일 요약 생성 (내부 메서드)
+        
+        Args:
+            content: 요약할 문서 내용
+            max_tokens: 최대 생성 토큰 수
+            
+        Returns:
+            str: 생성된 요약 텍스트
+        """
+        try:
+            # 요약 생성을 위한 시스템 프롬프트
+            system_prompt = """You are an expert summarizer. Read the following document carefully and provide a clear, accurate, and well-structured summary.
+Focus on the key ideas, main arguments, important data points, and overall conclusions.
+Avoid unnecessary details or examples.
+Use concise and professional language suitable for an executive or technical audience.
+
+The summary must be written entirely in Korean.
+
+IMPORTANT: Do NOT include the document filename or title at the beginning of your summary. Start directly with the content.
+
+Please organize the output as follows:
+
+Overview: A brief description of the document's purpose and scope.
+
+Key Points: The most important findings, arguments, or insights (in bullet points).
+
+Conclusion/Implications: What the document ultimately conveys or recommends.
+
+(Optional) Notable Quotes or Data: If there are any key phrases or statistics worth highlighting."""
+            
+            # 사용자 프롬프트
+            user_prompt = f"""Input document:
+{content}
+
+**output:**"""
+            
+            # 채팅 형식 프롬프트 구성
+            prompt = f"""<|im_start|>system
+{system_prompt}<|im_end|>
+<|im_start|>user
+{user_prompt}<|im_end|>
+<|im_start|>assistant
+"""
+            
+            # 샘플링 파라미터 설정
+            sampling_params = {
+                "temperature": 0.5,
+                "top_p": 0.9,
+                "max_new_tokens": max_tokens,
+                "repetition_penalty": 1.3,
+                "stop": ["<|im_end|>", "</think>"]
+            }
+            
+            # SGLang Engine으로 텍스트 생성
+            logger.info("SGLang Engine으로 텍스트 생성 시작")
+            
+            # 이벤트 루프 충돌 방지를 위해 ThreadPoolExecutor 사용
+            import concurrent.futures
+            import asyncio
+            
+            def run_generate_in_thread():
+                """별도 스레드에서 새 이벤트 루프로 실행"""
+                new_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(new_loop)
+                try:
+                    return self.engine.generate(prompt=prompt, sampling_params=sampling_params)
+                finally:
+                    new_loop.close()
+                    asyncio.set_event_loop(None)
+            
+            # 현재 이벤트 루프 확인
+            try:
+                current_loop = asyncio.get_running_loop()
+                # 이미 실행 중인 루프가 있으면 ThreadPoolExecutor 사용
+                # 타임아웃 설정: 큰 파일의 경우 최대 10분
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(run_generate_in_thread)
+                    try:
+                        result = future.result(timeout=600)  # 10분 타임아웃
+                    except concurrent.futures.TimeoutError:
+                        logger.error("텍스트 생성이 타임아웃되었습니다 (10분 초과)")
+                        raise Exception("텍스트 생성이 너무 오래 걸립니다. 파일 크기를 줄이거나 나누어서 요약해주세요.")
+            except RuntimeError:
+                # 실행 중인 루프가 없으면 직접 호출
+                result = self.engine.generate(prompt=prompt, sampling_params=sampling_params)
+            
+            response = result["text"]
+            
+            # <think> 태그 제거
+            response = re.sub(r'<[tT]hink>.*?</[tT]hink>', '', response, flags=re.DOTALL)
+            
+            # 불필요한 공백/줄바꿈 정리
+            response = response.strip()
+            
+            logger.info("SGLang 텍스트 생성 완료")
+            return response
+            
+        except Exception as e:
+            logger.error(f"답변 생성 중 오류 발생: {e}")
+            return f"답변 생성에 실패했습니다: {str(e)}"
+    
+    @staticmethod
+    def make_llm_input_data(save_dir, json_data):
+        """
+        summarize_long_text_with_parallel 함수의 출력 JSON에서 link와 data를 추출하여 새로운 데이터를 생성합니다.
+        data가 비어있는 경우 google_snipping을 대신 사용합니다.
+        
+        Args:
+            save_dir: 저장할 디렉토리
+            json_data: summarize_long_text_with_parallel 함수에서 생성된 JSON 데이터
+        Return:
+            processed_data: link와 data(또는 google_snipping)를 포함한 새로운 JSON 데이터
+        """
+        processed_data = []
+        
+        for item in json_data:
+            # 기본 구조 생성
+            processed_item = {
+                "link": item.get("link", ""),
+                "data": ""
+            }
+            
+            # data 필드 확인 및 처리
+            data = item.get("data")
+            if not data or (isinstance(data, str) and data.strip() == ""):
+                # data가 비어있으면 google_snipping 사용
+                processed_item["data"] = item.get("google_snipping", "")
+            else:
+                # data가 있으면 그대로 사용
+                processed_item["data"] = data
+            
+            processed_data.append(processed_item)
+        
+        # 처리된 데이터를 JSON 파일로 저장
+        if save_dir:
+            try:
+                if not os.path.exists(save_dir):
+                    os.makedirs(save_dir, exist_ok=True)
+                with open(os.path.join(save_dir, "processed_data.json"), "w", encoding="utf-8") as f:
+                    json.dump(processed_data, f, ensure_ascii=False, indent=4)
+                logger.info("처리된 데이터가 JSON 파일로 저장되었습니다.")
+            except Exception as e:
+                logger.error(f"JSON 파일 저장 중 오류 발생: {e}")
+        
+        return processed_data
+
+
+class Summarizer:
+    """
+    통합 요약 클래스
+    AnswerGenerator를 래핑하여 사용
+    """
+    
+    def __init__(self, model_name: str = "Qwen/Qwen3-4B-Instruct-2507"):
+        """
+        초기화
+        
+        Args:
+            model_name: 사용할 모델 이름
+        """
+        self.model_name = model_name
+        self.generator = AnswerGenerator(model_name=model_name)
+        self.is_loaded = False
+    
+    def load(self):
+        """모델 로드"""
+        self.is_loaded = self.generator.load_model()
+        return self.is_loaded
+    
+    def summarize(self, content: str, max_tokens: int = 8192) -> str:
+        """
+        텍스트 요약
+        
+        Args:
+            content: 요약할 텍스트
+            max_tokens: 최대 생성 토큰 수
+            
+        Returns:
+            str: 요약된 텍스트
+        """
+        if not self.is_loaded:
+            if not self.load():
+                return "요약 모델을 로드할 수 없습니다."
+        
+        return self.generator.generate_answer(content, max_tokens=max_tokens)
+    
+    def cleanup(self):
+        """모델 메모리 정리"""
+        if self.is_loaded:
+            self.generator.cleanup_model()
+            self.is_loaded = False
+
+
+# 간단한 텍스트 요약 함수 (LLM 없이)
+def simple_summarize(text: str, ratio: float = 0.3) -> str:
+    """
+    간단한 텍스트 요약 (앞부분 추출)
+    
+    Args:
+        text: 요약할 텍스트
+        ratio: 추출 비율
+        
+    Returns:
+        str: 요약된 텍스트
+    """
+    if not text or not text.strip():
+        return "요약할 텍스트가 없습니다."
+    
+    summary_length = int(len(text) * ratio)
+    if summary_length <= 0:
+        return "요약할 텍스트가 없습니다."
+    
+    return text[:summary_length]

@@ -1,0 +1,45 @@
+# Model Configuration for MD Summarizer
+
+# SGLang Server Configuration
+sglang:
+  # Model settings
+  model_path: "Qwen/Qwen2.5-4B-Instruct"
+  
+  # Server settings
+  servers:
+    - host: "0.0.0.0"
+      port: 30000
+      gpu_id: 0
+    - host: "0.0.0.0"
+      port: 30001
+      gpu_id: 1
+  
+  # Performance settings
+  tp_size: 1  # Tensor parallelism (1 for single GPU per instance)
+  mem_fraction_static: 0.85  # GPU memory fraction for KV cache
+  
+  # Generation settings
+  max_new_tokens: 8192
+  temperature: 0.7
+  top_p: 0.9
+  repetition_penalty: 1.1
+  
+# Summarization settings
+summarization:
+  # Chunking settings
+  chunk_size: 3600  # Same as original system
+  chunk_overlap: 200
+  
+  # Summary settings
+  max_summary_tokens: 2000
+  min_summary_length: 25  # lines
+  
+  # Index settings
+  enable_indexing: true
+  index_batch_size: 10
+
+# System settings
+system:
+  device: "cuda"
+  log_level: "INFO"
+  timeout: 30
