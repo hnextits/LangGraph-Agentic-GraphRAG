@@ -1,365 +1,251 @@
-# NextitsLM SGLang 프로젝트 개요
+# LangGraph-Graph RAG Backend Overview
 
-NextITSLM SGLang은 RAG (Retrieval-Augmented Generation) 기술을 기반으로 하는 차세대 지능형 학습 관리 시스템입니다. 텍스트와 이미지를 모두 처리하는 멀티모달 AI 시스템으로, 고성능 SGLang 기반 LLM 인프라를 활용하여 실시간으로 정확한 문서 검색 및 질의응답 서비스를 제공합니다.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
----
+LangGraph-Graph RAG (Backend) is a vector–graph hybrid RAG platform powered by **LangGraph + SGLang**. Ingestion is handled by the LangGraph Upload pipeline that converts raw documents into Markdown chunks and graph metadata. During query time, a hop-based router selects among Vector Retrieval, Weaviate GraphRAG, or the legacy GraphDB (Neo4j) path to generate answers.
 
-## 주요 기능
-
-### AI 기반 지능형 Q&A 시스템
-- **멀티모달 RAG**: 텍스트와 이미지를 동시에 처리하는 통합 검색 및 질의응답
-- **고속 실시간 응답**: SGLang 기반의 LLM 서비스로 응답 속도 달성 최적화
-- **지능형 질의 라우팅**: 질의 유형을 분석하여 텍스트/이미지 검색기를 병렬로 실행
-- **답변 정제 및 평가**: 검색된 컨텍스트를 활용한 정확한 답변 생성, 답변 품질 자동 평가 및 정제 기능
-- **자동 서버 관리**: SGLang 임베딩/리랭커 서버가 첫 요청 시 자동으로 시작되어 지속적으로 실행
-
-### 데이터 처리 및 인프라
-- **문서 처리 파이프라인**: OCR, 레이아웃 분석, Late Chunking을 통한 문서 구조화 및 배치 처리
-- **고성능 벡터 검색**: Weaviate 기반 벡터 데이터베이스를 활용한 고성능 유사도 검색 엔진
-- **웹 크롤링 및 수집**: Google 검색 API 및 웹 크롤링을 통한 콘텐츠 자동 수집 및 정제
-- **실시간 모니터링**: 문서 처리 및 비동기 작업의 진행 상태 추적
+<div align="center">
+<img src="https://github.com/user-attachments/assets/2c81abe6-8a42-4d28-a9c8-a3cf6aa0d3c6" width="512" height="768" ></img><br/>
+</div> 
 
 ---
 
-## 시스템 아키텍처
+## Key Capabilities
 
-> #### 최근 업데이트: SGLang 서버 자동 시작 & 메모리 최적화
-> - **SGLang 서버 자동 관리**: 임베딩 및 리랭커 서버가 첫 요청 시 자동으로 시작되어 백그라운드에서 지속 실행
-> - **메모리 최적화**: Generator(20%), Summarizer(15%), Embedding(15%), Reranker(15%)로 GPU 메모리 효율적 분배
-> - **Lazy Loading**: `LazyModelManager`가 Answer/RAG/Mindmap 모델을 `idle_timeout=20s`로 등록
-> - **GPU Cleanup**: `cleanup_rag_pipeline()`이 RAGRouter·검색기·QueryRewriter·SharedEmbedding·리랭커까지 정리
-> - **서버 시작 로그**: 첫 문서 업로드 시 `임베딩 서버 시작 중...`, 첫 리랭킹 시 `리랭커 서버 시작 중...` 메시지 확인
-> - GPU 상태 확인: (1) 요청 실행 → (2) 20초 대기 → (3) 로그 확인 → (4) `nvidia-smi`로 메모리 확인
+- **LangGraph-driven pipeline**: both ingestion and query reasoning run on LangGraph state machines.
+- **3-way retrieval**: hop ≤ 2 → Weaviate vector search, hop 3–5 → Weaviate GraphRAG, hop ≥ 6 → Neo4j GraphDB.
+- **LLM router**: a small LLM hop classifier plus heuristics estimate reasoning depth.
+- **Always-on SGLang servers**: generator/embedding/reranker/summarizer services stay warm on dedicated GPUs via LazyModelManager.
+- **Automatic graph upsert**: OCR → LLM extraction results are ingested into Weaviate and Neo4j simultaneously.
+- **Async job monitoring**: upload/OCR/embedding progress is tracked through task APIs.
 
-NextITSLM SGL은 모듈화된 3-Tier 아키텍처로 설계되었습니다.
+---
 
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Frontend      │    │   Backend API   │    │   LLM Service   │
-│   (React)       │◄──►│   (FastAPI)     │◄──►│   (SGLang)      │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                               │
-                      ┌─────────────────┐
-                      │   Weaviate      │
-                      │   (Vector DB)   │
-                      └─────────────────┘
-```
-
-```TSX
-graph LR
-    A[Frontend (Next.js/React)] -->|REST API| B(Backend API (FastAPI));
-    B -->|Query/Context| C(LLM Service (SGLang));
-    B -->|Vector Search| D(Weaviate (Vector DB));
-    D -->|Embeddings| B;
-    C -->|Generated Answer| B;
-    B -->|Final Response| A;
-```
+## Backend Architecture
 
 ```
-nextitslm/
-├── backend/                     # 백엔드 서버 (FastAPI)
-│   ├── api/                    # API 라우터
-│   │   ├── chat.py            # 채팅 API
-│   │   ├── routes.py          # 메인 라우트
-│   │   └── pause_api.py       # 일시정지 API
-│   ├── notebooklm/             # RAG 시스템 핵심 모듈
-│   │   ├── rag_pipeline.py    # RAG 파이프라인 오케스트레이터
-│   │   ├── shared_embedding.py # SGLang 임베딩 서버 클라이언트
-│   │   ├── embedding_text.py  # 텍스트 임베딩 파이프라인 (Weaviate 업서트)
-│   │   ├── embedding_image.py # 이미지 임베딩 파이프라인 (Weaviate 업서트)
-│   │   ├── generator.py       # LLM 답변 생성기
-│   │   ├── evaluator.py       # 답변 품질 평가기
-│   │   ├── refiner.py         # 답변 정제기
-│   │   ├── router.py          # 질의 라우팅
-│   │   ├── query_rewriter.py  # 질의 재작성
-│   │   ├── parallel_search.py # 병렬 검색
-│   │   ├── qwen3_late_chunking.py # Late Chunking 구현
-│   │   ├── weaviate_utils.py  # Weaviate 유틸리티
-│   │   ├── rag_text/          # 텍스트 검색 모듈
-│   │   │   ├── text_search.py
-│   │   │   └── text_reranker_improved_2.py
-│   │   └── rag_image/         # 이미지 검색 모듈
-│   │       ├── image_search.py
-│   │       └── image_reranker.py
-│   ├── nextits_data/           # 데이터 처리 파이프라인
-│   ├── search_test/            # 웹 크롤링 모듈
-│   ├── services/               # 비즈니스 로직 서비스
-│   ├── utils/                  # 유틸리티 함수
-│   ├── main.py                 # FastAPI 메인 서버
-│   ├── app.py                  # 애플리케이션 설정
-│   └── requirements.txt        # Python 의존성
-├── frontend/                   # 프론트엔드 (Next.js)
-│   └── src/
-│       ├── components/         # React 컴포넌트
-│       ├── pages/              # 페이지 컴포넌트
-│       └── styles/             # 스타일 정의
-├── pyproject.toml              # Poetry 프로젝트 설정
-├── poetry.lock                 # Poetry 의존성 잠금 파일
-└── Jenkinsfile                 # CI/CD 파이프라인
+┌──────────────┐    ┌────────────────────────┐
+│ Input Layer  │ → │ LangGraph Upload Flow  │ → Markdown + Graph JSON
+└──────────────┘    └────────────────────────┘
+                              │
+┌──────────────┐    ┌────────────────────────┐    ┌───────────────────┐
+│ User Query   │ → │ LangGraph RAG Workflow │ → │ SGLang Generation │
+└──────────────┘    └────────────────────────┘    └───────────────────┘
+                              │
+                 ┌────────────┴────────────┐
+                 │ 3-Way Retrieval Router │
+                 └────────────┬────────────┘
+                              │
+      ┌───────────────────────┼────────────────────────┐
+      │                       │                        │
+  Path 1                 Path 2                   Path 3
+  Vector ≤2 hop          Weaviate GraphRAG        Neo4j GraphDB ≥6 hop
 ```
 
-## 백엔드 구조 상세
+### Input / Preprocessing Layer (LangGraphUploadPipeline)
+1. **Conversion & Layout**: `run_file_processor.py` handles PDF/Office/image/audio inputs and writes `Results/1.Converted_images`.
+2. **OCR & Markdown**: `run_ocr_processing()` + vLLM-powered OCR Flux produce per-page Markdown.
+3. **LLM Metadata Extraction**: `LLMMetadataExtractor` chunks Markdown and stores entity/event/relation JSON files (`*.graph.json`).
+4. **Graph Upsert**:
+   - `GraphSchemaManager` ensures Weaviate Entity/Event/Relation collections exist, then upserts objects.
+   - `LegacyGraphIngestor` MERGEs nodes/relationships into Neo4j with constraints.
+5. **Late Chunking & Embedding**: `embedding_text.py` uploads Markdown chunks into the Weaviate TextDocument collection.
 
-### 1. 메인 애플리케이션 (`main.py`)
-- **FastAPI 서버**: 비동기 웹 서버 프레임워크
-- **CORS 미들웨어**: 크로스 오리진 요청 처리
-- **LazyModelManager 초기화**: RAG/Answer/Mindmap 빌더를 lazy 등록하고 GPU 리소스를 자동 회수 (`idle_timeout=20s`)
-- **API 라우터 통합**: 모든 엔드포인트를 중앙에서 관리
+### Query / Reasoning Layer (RAGPipeline)
+1. **Hop Classifier** (`hop_classifier.py`): a small LLM estimates query complexity.
+2. **LangGraph Workflow** (`rag_pipeline.py`): manages the `planner → router → retrieval node → generation → finalizer` state transitions.
+3. **Retrieval Paths**:
+   - **Path 1: Vector RAG** – `embedding_text.text_search` + `text_reranker`.
+   - **Path 2: Weaviate GraphReasoner** – `graph_reasoner.py` expands over LangGraph subgraphs and emits context snippets.
+   - **Path 3: Legacy GraphDB** – `legacy_graph_client.py` executes Cypher templates against Neo4j.
+4. **Generation** (`generator.py`): the SGLang LLM answers with original query + retrieved context, optionally refined by `refiner.py`/`evaluator.py`.
 
-### 2. RAG 시스템 (`notebooklm/`)
+### Module Map
 
-#### 핵심 컴포넌트
-- **`rag_pipeline.py`**: RAG 시스템의 메인 오케스트레이터
-  - 질의 라우팅, 검색, 답변 생성, 평가의 전체 파이프라인 관리
-  - 텍스트/이미지 검색 결과 통합 및 base64 이미지 변환
-  - 피드백 루프 및 답변 정제 기능
+```
+backend/
+├── api/               # FastAPI routes and background tasks
+├── notebooklm/
+│   ├── rag_pipeline.py        # LangGraph RAG workflow
+│   ├── graph_reasoner.py      # Weaviate graph expansion
+│   ├── legacy_graph_client.py # Neo4j traversal client
+│   ├── legacy_graph_ingestor.py # Neo4j upsert helper
+│   ├── embedding_text.py / embedding_image.py
+│   ├── shared_embedding.py    # SGLang embedding/reranker client
+│   ├── generator.py / refiner.py / evaluator.py
+│   └── config.py              # model/path/graph configuration
+└── nextits_data/
+    └── pipe/
+        ├── langgraph_upload_pipeline.py
+        ├── run_file_processor.py (convert/layout/OCR)
+        └── ocr_pipe/ …
+```
 
-- **`shared_embedding.py`**: SGLang 기반 임베딩 시스템
-  - SGLang 서버를 OpenAI 호환 API로 호출하는 클라이언트
-  - 첫 요청 시 SGLang 임베딩 서버 자동 시작 (포트 30001)
-  - Qwen3-Embedding-4B 모델 사용 (GPU 메모리 15% 할당)
-  - 싱글톤 패턴으로 구현되어 전역적으로 공유
-  - 서버 상태 자동 확인 및 재시작 기능
+---
 
-- **`embedding_text.py` / `embedding_image.py`**: 데이터 업서트 파이프라인
-  - `shared_embedding`을 통해 SGLang 임베딩 서버에 질의하여 벡터 생성
-  - 텍스트/이미지 청크를 전처리하고 Weaviate에 업서트
-  - Late Chunking, 정규화 등 RAG 파이프라인 전용 로직 유지
+## Data Pipeline Summary
 
-- **`qwen3_late_chunking.py`**: Late Chunking 구현
-  - 문서를 청킹한 후 임베딩하는 대신, 전체 문서를 임베딩한 후 청킹
-  - 청크 간 컨텍스트 보존으로 검색 품질 향상
-  - Qwen3 모델에 최적화된 구현
+1. **File upload (`POST /upload/files`)**
+   - `api/routes.py` stores files in per-session folders and enqueues `run_processing_pipeline`.
+2. **GPU task queue**
+   - `run_file_processor.py --stage convert/layout/ocr` executes sequentially.
+3. **LangGraph upload workflow**
+   - Collect OCR outputs → run `LLMMetadataExtractor` → upsert via `GraphSchemaManager` + `LegacyGraphIngestor` → late chunking with `embedding_text`.
+4. **Weaviate & Neo4j state**
+   - Weaviate maintains TextDocument + GraphEntity/Event/Relation collections.
+   - Neo4j MERGEs Entity/Event nodes and relation edges based on deterministic UUIDs.
 
-- **`router.py`**: 지능형 질의 라우팅
-  - 질의 유형 분석 및 적절한 검색기 선택
-  - 텍스트/이미지 검색기 병렬 실행
+---
 
-- **`generator.py`**: LLM 기반 답변 생성
-  - 검색된 컨텍스트를 활용한 정확한 답변 생성
-  - 프롬프트 엔지니어링 및 응답 품질 최적화
+## Query Processing Flow
 
-- **`evaluator.py`**: 답변 품질 평가
-  - 생성된 답변의 품질 자동 평가
-  - 피드백 기반 답변 개선
+1. `POST /v1/chat` → `rag_pipeline.retrieve()` is invoked.
+2. The router selects Path 1/2/3 based on hop classification.
+3. Each path pushes context snippets into `state.context_snippets`.
+4. `generator.py` produces the answer from the original query + context.
+5. (Optional) `refiner.py` polishes the answer and `evaluator.py` logs quality notes.
+6. Responses include plan/hops/notes/context_snippets for debugging.
 
-- **`refiner.py`**: 답변 정제
-  - 생성된 답변의 품질 향상 및 일관성 보장
+---
 
-#### 검색 시스템
-- **텍스트 검색** (`rag_text/`)
-  - `text_search.py`: Weaviate 기반 시맨틱 검색
-  - `text_reranker_improved_2.py`: SGLang 기반 리랭커 (Qwen3-Reranker-4B)
-    - 첫 요청 시 SGLang 리랭커 서버 자동 시작 (포트 30002)
-    - GPU 메모리 15% 할당으로 효율적 운영
-- **이미지 검색** (`rag_image/`)
-  - `image_search.py`: 이미지 임베딩 기반 유사도 검색
-  - `image_reranker.py`: SGLang 기반 이미지 리랭커 (Qwen3-Reranker-8B)
-    - 텍스트 리랭커와 동일한 서버 공유 (포트 30002)
-- **병렬 검색** (`parallel_search.py`): 다중 검색기 동시 실행으로 성능 최적화
+## Installation & Run (Backend)
 
-#### 설정 관리 (`config.py`)
-- **모델 설정**: 임베딩 모델, 생성 모델 설정
-- **경로 설정**: 데이터, 인덱스, 캐시 경로 관리
-- **성능 튜닝**: 배치 크기, 디바이스 설정 등
-
-### 3. 데이터 처리 파이프라인 (`nextits_data/`)
-
-#### 파이프라인 구조 (`pipe/`)
-- **텍스트 문서 처리 파이프라인**
-  - 레이아웃 JSON 파일 처리
-  - 텍스트 블록 정렬 및 구조화
-  - 마크다운 변환 및 Late Chunking 적용
-
-- **이미지 문서 처리 파이프라인**
-  - 이미지 OCR 및 레이아웃 분석
-  - 이미지 임베딩 생성 및 인덱싱
-
-#### 처리 단계
-1. **문서 업로드**: 다양한 형식의 문서 지원 (PDF, 이미지 등)
-2. **OCR 처리**: 텍스트 추출 및 레이아웃 분석
-3. **구조화**: 텍스트 블록 정렬 및 의미 단위 분할
-4. **Late Chunking**: 전체 문서 임베딩 후 청킹으로 컨텍스트 보존
-5. **임베딩 생성**: 텍스트/이미지 임베딩 벡터 생성
-6. **인덱싱**: Weaviate 벡터 인덱스 구축
-
-### 4. API 엔드포인트 (`api/`)
-
-#### 주요 엔드포인트
-- **`POST /v1/chat`**: RAG 기반 질의응답 (chat.py)
-- **`POST /search`**: 웹 검색 수행
-- **`POST /add_document_from_search`**: 검색 결과에서 문서 추가
-- **`POST /upload`**: 파일 업로드 및 처리
-- **`POST /search_and_summarize`**: 검색 및 요약
-- **`GET /task_status/{task_id}`**: 비동기 작업 상태 확인
-- **`GET /files`**: 문서 목록 조회
-- **`GET /file/{filename}`**: 문서 내용 조회
-- **`POST /pause`**: 작업 일시정지 (pause_api.py)
-
-#### 비동기 처리
-- **백그라운드 작업**: 파일 처리, 인덱싱 등 시간이 오래 걸리는 작업
-- **작업 상태 추적**: 실시간 진행 상황 모니터링
-- **오류 처리**: 견고한 예외 처리 및 로깅
-
-### 5. 웹 크롤링 (`search_test/`)
-- **Google 검색 API**: 검색 결과 수집
-- **웹 페이지 크롤링**: 검색 결과 페이지 내용 추출
-- **콘텐츠 정제**: HTML 파싱 및 텍스트 추출
-- **마크다운 변환**: 구조화된 문서 형태로 저장
-
-## 프론트엔드 구조 (`frontend/`)
-
-### 기술 스택
-- **Next.js 14**: React 기반 풀스택 프레임워크
-- **TypeScript**: 타입 안전성 보장
-- **Material-UI**: 현대적이고 일관된 UI 컴포넌트
-- **Tailwind CSS**: 유틸리티 우선 CSS 프레임워크
-- **Axios**: HTTP 클라이언트
-
-### 주요 컴포넌트
-- **채팅 인터페이스**: 실시간 질의응답 UI
-- **파일 업로드**: 드래그 앤 드롭 파일 업로드
-- **검색 결과 표시**: 텍스트 및 이미지 검색 결과 시각화
-- **작업 상태 모니터링**: 비동기 작업 진행 상황 표시
-
-## 설치 및 실행
-
-### 백엔드 설정
-
-1. **의존성 설치**
 ```bash
 cd backend
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-```
 
-2. **환경 변수 설정**
-```bash
-# .env 파일 생성
-cp .env.sample .env
-# 필요한 환경 변수 설정 (API 키, 모델 경로 등)
-```
+# Environment variables (.env example)
+export GRAPH_RAG_ENABLED=true
+export LEGACY_GRAPH_ENABLED=true
+export LEGACY_GRAPH_URI=bolt://localhost:7687
+export LEGACY_GRAPH_USER=neo4j
+export LEGACY_GRAPH_PASSWORD=your_password
 
-3. **서버 실행**
-```bash
 python main.py
-# SGLang 임베딩/리랭커 서버는 첫 요청 시 자동으로 시작됩니다
-# 로그에서 "임베딩 서버 시작 중..." 메시지를 확인하세요
+# SGLang embedding/reranker servers autostart on first request.
 ```
 
-### 프론트엔드 설정
+To launch Neo4j locally:
 
-1. **의존성 설치**
 ```bash
-cd frontend
-npm install
+docker run -d --name neo4j-dev \
+  -p7474:7474 -p7687:7687 \
+  -e NEO4J_AUTH=neo4j/your_password \
+  -v neo4j-data:/data \
+  neo4j:5
 ```
 
-2. **개발 서버 실행**
-```bash
-npm run dev
+---
+
+## Key Settings (`config.py`)
+
+- **Models**: `EMBEDDING_MODEL`, `LLM_MODEL`, `HOP_CLASSIFIER_MODEL`, etc.
+- **Graph RAG toggles**: `GRAPH_RAG_ENABLED`, `LANGGRAPH_ENABLED`, `GOT_MODE_ENABLED`, `GRAPH_MAX_HOPS`.
+- **Legacy graph**: `LEGACY_GRAPH_ENABLED`, `LEGACY_GRAPH_URI`, `LEGACY_GRAPH_LABELS`, `LEGACY_GRAPH_MAX_PATHS`.
+- **Weaviate**: `WEAVIATE_HOST/PORT`, `WEAVIATE_TEXT_CLASS`, `WEAVIATE_VECTORIZER`.
+- **Session directories**: `DATA_ROOT/Results`, `sessions/<id>` layout.
+
+---
+
+## API Highlights
+
+- `POST /upload/files` – triggers the LangGraph upload pipeline.
+- `POST /v1/chat` – runs 3-way RAG and returns plan/notes/context.
+- `GET /task_status/{task_id}` – monitors queued upload tasks.
+- `GET /files`, `GET /files/{filename}` – inspects session artifacts.
+
+---
+
+## Logging & Operations
+
+- `sglang_embedding_server.log`, `sglang_reranker_server.log` – model server health.
+- `Results/graph_metadata/*.graph.json` – archive of LLM extraction results.
+- `LegacyGraphIngestor` auto-creates constraints on first run; no manual setup required.
+- LazyModelManager releases GPU memory after ~20 seconds of idling.
+
+---
+
+## Roadmap
+
+1. **GoT (Graph of Thought)**
+   - Enable `GOT_MODE_ENABLED` and branch the LangGraph flow to persist step-by-step reasoning states.
+2. **Advanced hop classifier**
+   - Tune thresholds/features of the small LLM classifier and augment with query metadata (token length, entity counts) for a hybrid router.
+3. **Multi-graph retrieval optimization**
+   - Improve context filtering/dedup for 3–5 hop Weaviate traversals and add Cypher templates for ≥6 hop Neo4j exploration.
+4. **LangGraph workflow observability**
+   - Emit per-node latency/error metrics to Prometheus and integrate retry policies inside GraphReasoner and LegacyGraphClient.
+
+---
+
+## Contribution & Contact
+
+- Issues and PRs are welcome—feel free to propose backend-focused improvements. For any questions or concerns, please reach out to jeongnext@hnextits.com.
+
+---
+
+## 📄 License
+
+This project is dual-licensed under:
+- **MIT License** - see the [LICENSE](LICENSE) file for details
+- **Apache License 2.0** - see the [LICENSE-APACHE](LICENSE-APACHE) file for details
+
+You may choose either license to govern your use of this software.
+
+---
+
+## 🎓 Citation
+
+If you use this project in your research, please cite the following papers and projects:
+
+### SGLang
+```bibtex
+@misc{zheng2023sglang,
+  title={SGLang: Efficient Execution of Structured Language Model Programs},
+  author={Lianmin Zheng and Liangsheng Yin and Zhiqiang Xie and Jeff Huang and Chuyue Sun and Cody Hao Yu and Shiyi Cao and Christos Kozyrakis and Ion Stoica and Joseph E. Gonzalez and Clark Barrett and Ying Sheng},
+  year={2023},
+  url={https://github.com/sgl-project/sglang}
+}
 ```
 
-3. **프로덕션 빌드**
-```bash
-npm run build
-npm start
+### LangGraph
+```bibtex
+@software{langgraph2024,
+  title={LangGraph: A Framework for Building Stateful Multi-Actor Applications},
+  author={LangChain AI},
+  year={2024},
+  url={https://github.com/langchain-ai/langgraph}
+}
 ```
 
-## 주요 설정
+### Weaviate
+```bibtex
+@software{weaviate2024,
+  title={Weaviate: An Open-Source Vector Database},
+  author={Weaviate B.V.},
+  year={2024},
+  url={https://github.com/weaviate/weaviate}
+}
+```
 
-### 모델 설정
-- **임베딩 모델**: Qwen3-Embedding-4B (SGLang 서버, GPU 메모리 15%)
-- **리랭커 모델**: Qwen3-Reranker-4B/8B (SGLang 서버, GPU 메모리 15%)
-- **생성 모델**: Qwen3-8B (SGLang Engine, GPU 메모리 20%)
-- **요약 모델**: Qwen3-4B-Instruct-2507 (SGLang Engine, GPU 메모리 15%)
-- **디바이스**: GPU 1 (임베딩/리랭커), GPU 0 (생성/요약)
-- **Late Chunking**: 컨텍스트 보존을 위한 청킹 기법 적용
+### Neo4j
+```bibtex
+@software{neo4j2024,
+  title={Neo4j: The Graph Database Platform},
+  author={Neo4j, Inc.},
+  year={2024},
+  url={https://github.com/neo4j/neo4j}
+}
+```
 
-### 성능 최적화
-
-- **SGLang 서버 자동 관리**: 임베딩/리랭커 서버가 첫 요청 시 자동 시작되어 지속 실행
-- **메모리 효율화**: GPU 메모리를 Generator(20%), Summarizer(15%), Embedding(15%), Reranker(15%)로 최적 분배
-- **Late Chunking**: 컨텍스트 보존으로 검색 품질 향상
-- **병렬 검색**: 텍스트/이미지 검색 동시 실행
-- **캐싱**: 작업 상태 1시간 캐시 유지
-- **비동기 처리**: 백그라운드 작업 처리
-- **Lazy Loading**: `LazyModelManager`가 RAG/Answer/Mindmap 모델을 요청 시점에만 로드
-- **GPU Cleanup**: `cleanup_rag_pipeline()`이 모든 리소스 자동 해제
-- **벡터 검색 최적화**: Weaviate 인덱싱 최적화
-
-### 확장성
-- **모듈화**: 각 컴포넌트 독립적 개발 및 테스트 가능
-- **플러그인 아키텍처**: 새로운 검색기 및 처리기 쉽게 추가
-- **API 우선**: RESTful API로 다양한 클라이언트 지원
-
-## 데이터 플로우
-
-### 문서 처리 플로우
-1. **문서 입력**: 파일 업로드 또는 웹 크롤링
-2. **전처리**: OCR, 레이아웃 분석, 텍스트 추출
-3. **구조화**: Late Chunking 및 메타데이터 추출
-4. **임베딩**: 텍스트/이미지 벡터 임베딩 생성
-5. **인덱싱**: Weaviate 벡터 인덱스 구축
-
-### 질의응답 플로우
-1. **질의 입력**: 사용자 질문 수신
-2. **질의 분석**: 라우터가 질의 유형 분석
-3. **병렬 검색**: 텍스트/이미지 검색 실행
-4. **재순위화**: 검색 결과 재순위화 및 필터링
-5. **답변 생성**: SGLang 기반 LLM으로 답변 생성
-6. **답변 평가**: 답변 품질 자동 평가
-7. **답변 정제**: 필요시 답변 개선 및 최종 응답
-
-## 로깅 및 모니터링
-
-- **구조화된 로깅**: 각 컴포넌트별 상세 로그
-- **성능 메트릭**: 응답 시간, 메모리 사용량 추적
-- **오류 추적**: 예외 상황 자동 로깅 및 알림
-- **작업 상태**: 비동기 작업 진행 상황 실시간 모니터링
-- **SGLang 서버 로그**: `sglang_embedding_server.log`, `sglang_reranker_server.log` 파일 확인
-- **GPU 상태 확인 절차**
-  1. `/api/v1/chat` 등 RAG 요청 수행 후 응답 완료까지 대기
-  2. 첫 요청 시 "임베딩 서버 시작 중...", "리랭커 서버 시작 중..." 로그 확인
-  3. 20초 동안 추가 요청이 없으면 LazyModelManager가 모델 언로드
-  4. `nvidia-smi`로 GPU 사용량 확인 (GPU 0: Generator+Summarizer, GPU 1: Embedding+Reranker)
-  5. SGLang 서버는 백그라운드에서 계속 실행됨 (종료: `pkill -f sglang.launch_server`)
-
-## 보안 및 안정성
-
-- **입력 검증**: 모든 사용자 입력에 대한 엄격한 검증
-- **파일 안전성**: 업로드 파일 타입 및 크기 제한
-- **API 보안**: CORS 설정 및 요청 제한
-- **오류 복구**: 견고한 예외 처리 및 자동 복구
-
-## 개발 및 기여
-
-### 코드 구조
-- **모듈화**: 각 기능별 독립적인 모듈 구조
-- **타입 안전성**: Python 타입 힌트 및 TypeScript 활용
-- **문서화**: 상세한 주석 및 독스트링
-- **테스트**: 단위 테스트 및 통합 테스트 지원
-
-### 개발 가이드라인
-- **코드 스타일**: PEP 8 (Python), ESLint (JavaScript/TypeScript)
-- **커밋 메시지**: 명확하고 설명적인 커밋 메시지
-- **브랜치 전략**: 기능별 브랜치 및 PR 기반 개발
-- **코드 리뷰**: 모든 변경사항에 대한 코드 리뷰
-
-## 라이선스
-
-이 프로젝트는 MIT, Apache-2.0 라이선스 하에 배포됩니다.
-
-## 연락처
-#### backend
-프로젝트에 대한 문의사항이나 기여를 원하시면 이슈를 생성하거나 PR, E-mail을 제출해 주세요.
-
-- **RAG**
-  - jeongnext@hnextits.com 
-- **OCR**
-  - junseung_lim@hnextits.com
-
-#### frontend
-
-- **UX/UI**
-  - fbgjungits@hnextits.com
+### OCRFlux
+```bibtex
+@software{ocrflux2024,
+  title={OCRFlux: Vision-Language Model for OCR},
+  author={ChatDOC},
+  year={2024},
+  url={https://huggingface.co/ChatDOC/OCRFlux-3B}
+}
+```
