@@ -1,7 +1,9 @@
 # LangGraph-Graph RAG Backend Overview
 
+<div align="center"> 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+</div> 
 
 LangGraph-Graph RAG (Backend) is a vector–graph hybrid RAG platform powered by **LangGraph + SGLang**. Ingestion is handled by the LangGraph Upload pipeline that converts raw documents into Markdown chunks and graph metadata. During query time, a hop-based router selects among Vector Retrieval, Weaviate GraphRAG, or the legacy GraphDB (Neo4j) path to generate answers.
 
