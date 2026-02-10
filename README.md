@@ -6,6 +6,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 </div> 
 
+
 LangGraph-Graph RAG is a vector–graph hybrid RAG platform powered by **LangGraph + SGLang**. The ingestion pipeline converts raw documents into Markdown chunks and graph metadata via LangGraph state machines with checkpoint persistence. During query time, a hop-based router with quality-gate backtracking selects among three retrieval paths—Vector, Weaviate GraphRAG, or Neo4j GraphDB—to generate answers.
 
 <div align="center">
