@@ -19,6 +19,14 @@ const nextConfig = {
   },
   // 정적 자원 압축 및 캐싱 최적화
   compress: true,
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://localhost:8505/api/:path*',
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

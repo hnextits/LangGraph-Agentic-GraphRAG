@@ -98,55 +98,107 @@ async def lifespan(app: FastAPI):
                 "rag_pipeline",
                 build_rag_pipeline,
                 cleanup_rag_pipeline,
-                idle_timeout=20,
+                idle_timeout=60,
             )
         if "answer_generator" not in model_manager._models:
             model_manager.register(
                 "answer_generator",
                 build_answer_generator,
                 lambda gen: getattr(gen, "cleanup_model", lambda: None)(),
-                idle_timeout=20,
+                idle_timeout=60,
             )
         if "mindmap_generator" not in model_manager._models:
             model_manager.register(
                 "mindmap_generator",
                 MindMapGenerator,
                 lambda gen: getattr(gen, "shutdown", lambda: None)(),
-                idle_timeout=20,
+                idle_timeout=60,
             )
 
     register_models()
     app.state.model_manager = model_manager
     logger.info("LazyModelManager에 모델 등록 완료 (모든 모델은 Lazy Loading 지원)")
 
-    # 6. 메인 스레드에서 SGLang 엔진 사전 로드 (비활성화 - 요청 시 로드로 변경)
-    # SGLang Engine은 signal 핸들러를 등록하므로 반드시 메인 스레드에서 초기화되어야 합니다.
-    logger.info("SGLang 엔진 사전 로드를 건너뜁니다 (요청 시 로드 방식).")
-    # try:
-    #     # RAG 파이프라인 획득 및 로드 (Eager Loading 강제)
-    #     rag_pipeline = model_manager.acquire("rag_pipeline")
-        
-    #     # 비동기 context(lifespan) 내에서 동기 방식으로 엔진 로드하여 메인 스레드 유지
-    #     if hasattr(rag_pipeline, "load_engine_sync"):
-    #         rag_pipeline.load_engine_sync()
-    #         logger.info("RAG 파이프라인 SGLang 엔진 로드 완료")
-    #     elif hasattr(rag_pipeline, "load_engine"):
-    #         # 기존 async 버전 대응
-    #         import asyncio
-    #         # asyncio.run()이나 직접 호출은 이미 돌고 있는 루프 때문에 안 될 수 있으므로
-    #         # sync 메서드 호출을 권장
-    #         rag_pipeline.load_engine_sync()
-            
-    # except Exception as e:
-    #     logger.error(f"SGLang 엔진 사전 로드 중 오류 발생: {e}")
-    # finally:
-    #     # 엔진 등록을 위해 acquire한 모델을 release하여 LazyManager 상태 유지
-    #     model_manager.release("rag_pipeline")
+    # 6. SGLang 서버 등록 (LazyLoading - 필요 시 자동 기동, 유휴 시 자동 종료)
+    from notebooklm.sglang_server_manager import sglang_manager
+    app.state.sglang_manager = sglang_manager
+
+    logger.info("=" * 60)
+    logger.info("SGLang 서버 등록 (LazyLoading 모드)")
+    logger.info("=" * 60)
+
+    # 6-1. 생성기 서버 (cuda:0, 포트 30000)
+    sglang_manager.register_server(
+        name="generator",
+        model_path=config.LLM_MODEL,
+        port=config.SGLANG_GENERATOR_PORT,
+        device=config.SGLANG_GENERATOR_DEVICE,
+        extra_args=["--trust-remote-code"],
+        idle_timeout=config.SGLANG_IDLE_TIMEOUT,
+        mem_fraction=config.SGLANG_GENERATOR_MEM_FRACTION,
+    )
+
+    # 6-2. 임베딩 서버 (cuda:1, 포트 30001)
+    sglang_manager.register_server(
+        name="embedding",
+        model_path=config.EMBEDDING_MODEL,
+        port=config.SGLANG_EMBEDDING_PORT,
+        device=config.SGLANG_EMBEDDING_DEVICE,
+        extra_args=["--trust-remote-code", "--is-embedding"],
+        idle_timeout=config.SGLANG_IDLE_TIMEOUT,
+        mem_fraction=config.SGLANG_EMBEDDING_MEM_FRACTION,
+    )
+
+    # 6-3. 리랭커 서버 (cuda:1, 포트 30002)
+    sglang_manager.register_server(
+        name="reranker",
+        model_path=config.RERANKER_MODEL_NAME,
+        port=config.SGLANG_RERANKER_PORT,
+        device=config.SGLANG_RERANKER_DEVICE,
+        extra_args=[
+            "--trust-remote-code",
+            "--disable-cuda-graph",
+            "--is-embedding",
+        ],
+        idle_timeout=config.SGLANG_IDLE_TIMEOUT,
+        mem_fraction=config.SGLANG_RERANKER_MEM_FRACTION,
+    )
+
+    # 6-4. 리파이너 서버 (cuda:1, 포트 30003)
+    sglang_manager.register_server(
+        name="refiner",
+        model_path=config.REFINER_MODEL,
+        port=config.SGLANG_REFINER_PORT,
+        device=config.SGLANG_REFINER_DEVICE,
+        extra_args=["--trust-remote-code"],
+        idle_timeout=config.SGLANG_IDLE_TIMEOUT,
+        mem_fraction=config.SGLANG_REFINER_MEM_FRACTION,
+    )
+
+    # 6-5. 쿼리 리라이터 서버 (cuda:1, 포트 30004) — config에서 비활성화 가능
+    if getattr(config, "use_query_rewriter", False):
+        sglang_manager.register_server(
+            name="query_rewriter",
+            model_path=config.QUERY_REWRITE_MODEL_NAME,
+            port=config.SGLANG_QUERY_REWRITER_PORT,
+            device=config.SGLANG_QUERY_REWRITER_DEVICE,
+            extra_args=["--trust-remote-code"],
+            idle_timeout=config.SGLANG_IDLE_TIMEOUT,
+            mem_fraction=config.SGLANG_QUERY_REWRITER_MEM_FRACTION,
+        )
+    else:
+        logger.info("QueryRewriter 비활성화 — SGLang 서버 등록 건너뜀")
+
+    registered_count = len(sglang_manager._servers)
+    logger.info("SGLang 서버 %d개 등록 완료 (요청 시 자동 기동, 유휴 시 자동 종료)", registered_count)
+    logger.info("=" * 60)
 
     yield  # 애플리케이션 실행 중
 
-    # 6. Shutdown: 필요한 정리 작업 (현재는 없음)
-    logger.info("서버가 종료됩니다.")
+    # 7. Shutdown: SGLang 서버 종료
+    logger.info("서버가 종료됩니다. SGLang 서버를 정리합니다...")
+    sglang_manager.shutdown_all()
+    logger.info("서버 종료 완료.")
 
 # FastAPI 앱 초기화 시 lifespan 설정 적용
 app = FastAPI(lifespan=lifespan)

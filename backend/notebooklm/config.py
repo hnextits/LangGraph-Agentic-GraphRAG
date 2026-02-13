@@ -17,6 +17,8 @@ logging.getLogger('PIL').setLevel(logging.WARNING)
 logging.getLogger('httpx').setLevel(logging.WARNING)
 logging.getLogger('filelock').setLevel(logging.WARNING)
 logging.getLogger('huggingface_hub').setLevel(logging.WARNING)
+logging.getLogger('weaviate').setLevel(logging.WARNING)
+logging.getLogger('urllib3').setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
@@ -85,28 +87,80 @@ class RAGConfig:
         self.WEAVIATE_URL = f"http://{self.WEAVIATE_HOST}:{self.WEAVIATE_PORT}"
         self.WEAVIATE_BATCH_SIZE = 100
         self.WEAVIATE_VECTORIZER = "text2vec-model2vec"  # 컨테이너에서 설정한 vectorizer
-        
+
         #############################################
-        # 2. 모델 설정 (모델 이름)
+        # 1-2. Neo4j 설정 (Deep Graph Traversal용)
         #############################################
-        # 임베딩 모델
-        self.EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-4B"
-        
-        # 리랭커 모델
-        self.RERANKER_MODEL_NAME = "Qwen/Qwen3-Reranker-4B"
-        
-        # 쿼리 리라이터 모델
-        self.QUERY_REWRITE_MODEL_NAME = "NEXTITS/Qwen3-0.6B-SFT-No.952"
-        
-        # 생성 모델
-        self.LLM_MODEL = "Qwen/Qwen3-8B"
-        
-        # 정제 모델
-        self.REFINER_MODEL = "Qwen/Qwen3-1.7B-FP8"
-        
-        # 마인드맵 생성 모델 (요약 모델과 동일)
+        self.NEO4J_URI = os.getenv("NEO4J_URI", "bolt://127.0.0.1:7687")
+        self.NEO4J_USER = os.getenv("NEO4J_USER", "")
+        self.NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "")
+        self.GRAPH_MAX_HOPS = int(os.getenv("GRAPH_MAX_HOPS", "6"))
+
+        #############################################
+        # 2. SGLang 서버 모델 설정
+        #    - 모든 SGLang 서버의 모델명, 엔드포인트, GPU, 포트, mem_fraction을 한곳에서 관리
+        #    - LazyLoading: 필요 시 자동 기동, 유휴 5분(300s) 후 자동 종료
+        #    - GPU 배치: generator → cuda:0 / 나머지 → cuda:1
+        #############################################
+        self.SGLANG_IDLE_TIMEOUT = 60  # 유휴 자동 종료 시간 (초)
+
+        # ── 2-1. 생성기 (Generator) ─────────────────
+        self.LLM_MODEL = "Qwen/Qwen3-8B"                          # ~16GB
+        self.SGLANG_GENERATOR_ENDPOINT = os.getenv("SGLANG_GENERATOR_ENDPOINT", "http://localhost:30000")
+        self.SGLANG_GENERATOR_PORT = 30000
+        self.SGLANG_GENERATOR_DEVICE = "cuda:0"
+        self.SGLANG_GENERATOR_MEM_FRACTION = 0.3                 # cuda:0 단독 사용
+
+        # ── 2-2. 임베딩 (Embedding) ─────────────────
+        self.EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-4B"          # ~8GB
+        self.SGLANG_EMBEDDING_ENDPOINT = os.getenv("SGLANG_EMBEDDING_ENDPOINT", "http://localhost:30001")
+        self.SGLANG_EMBEDDING_MODEL = self.EMBEDDING_MODEL
+        self.SGLANG_EMBEDDING_PORT = 30001
+        self.SGLANG_EMBEDDING_DEVICE = "cuda:1"
+        self.SGLANG_EMBEDDING_MEM_FRACTION = 0.15                  # cuda:1 공유
+
+        # ── 2-3. 리랭커 (Reranker) ──────────────────
+        self.RERANKER_MODEL_NAME = "Qwen/Qwen3-Reranker-4B"       # ~8GB
+        self.SGLANG_RERANKER_ENDPOINT = os.getenv("SGLANG_RERANKER_ENDPOINT", "http://localhost:30002")
+        self.SGLANG_RERANKER_MODEL = self.RERANKER_MODEL_NAME
+        self.SGLANG_RERANKER_PORT = 30002
+        self.SGLANG_RERANKER_DEVICE = "cuda:1"
+        self.SGLANG_RERANKER_MEM_FRACTION = 0.15                   # cuda:1 공유
+
+        # ── 2-4. 리파이너 (Refiner) ─────────────────
+        self.REFINER_MODEL = "Qwen/Qwen3-1.7B-FP8"                # ~2GB
+        self.SGLANG_REFINER_ENDPOINT = os.getenv("SGLANG_REFINER_ENDPOINT", "http://localhost:30003")
+        self.SGLANG_REFINER_MODEL = self.REFINER_MODEL
+        self.SGLANG_REFINER_PORT = 30003
+        self.SGLANG_REFINER_DEVICE = "cuda:1"
+        self.SGLANG_REFINER_MEM_FRACTION = 0.1                    # cuda:1 공유
+
+        # ── 2-5. 쿼리 리라이터 (Query Rewriter) ─────
+        self.QUERY_REWRITE_MODEL_NAME = "NEXTITS/Qwen3-0.6B-SFT-No.952"  # ~1.2GB
+        self.SGLANG_QUERY_REWRITER_ENDPOINT = os.getenv("SGLANG_QUERY_REWRITER_ENDPOINT", "http://localhost:30004")
+        self.SGLANG_QUERY_REWRITER_MODEL = self.QUERY_REWRITE_MODEL_NAME
+        self.SGLANG_QUERY_REWRITER_PORT = 30004
+        self.SGLANG_QUERY_REWRITER_DEVICE = "cuda:1"
+        self.SGLANG_QUERY_REWRITER_MEM_FRACTION = 0.1             # cuda:1 공유
+
+        # ── 2-6. HopClassifier (생성기 서버 공유) ───
+        self.HOP_CLASSIFIER_MODEL = self.LLM_MODEL
+        self.HOP_CLASSIFIER_SGLANG_ENDPOINT = self.SGLANG_GENERATOR_ENDPOINT
+        self.HOP_CLASSIFIER_API_KEY = "EMPTY"
+        self.HOP_CLASSIFIER_MAX_TOKENS = 64
+        self.HOP_CLASSIFIER_TIMEOUT = 15
+
+        # ── 2-7. 그래프 추출기 (Graph Extractor, 생성기 서버 공유) ──
+        self.GRAPH_EXTRACTOR_MODEL = self.LLM_MODEL
+        self.GRAPH_EXTRACTOR_ENDPOINT = self.SGLANG_GENERATOR_ENDPOINT
+
+        # ── 2-8. 마인드맵 / 요약 (sgl.Engine in-process, LazyModelManager 관리) ──
         self.MINDMAP_MODEL = "Qwen/Qwen3-8B"
-        
+        self.MINDMAP_DEVICE = "cuda:0"
+        self.MINDMAP_MEM_FRACTION = 0.5
+        self.MINDMAP_MAX_TOKENS = 8192
+        self.MINDMAP_TOKEN_BUFFER = 500
+
         #############################################
         # 3. 모델 파라미터 설정
         #############################################
@@ -119,14 +173,9 @@ class RAGConfig:
         self.GENERATOR_TEMPERATURE = 0.6  
         self.GENERATOR_TOP_P = 0.9
         self.GENERATOR_TOP_K = 3
-        self.GENERATOR_DO_SAMPLE = True  # 샘플링 활성화
-        
-        # SGLang 설정 - Engine API 직접 사용
-        self.SGLANG_USE_DIRECT_ENGINE = True  # SGLang Engine API directly
-        self.GENERATOR_MEM_FRACTION = 0.3     # 원래 값으로 복원 (30% of GPU memory)
-        self.SUMMARIZER_MEM_FRACTION = 0.15    # Reduced from 0.2 to 0.15 (15% of GPU 0)
-        self.GENERATOR_NUM_BEAMS = 1     # Disable beam search
-        self.GENERATOR_PAD_TOKEN_ID = None  # 토크나이저에서 설정
+        self.GENERATOR_DO_SAMPLE = True
+        self.GENERATOR_NUM_BEAMS = 1
+        self.GENERATOR_PAD_TOKEN_ID = None
         self.GENERATOR_ENABLE_THINKING = False
         self.MODEL_TIMEOUT = 180
 
@@ -138,20 +187,14 @@ class RAGConfig:
         self.REFINER_MAX_TOKENS = 8192
         self.REFINER_TEMPERATURE = 0.3
         self.REFINER_TOP_P = 0.9
-        self.REFINER_DO_SAMPLE = True    # 샘플링 활성화
-        self.REFINER_NUM_BEAMS = 1       # 빔 서치 비활성화 (그리디 서치)
-        self.REFINER_PAD_TOKEN_ID = None # 토크나이저에서 설정
-        self.REFINER_MODEL_TIMEOUT = 180  # 5분 후 자동 언로드
+        self.REFINER_DO_SAMPLE = True
+        self.REFINER_NUM_BEAMS = 1
+        self.REFINER_PAD_TOKEN_ID = None
+        self.REFINER_MODEL_TIMEOUT = 180
         
         # 기본 모델 파라미터
         self.BATCH_SIZE = 4
-        self.GENERATOR_TORCH_DTYPE = "auto"  # bfloat16에서 auto로 변경하여 한국어 텍스트 깨짐 방지
-        
-        # 마인드맵 생성 파라미터
-        self.MINDMAP_DEVICE = "cuda:0"
-        self.MINDMAP_MEM_FRACTION = 0.5  # GPU 메모리 50% 사용
-        self.MINDMAP_MAX_TOKENS = 8192
-        self.MINDMAP_TOKEN_BUFFER = 500
+        self.GENERATOR_TORCH_DTYPE = "auto"
 
         #############################################
         # 5. 파이프라인 설정
@@ -160,13 +203,22 @@ class RAGConfig:
         self.debug_mode = False
         self.use_feedback_loop = False  # Disabled feedback loop to save resources
         self.use_refiner = False        # Explicitly disabled
+        self.use_query_rewriter = False  # 쿼리 리라이터 비활성화
         self.separate_image_text_results = True  # 이미지와 텍스트 결과 분리 여부
-        
+
         # 메모리 관리 설정
         self.memory_management = {
             "auto_cleanup": True,
             "cleanup_threshold": 0.8  # GPU 메모리 사용률 80% 이상일 때 정리
         }
+
+        #############################################
+        # 6. 그래프 RAG / LangGraph 설정
+        #############################################
+        self.GRAPH_RAG_ENABLED = os.getenv("GRAPH_RAG_ENABLED", "true").lower() == "true"
+        self.LANGGRAPH_ENABLED = os.getenv("LANGGRAPH_ENABLED", "true").lower() == "true"
+        self.GOT_MODE_ENABLED = os.getenv("GOT_MODE_ENABLED", "false").lower() == "true"
+        self.GRAPH_MAX_HOPS = int(os.getenv("GRAPH_MAX_HOPS", "6"))
         
         #############################################
         # 6. API 엔드포인트 설정
@@ -280,34 +332,18 @@ class RAGConfig:
         
         #############################################
         # 7. 디바이스 설정
+        #    - SGLang 서버 디바이스는 섹션 2에서 관리
+        #    - 아래는 하위 호환성을 위한 참조 설정
         #############################################
-        # 기본 디바이스 설정
         cuda_available = bool(torch and hasattr(torch, "cuda") and torch.cuda.is_available())
         self.DEVICE = "cuda" if cuda_available else "cpu"
-        
-        # ⚠️ 테스트 모드 설정 (GPU 배치 전환)
-        # True: SGLang=GPU1, Transformers=GPU0 (테스트용)
-        # False: SGLang=GPU0, Transformers=GPU1 (운영용, 기본값)
-        TEST_MODE = False
-        
-        # GPU 분산 배치 설정 (2개 H100 GPU 활용)
-        if TEST_MODE:
-            # 🧪 테스트 모드: SGLang → GPU 1, Transformers → GPU 0
-            logger.info("🧪 TEST MODE: SGLang=GPU1, Transformers=GPU0")
-            self.TEXT_GENERATOR_DEVICE = "cuda:1"       # SGLang → GPU 1
-            self.RERANKER_DEVICE = "cuda:0"             # 리랭커 → GPU 0
-            self.REFINER_DEVICE = "cuda:0"              # 정제 모델 → GPU 0
-            self.QUERY_REWRITER_DEVICE = "cuda:0"       # 쿼리 재작성 → GPU 0
-            self.EMBEDDING_DEVICE = "cuda:0"            # 임베딩 → GPU 0
-        else:
-            # 🚀 운영 모드: SGLang → GPU 0, Transformers → GPU 1 (기본값)
-            self.TEXT_GENERATOR_DEVICE = "auto"         # SGLang → GPU 0 (auto)
-            self.RERANKER_DEVICE = "cuda:1"             # 리랭커 → GPU 1
-            self.REFINER_DEVICE = "cuda:1"              # 정제 모델 → GPU 1
-            self.QUERY_REWRITER_DEVICE = "cuda:1"       # 쿼리 재작성 → GPU 1
-            self.EMBEDDING_DEVICE = "cuda:1"            # 임베딩 → GPU 1
-        
-        # 하위 호환성 및 명시적 설정
+
+        # 하위 호환성: 섹션 2의 SGLang 디바이스 설정을 참조
+        self.TEXT_GENERATOR_DEVICE = self.SGLANG_GENERATOR_DEVICE
+        self.RERANKER_DEVICE = self.SGLANG_RERANKER_DEVICE
+        self.REFINER_DEVICE = self.SGLANG_REFINER_DEVICE
+        self.QUERY_REWRITER_DEVICE = self.SGLANG_QUERY_REWRITER_DEVICE
+        self.EMBEDDING_DEVICE = self.SGLANG_EMBEDDING_DEVICE
         self.TEXT_EMBEDDING_DEVICE = self.EMBEDDING_DEVICE
         self.IMAGE_EMBEDDING_DEVICE = self.EMBEDDING_DEVICE
         

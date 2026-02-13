@@ -12,26 +12,63 @@ from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
 
 STT_BATCH_SIZE = 16  # VRAM 상황에 따라 조정
 
+# LazyLoading: 전역 모델 캐시
+_stt_processor = None
+_stt_model = None
+_diarization_pipeline = None
+_stt_device = None
+
 
 def _load_models(device):
-    processor = AutoProcessor.from_pretrained("openai/whisper-large-v3")
-    model = AutoModelForSpeechSeq2Seq.from_pretrained(
+    """Whisper STT 모델을 LazyLoading으로 로드합니다. 이미 로드된 경우 캐시된 모델을 반환합니다."""
+    global _stt_processor, _stt_model, _diarization_pipeline, _stt_device
+    
+    if _stt_processor is not None and _stt_model is not None and _diarization_pipeline is not None:
+        print(f"STT 모델 캐시 사용 (device: {_stt_device})")
+        return _stt_processor, _stt_model, _diarization_pipeline
+    
+    print(f"STT 모델 LazyLoading 시작 (device: {device})")
+    _stt_device = device
+    
+    _stt_processor = AutoProcessor.from_pretrained("openai/whisper-large-v3")
+    _stt_model = AutoModelForSpeechSeq2Seq.from_pretrained(
         "openai/whisper-large-v3",
         torch_dtype=torch.float16,
         attn_implementation="sdpa",
     ).to(device)
 
     try:
-        model = torch.compile(model)
+        _stt_model = torch.compile(_stt_model)
     except Exception as exc:  # torch.compile 미지원 환경 대응
         print(f"torch.compile failed: {exc}. Running without compilation.")
 
-    diarization_pipeline = Pipeline.from_pretrained(
+    _diarization_pipeline = Pipeline.from_pretrained(
         "pyannote/speaker-diarization-3.1",
         token="REMOVED_SECRET",
     ).to(torch.device(device))
 
-    return processor, model, diarization_pipeline
+    print("STT 모델 LazyLoading 완료")
+    return _stt_processor, _stt_model, _diarization_pipeline
+
+
+def cleanup_stt_models():
+    """STT 모델을 메모리에서 해제합니다."""
+    global _stt_processor, _stt_model, _diarization_pipeline, _stt_device
+    
+    if _stt_model is not None:
+        del _stt_model
+        _stt_model = None
+    if _stt_processor is not None:
+        del _stt_processor
+        _stt_processor = None
+    if _diarization_pipeline is not None:
+        del _diarization_pipeline
+        _diarization_pipeline = None
+    _stt_device = None
+    
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    print("STT 모델 메모리 해제 완료")
 
 
 def _prepare_waveform(audio_path, device):
@@ -207,6 +244,9 @@ def run_sound_pipeline(audio_path, markdown_dir=None):
             torch.cuda.empty_cache()
 
         print("STT 추론 완료.")
+
+    # LazyLoading: STT 모델 메모리 해제
+    cleanup_stt_models()
 
     transcriptions.sort(key=lambda x: x["start"])
 

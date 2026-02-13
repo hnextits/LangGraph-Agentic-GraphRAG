@@ -11,11 +11,10 @@ import json
 import logging
 import time
 import threading
-import torch
+import requests
 import importlib
 import sys
 from typing import List, Dict, Any, Optional
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 # config.py 임포트
 from config import RAGConfig
@@ -45,75 +44,67 @@ logger = logging.getLogger(__name__)
 class Refiner:
     """
     RAG 시스템 정제기
-    Qwen3-1.7B 전용 모델을 사용하여 답변을 정제합니다.
-    (즉시 로딩)
+    SGLang /v1/chat/completions API를 사용하여 답변을 정제합니다.
     """
+    _ready = False
     
     def __init__(self, generator, config: RAGConfig = None):
         """
-        정제기 초기화 (모델 즉시 로딩)
+        정제기 초기화 (SGLang 서버 연결)
         
         Args:
-            generator: Generator 인스턴스 (디바이스 정보만 참조)
+            generator: Generator 인스턴스 (하위 호환성 유지)
             config: RAGConfig 인스턴스
         """
         if config is None:
             config = RAGConfig()
         
         self.config = config
-        self.generator = generator  # 디바이스 정보 참조용
+        self.generator = generator  # 하위 호환성 유지
         
-        # Refiner 전용 모델 설정
-        self.refiner_model_name = self.config.REFINER_MODEL # 'self.config.' 를 추가하여 수정
-        self.device = self.config.REFINER_DEVICE # Refiner 전용 디바이스 설정을 사용하도록 변경
-        self.torch_dtype = self.config.GENERATOR_TORCH_DTYPE  # generator에서 가져오는 대신 config에서 가져오도록 수정
+        # SGLang 서버 설정
+        self.refiner_model_name = self.config.SGLANG_REFINER_MODEL
+        self.endpoint = self.config.SGLANG_REFINER_ENDPOINT  # e.g. "http://localhost:30003"
+        self._api_url = f"{self.endpoint}/v1/chat/completions"
+        self._timeout = 60
+        self._session = requests.Session()
         
-        # 모델 즉시 로딩
-        self.refiner_model = None
-        self.refiner_tokenizer = None
-        self.model_loaded_on_gpu = False
-        
-        self._load_tokenizer()
-        self._load_model()
-        
-        logger.info(f"Refiner 초기화 및 모델 로딩 완료: {self.refiner_model_name}")
+        logger.info(f"Refiner 초기화 완료 (SGLang): {self.refiner_model_name} -> {self.endpoint}")
 
-    def _load_tokenizer(self):
-        """Refiner 전용 토크나이저 로드"""
-        try:
-            self.refiner_tokenizer = AutoTokenizer.from_pretrained(
-                self.refiner_model_name,
-                cache_dir=self.config.CACHE_DIR,
-                local_files_only=False
-            )
-            if self.refiner_tokenizer.pad_token_id is None:
-                self.refiner_tokenizer.pad_token_id = self.refiner_tokenizer.eos_token_id
-            logger.info(f"Refiner 토크나이저 로딩 완료: {self.refiner_model_name}")
-        except Exception as e:
-            logger.error(f"Refiner 토크나이저 로딩 실패: {e}")
-            raise
+    def _ensure_server_ready(self) -> bool:
+        """SGLang 리파이너 서버가 응답 가능한지 확인합니다. 미기동 시 자동 기동."""
+        from notebooklm.sglang_server_manager import sglang_manager
 
-    def _load_model(self):
-        """Refiner 모델을 GPU에 로드"""
-        logger.info(f"Refiner 모델을 GPU에 로딩 중: {self.refiner_model_name}")
-        start_time = time.time()
+        if self.__class__._ready:
+            try:
+                resp = self._session.get(f"{self.endpoint}/health", timeout=3)
+                if resp.status_code == 200:
+                    sglang_manager.touch("refiner")
+                    return True
+            except Exception:
+                pass
+            self.__class__._ready = False
+
         try:
-            model_kwargs = {"torch_dtype": self.torch_dtype}
-            
-            self.refiner_model = AutoModelForCausalLM.from_pretrained(
-                self.refiner_model_name,
-                cache_dir=self.config.CACHE_DIR,
-                local_files_only=False,
-                attn_implementation="flash_attention_2",
-                **model_kwargs
-            ).to(self.device)
-            
-            load_time = time.time() - start_time
-            logger.info(f"Refiner 모델 GPU 로딩 완료: {self.refiner_model_name} ({load_time:.1f}초)")
+            resp = self._session.get(f"{self.endpoint}/health", timeout=5)
+            if resp.status_code == 200:
+                self.__class__._ready = True
+                sglang_manager.touch("refiner")
+                logger.info("SGLang refiner server ready: %s", self.endpoint)
+                return True
+        except (requests.ConnectionError, requests.Timeout, Exception):
+            pass
+
+        # 서버가 응답하지 않으면 sglang_manager로 자동 기동
+        logger.info("SGLang refiner server 미기동 → acquire로 자동 기동 시도")
+        try:
+            if sglang_manager.acquire("refiner"):
+                sglang_manager.release("refiner")
+                self.__class__._ready = True
+                return True
         except Exception as e:
-            logger.error(f"Refiner 모델 GPU 로딩 실패: {e}")
-            self.refiner_model = None
-            raise
+            logger.error("SGLang refiner 자동 기동 실패: %s", e)
+        return False
 
     def refine_answer(self, query: str, answer: str, cancellation_event: Optional[threading.Event] = None) -> str:
         """
@@ -264,7 +255,7 @@ class Refiner:
     
     def _generate_with_refiner_model(self, system_prompt: str, user_prompt: str, cancellation_event: Optional[threading.Event] = None) -> str:
         """
-        Refiner 전용 Qwen3-1.7B 모델을 사용하여 텍스트를 생성합니다.
+        SGLang /v1/chat/completions API를 사용하여 텍스트를 생성합니다.
         
         Args:
             system_prompt: 시스템 프롬프트
@@ -274,64 +265,43 @@ class Refiner:
             생성된 텍스트
         """
         try:
-            model = self.refiner_model
+            # 취소 확인
+            if cancellation_event and cancellation_event.is_set():
+                raise InterruptedError("Operation cancelled before refinement generation")
+
+            logger.info(f"Refiner SGLang 서버({self.refiner_model_name})로 텍스트 생성 중")
             
-            # Qwen3 공식 권장 방식: messages 형식으로 구성
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt}
-            ]
-            
-            # apply_chat_template 사용 (enable_thinking=False로 설정)
-            text = self.refiner_tokenizer.apply_chat_template(
-                messages,
-                tokenize=False,
-                add_generation_prompt=True,
-                enable_thinking=False  # 중요: thinking 모드 비활성화
-            )
-            
-            logger.info(f"Refiner 전용 모델({self.refiner_model_name})로 텍스트 생성 중")
-            
-            # 토크나이징 및 디바이스 이동
-            model_inputs = self.refiner_tokenizer([text], return_tensors="pt").to(self.device)
-            
-            # Qwen3 공식 권장 파라미터 (non-thinking 모드)
-            generation_params = {
-                "max_new_tokens": self.config.REFINER_MAX_TOKENS,
-                "do_sample": True,  # Qwen3에서는 항상 샘플링 권장
-                "temperature": 0.3,  # 공식 권장값
-                "pad_token_id": self.refiner_tokenizer.eos_token_id,
-                "num_beams": 1,     # 샘플링과 빔서치 동시 사용 불가
+            payload = {
+                "model": self.refiner_model_name,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                "max_tokens": self.config.REFINER_MAX_TOKENS,
+                "temperature": 0.3,
+                "chat_template_kwargs": {"enable_thinking": False},
             }
-
-            # 취소 확인
-            if cancellation_event and cancellation_event.is_set():
-                raise InterruptedError("Operation cancelled before refinement generation")
-
-            # 취소 확인
-            if cancellation_event and cancellation_event.is_set():
-                raise InterruptedError("Operation cancelled before refinement generation")
-
-            with torch.no_grad():
-                generated_ids = model.generate(**model_inputs, **generation_params)
             
-            # Qwen3 공식 방식: 입력 길이를 제외한 새로운 토큰만 추출
-            output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist()
+            resp = self._session.post(
+                self._api_url,
+                json=payload,
+                timeout=self._timeout,
+            )
+            resp.raise_for_status()
+            data = resp.json()
             
-            # 디코딩
-            response = self.refiner_tokenizer.decode(output_ids, skip_special_tokens=True)
+            response = data["choices"][0]["message"]["content"]
             
             if not response:
                 logger.warning("Refiner가 빈 응답을 생성했습니다.")
                 return ""
             
-
-            
             logger.info(f"Refiner 텍스트 생성 완료 - 응답 길이: {len(response)}")
             return response.strip()
             
-        except Exception as e:
-            logger.error(f"Refiner 모델 텍스트 생성 실패: {str(e)}", exc_info=True)
+        except requests.ConnectionError:
+            logger.error("SGLang refiner server connection failed: %s", self._api_url)
             raise
-    
-
+        except Exception as e:
+            logger.error(f"Refiner 텍스트 생성 실패: {str(e)}", exc_info=True)
+            raise

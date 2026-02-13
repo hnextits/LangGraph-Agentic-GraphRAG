@@ -8,8 +8,7 @@ Hugging Face의 naver-hyperclovax/HyperCLOVAX-SEED-Text-Instruct-1.5B 모델을 
 
 import os
 import logging
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+import requests
 from typing import List
 from config import RAGConfig
 
@@ -17,54 +16,63 @@ from config import RAGConfig
 logger = logging.getLogger(__name__)
 
 class QueryRewriter:
-    def __init__(self, model_name: str = 'NEXTITS/Qwen3-0.6B-SFT-No.952', device: str = None):
+    """SGLang /v1/chat/completions API를 사용하는 쿼리 리라이터.
+    
+    모델을 직접 로드하지 않고 SGLang 서버의 OpenAI 호환
+    Chat Completions API를 호출하여 쿼리를 재작성합니다.
+    """
+    _ready = False
+
+    def __init__(self, model_name: str = None, device: str = None):
         """
         QueryRewriter를 초기화합니다.
 
         Args:
-            model_name (str): 사용할 Hugging Face 모델의 이름.
-            device (str): 모델을 로드할 디바이스 ('cuda', 'cpu' 등). None일 경우 자동 감지.
+            model_name (str): SGLang 서버에 로드된 모델 이름.
+            device (str): 미사용 (하위 호환성 유지).
         """
         config = RAGConfig()
-        self.device = device if device else (config.QUERY_REWRITER_DEVICE if torch.cuda.is_available() else "cpu")
-        self.model_name = model_name
-        self.model = None
-        self.tokenizer = None
-        logger.info(f"Query Rewriter 객체 생성 완료. 사용할 디바이스: {self.device}")
+        self.model_name = model_name or config.SGLANG_QUERY_REWRITER_MODEL
+        self.endpoint = config.SGLANG_QUERY_REWRITER_ENDPOINT  # e.g. "http://localhost:30004"
+        self._api_url = f"{self.endpoint}/v1/chat/completions"
+        self._timeout = 30
+        self._session = requests.Session()
+        logger.info(f"Query Rewriter 초기화 완료 (SGLang): {self.model_name} -> {self.endpoint}")
 
     def _load_model(self):
         """
-        필요 시 모델과 토크나이저를 로드합니다 (Lazy Loading).
+        SGLang 서버 연결 확인. 미기동 시 자동 기동.
         """
-        if self.model is None or self.tokenizer is None:
-            logger.info(f"'{self.model_name}' 모델 로드를 시작합니다...")
+        from notebooklm.sglang_server_manager import sglang_manager
+
+        if self.__class__._ready:
             try:
-                # RAGConfig에서 토큰 가져오기
-                from config import RAGConfig
-                config = RAGConfig()
-                hf_token = getattr(config, 'HF_TOKEN', None)
-                
-                # 토큰을 사용하여 모델 로드 - token 매개변수 사용 (use_auth_token 대신)
-                self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, token=hf_token)
-                
-                # 메모리 문제 해결을 위한 설정
-                torch.cuda.empty_cache()  # 기존 캐시 정리
-                
-                # 모델 로드 방식 변경
-                self.model = AutoModelForCausalLM.from_pretrained(
-                    self.model_name,
-                    torch_dtype=torch.float16,
-                    device_map="auto",  # 자동 장치 할당
-                    token=hf_token,
-                    low_cpu_mem_usage=True  # 낮은 CPU 메모리 사용
-                )
-                self.model.eval()
-                logger.info("모델 로드가 완료되었습니다.")
-            except Exception as e:
-                logger.error(f"모델 로드 중 오류 발생: {e}")
-                self.model = None
-                self.tokenizer = None
-                logger.error("모델 로드 실패로 인해 원본 쿼리만 사용합니다.")
+                resp = self._session.get(f"{self.endpoint}/health", timeout=3)
+                if resp.status_code == 200:
+                    sglang_manager.touch("query_rewriter")
+                    return
+            except Exception:
+                pass
+            self.__class__._ready = False
+
+        try:
+            resp = self._session.get(f"{self.endpoint}/health", timeout=5)
+            if resp.status_code == 200:
+                self.__class__._ready = True
+                sglang_manager.touch("query_rewriter")
+                logger.info("SGLang query rewriter server ready: %s", self.endpoint)
+                return
+        except (requests.ConnectionError, requests.Timeout, Exception):
+            pass
+
+        # 서버가 응답하지 않으면 sglang_manager로 자동 기동
+        logger.info("SGLang query rewriter server 미기동 → acquire로 자동 기동 시도")
+        try:
+            if sglang_manager.acquire("query_rewriter"):
+                sglang_manager.release("query_rewriter")
+                self.__class__._ready = True
+        except Exception as e:
+            logger.error("SGLang query rewriter 자동 기동 실패: %s", e)
 
     def _create_prompt(self, query: str) -> str:
         """
@@ -158,32 +166,36 @@ class QueryRewriter:
         Returns:
             List[str]: 재작성된 쿼리 목록. 병렬 검색에 바로 사용 가능.
         """
-        # 1. 모델 로드 (필요 시)
+        # 1. 서버 연결 확인 (필요 시)
         self._load_model()
-        if self.model is None:
-            return [query] # 모델 로드 실패 시 원본 쿼리 반환
 
         # 2. 프롬프트 생성
         prompt = self._create_prompt(query)
 
-        # 3. 모델 입력 준비
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.device)
-
-        # 4. 쿼리 생성
+        # 3. SGLang /v1/chat/completions API 호출
         try:
-            outputs = self.model.generate(
-                **inputs,
-                max_new_tokens=max_new_tokens,
-                temperature=0.7, # 일관성 있는 결과를 위해 온도를 약간 낮춤
-                do_sample=True,
-                top_p=0.95,
-                eos_token_id=self.tokenizer.eos_token_id
+            payload = {
+                "model": self.model_name,
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": max_new_tokens,
+                "temperature": 0.7,
+                "top_p": 0.95,
+                "chat_template_kwargs": {"enable_thinking": False},
+            }
+            resp = self._session.post(
+                self._api_url,
+                json=payload,
+                timeout=self._timeout,
             )
-            # 생성된 텍스트에서 입력 프롬프트 부분은 제외
-            generated_text = self.tokenizer.decode(outputs[0, inputs.input_ids.shape[1]:], skip_special_tokens=True)
+            resp.raise_for_status()
+            data = resp.json()
+            
+            generated_text = data["choices"][0]["message"]["content"]
             logger.info(f"모델 생성 결과:\n{generated_text}")
 
-            # 5. 결과 파싱
+            # 4. 결과 파싱
             rewritten_queries = self._parse_output(generated_text)
 
             # 재작성된 쿼리가 없는 경우 원본 쿼리를 포함
@@ -199,21 +211,18 @@ class QueryRewriter:
             # 병렬 검색을 위해 원본 쿼리도 목록의 첫 번째에 추가
             return [query] + rewritten_queries
 
+        except requests.ConnectionError:
+            logger.error("SGLang query rewriter server connection failed: %s", self._api_url)
+            return [query]
         except Exception as e:
             logger.error(f"쿼리 생성 중 오류 발생: {e}")
             return [query] # 오류 발생 시 원본 쿼리만 반환
 
     def cleanup(self):
-        """로딩된 모델과 토크나이저를 메모리에서 해제합니다."""
+        """HTTP 세션을 정리합니다."""
         try:
-            if self.model is not None:
-                del self.model
-                self.model = None
-            if self.tokenizer is not None:
-                del self.tokenizer
-                self.tokenizer = None
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+            self.__class__._ready = False
+            self._session.close()
             logger.info("QueryRewriter 리소스 정리를 완료했습니다.")
         except Exception as exc:
             logger.error(f"QueryRewriter 정리 중 오류: {exc}")

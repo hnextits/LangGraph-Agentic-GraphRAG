@@ -52,7 +52,6 @@ class ParallelSearcher:
         has_image_search = 'image' in selected_searchers
         
         if has_image_search:
-            logger.info("이미지 검색이 포함되어 쿼리 재작성을 비활성화합니다. (원본 쿼리만 사용)")
             # 이미지 검색이 있으면 원본 쿼리만 사용
             rewritten_queries = [query]
         else:
@@ -86,10 +85,9 @@ class ParallelSearcher:
             
             # 원본 쿼리 + 재작성된 쿼리 2개로 제한 (총 3개)
             if len(rewritten_queries) > 3:
-                logger.info(f"쿼리 개수 제한: {len(rewritten_queries)} -> 3 (원본 + 재작성 2개)")
+                logger.debug(f"쿼리 개수 제한: {len(rewritten_queries)} -> 3")
                 rewritten_queries = rewritten_queries[:3]  # 원본 포함 최대 3개로 제한
         
-        logger.info(f"총 {len(rewritten_queries)}개의 쿼리로 검색: {rewritten_queries}")
 
         # 2. 병렬 검색 실행 - 이미지와 텍스트 결과 분리
         text_results = []
@@ -106,8 +104,7 @@ class ParallelSearcher:
                         rerank_needed = True
                         # 작업을 제출하기 전에 취소 확인
                         if cancellation_event and cancellation_event.is_set():
-                            logger.info(f"Search for '{rewritten_query}' on '{searcher_name}' cancelled before execution.")
-                            continue # 다음 작업으로 넘어감
+                            continue
 
                         futures.append(
                                 executor.submit(
@@ -126,9 +123,7 @@ class ParallelSearcher:
                 try:
                     result = future.result()
                     if result:
-                        # 각 검색기의 결과 로깅
                         searcher_name = selected_searchers[i // len(rewritten_queries)]
-                        logger.info(f"검색기 '{searcher_name}'의 결과 수: {len(result)}")
                         
                         # 이미지 검색기인 경우
                         if searcher_name == 'image':
@@ -139,50 +134,21 @@ class ParallelSearcher:
                             similarity_threshold = getattr(config, 'IMAGE_SIMILARITY_THRESHOLD', 0.5)  # 1차 유사도 임계값
                             rerank_threshold = getattr(config, 'IMAGE_RERANK_SCORE_THRESHOLD', 0.8)  # 2차 리랭킹 임계값
                             
-                            # 검색 결과의 content_type 분포 확인
-                            content_types = {}
-                            for r in result[:10]:
-                                ct = r.get('content_type', 'None')
-                                if ct in content_types:
-                                    content_types[ct] += 1
-                                else:
-                                    content_types[ct] = 1
-                            logger.info(f"이미지 검색 결과의 content_type 분포: {content_types}")
-                            
-                            # 1단계: 기본 유사도 임계값으로 필터링 후 상위 IMAGE_TOP_K개 선별
-                            first_filtered = []
-                            for img in result:
-                                score = img.get('score', 0)
-                                if score >= similarity_threshold:
-                                    first_filtered.append(img)
-                                    logger.info(f"1차 필터링 통과: ID={img.get('id', 'N/A')}, 점수={score:.4f}, 파일경로={img.get('file_path', 'N/A')}")
-                                else:
-                                    logger.info(f"1차 필터링 제외: 점수={score:.4f} < {similarity_threshold}")
-                            
-                            # 상위 IMAGE_TOP_K개로 제한
+                            # 1단계: 기본 유사도 임계값으로 필터링
+                            first_filtered = [img for img in result if img.get('score', 0) >= similarity_threshold]
                             top_images = first_filtered[:image_top_k]
-                            logger.info(f"1차 선별 결과: {len(top_images)}개 (유사도 >= {similarity_threshold})")
                             
-                            # 2단계: 리랭킹된 점수가 있다면 rerank_threshold로 추가 필터링
+                            # 2단계: 리랭킹 점수 필터링
                             final_images = []
                             for img in top_images:
-                                # 리랭킹 점수가 있는지 확인 (reranked 필드나 높은 점수)
                                 reranked_score = img.get('score', 0)
                                 is_reranked = img.get('reranked', False)
-                                
                                 if is_reranked and reranked_score >= rerank_threshold:
                                     final_images.append(img)
-                                    logger.info(f"2차 필터링(리랭킹) 통과: ID={img.get('id', 'N/A')}, 리랭킹점수={reranked_score:.4f}")
                                 elif not is_reranked:
-                                    # 리랭킹되지 않은 경우는 1차 필터링만 통과하면 포함
                                     final_images.append(img)
-                                    logger.info(f"리랭킹 미적용 이미지 포함: ID={img.get('id', 'N/A')}, 기본점수={reranked_score:.4f}")
-                                else:
-                                    logger.info(f"2차 필터링(리랭킹) 제외: 점수={reranked_score:.4f} < {rerank_threshold}")
                             
-                            # 최대 IMAGE_FINAL_K개로 제한
                             final_images = final_images[:image_final_k]
-                            logger.info(f"이미지 최종 결과: {len(final_images)}개 (1차: >= {similarity_threshold}, 2차: >= {rerank_threshold})")
                             
                             image_results.extend(final_images)
                         
@@ -235,29 +201,16 @@ class ParallelSearcher:
 
         # 3. 각각의 결과에 대해 중복 제거 및 정렬
         try:
-            # 텍스트 결과 중복 제거
             if text_results:
-                deduplicated_text = self._deduplicate_and_sort(text_results)
-                logger.info(f"텍스트 결과 중복 제거 완료: {len(text_results)} -> {len(deduplicated_text)}")
-                text_results = deduplicated_text
-            
-            # 이미지 결과 중복 제거
+                text_results = self._deduplicate_and_sort(text_results)
             if image_results:
-                deduplicated_images = self._deduplicate_and_sort(image_results)
-                logger.info(f"이미지 결과 중복 제거 완료: {len(image_results)} -> {len(deduplicated_images)}")
-                image_results = deduplicated_images
+                image_results = self._deduplicate_and_sort(image_results)
         
         except Exception as e:
             logger.error(f"결과 중복 제거 중 오류: {e}")
             # 오류 발생 시 원본 결과 사용
 
-        # 이미지 및 텍스트 결과 로깅
-        logger.info(f"최종 텍스트 결과 수: {len(text_results)}")
-        logger.info(f"최종 이미지 결과 수: {len(image_results)}")
-        
-        # 상위 이미진 결과 로깅
-        for i, img in enumerate(image_results[:3]):
-            logger.info(f"최종 이미지 {i+1}: ID={img.get('id', 'N/A')}, 점수={img.get('score', 0):.4f}")
+        logger.info(f"검색 완료: 텍스트 {len(text_results)}개, 이미지 {len(image_results)}개")
         
         return {
             "text_documents": text_results,

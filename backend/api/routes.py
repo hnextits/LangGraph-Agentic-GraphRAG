@@ -32,28 +32,18 @@ UUID_PATTERN = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-
 
 def _resolve_sources_to_document_uuids(raw_sources: Optional[List[str]]) -> List[str]:
     """UUID 목록만 받아서 검증하고 반환합니다."""
-    logger.info("채팅 요청 소스(raw): %s", raw_sources)
-    print(f"DEBUG _resolve_sources_to_document_uuids called with: {raw_sources}")
-
     if not raw_sources:
-        print("DEBUG: raw_sources is empty or None")
         return []
 
-    # UUID만 허용
     uuid_list: List[str] = []
     
-    for i, item in enumerate(raw_sources):
-        print(f"DEBUG: Processing item {i}: '{item}' (type: {type(item)}, length: {len(item) if item else 'N/A'})")
+    for item in raw_sources:
         if not item:
-            print(f"DEBUG: Item {i} is empty, skipping")
             continue
-            
         if UUID_PATTERN.match(item):
-            print(f"DEBUG: Item {i} matches UUID pattern, adding to uuid_list")
             uuid_list.append(item)
         else:
-            print(f"DEBUG: Item {i} does not match UUID pattern, rejecting")
-            logger.warning("UUID 형식이 아닌 항목을 거부합니다: '%s'", item)
+            logger.warning("UUID 형식이 아닌 항목 거부: '%s'", item)
 
     # 중복 제거 및 순서 보존
     seen: Set[str] = set()
@@ -63,8 +53,6 @@ def _resolve_sources_to_document_uuids(raw_sources: Optional[List[str]]) -> List
             seen.add(value)
             unique_uuids.append(value)
 
-    logger.info("최종 UUID 목록: %s", unique_uuids)
-    print(f"DEBUG: Final unique UUIDs: {unique_uuids}")
     return unique_uuids
 
 # 검색/크롤링 파이프라인에서 사용하는 공용 파일명 정규화
@@ -212,21 +200,14 @@ async def list_files(request: Request):
     # 2. Weaviate에서 UUID 매핑 정보 가져오기
     uuid_map = {}
     try:
-        print(f"DEBUG: /files endpoint - files_list: {files_list}")
         client = config.get_weaviate_client()
         if client and files_list:
             from notebooklm.weaviate_utils import get_document_uuid_map_with_session
-            print(f"DEBUG: Calling get_document_uuid_map_with_session with {len(files_list)} files")
             uuid_map = get_document_uuid_map_with_session(client, files_list, session_id)
-            print(f"DEBUG: get_document_uuid_map_with_session returned: {uuid_map}")
             client.close()
-        else:
-            print(f"DEBUG: client is None or files_list is empty. client: {client}, files_list: {files_list}")
     except Exception as e:
         logger.warning(f"UUID 매핑 조회 실패: {e}")
-        print(f"DEBUG: UUID mapping error: {e}")
 
-    print(f"DEBUG: Final uuid_map to return: {uuid_map}")
     return FileListResponse(files=files_list, document_uuid_map=uuid_map)
 
 
@@ -590,7 +571,7 @@ async def run_text_indexing(task_id: str, file_names: List[str], tasks_dict: Dic
                     break
 
             # fallback: OCR 결과가 원본 파일명이 아닌 변환 산출물 폴더명으로 생성되는 경우 대응
-            if not any(Path(x).stem == base_name for x in processed_files):
+            if not any(Path(x).stem == base_name for x in processed_files): 
                 base_variants = {
                     base_name,
                     base_name.replace(" ", "_"),
@@ -610,14 +591,12 @@ async def run_text_indexing(task_id: str, file_names: List[str], tasks_dict: Dic
             tasks_dict[task_id].update({'status': 'index_skipped', 'message': '인덱싱할 파일을 찾지 못해 건너뜁니다.', 'progress': 100})
             return
 
-        # 2. qwen3_late_chunking 실행
-        from notebooklm.qwen3_late_chunking import process_markdown_files
-        from shared_embedding import shared_embedding
+        # 2. embedding_text (late chunking) 실행
+        from notebooklm.embedding_text import process_markdown_files
+        from notebooklm.shared_embedding import shared_embedding
         
-        # 모델 로드 보장
-        if shared_embedding._model is None:
-            logger.info(f"[{task_id}] Embedding 모델 로드 시작...")
-            shared_embedding.load_model()
+        # 임베딩 클라이언트 초기화 보장
+        shared_embedding.load_model()
         
         # Weaviate 클라이언트 획득
         client = config.get_weaviate_client()
@@ -627,15 +606,37 @@ async def run_text_indexing(task_id: str, file_names: List[str], tasks_dict: Dic
         try:
             # late chunking 프로세스 실행 (session_id 전달)
             process_markdown_files(client, processed_files, session_id=session_id)
-            
-            tasks_dict[task_id].update({
-                'status': 'index_completed',
-                'message': '파일 처리 및 인덱싱 완료',
-                'progress': 100
-            })
-            logger.info(f"[{task_id}] 텍스트 인덱싱 성공")
+            logger.info(f"[{task_id}] Weaviate 벡터 인덱싱 성공")
         finally:
             client.close()
+
+        # 3. Graph Extraction → .graph.json → Neo4j 저장
+        tasks_dict[task_id].update({
+            'status': 'graph_indexing',
+            'message': '그래프 메타데이터 추출 및 Neo4j 저장 중...',
+            'progress': 85
+        })
+
+        try:
+            from nextits_data.pipe.langgraph_upload_pipeline import LangGraphUploadPipeline, UploadWorkflowState
+            pipeline = LangGraphUploadPipeline(config)
+            state = UploadWorkflowState(
+                file_names=file_names,
+                session_id=session_id,
+                doc_dir=config.get_session_doc_dir(session_id) if session_id else config.DEFAULT_DOC_DIR,
+                results_base=config.DATA_ROOT / "sessions" / session_id / "Results" if session_id else config.DATA_ROOT / "Results",
+            )
+            state.processed_files = processed_files
+            pipeline._run_metadata_stage(state)
+            logger.info(f"[{task_id}] 그래프 인덱싱 완료")
+        except Exception as graph_err:
+            logger.error(f"[{task_id}] 그래프 인덱싱 실패 (벡터 인덱싱은 성공): {graph_err}", exc_info=True)
+
+        tasks_dict[task_id].update({
+            'status': 'index_completed',
+            'message': '파일 처리 및 인덱싱 완료 (벡터 + 그래프)',
+            'progress': 100
+        })
     except Exception as e:
         logger.error(f"[{task_id}] 텍스트 인덱싱 실패: {e}", exc_info=True)
         tasks_dict[task_id].update({'status': 'index_failed', 'error': str(e), 'progress': 100})
@@ -706,14 +707,12 @@ async def run_text_indexing_v2(task_id: str, file_names: List[str], tasks_dict: 
         except Exception as meta_err:
             logger.error(f"[{task_id}] 메타데이터 업데이트 중 오류 발생: {meta_err}")
 
-        # 2. qwen3_late_chunking 실행
-        from notebooklm.qwen3_late_chunking import process_markdown_files
-        from shared_embedding import shared_embedding
+        # 2. embedding_text (late chunking) 실행
+        from notebooklm.embedding_text import process_markdown_files
+        from notebooklm.shared_embedding import shared_embedding
         
-        # 모델 로드 보장
-        if shared_embedding._model is None:
-            logger.info(f"[{task_id}] Embedding 모델 로드 시작...")
-            await asyncio.to_thread(shared_embedding.load_model)
+        # 임베딩 클라이언트 초기화 보장
+        await asyncio.to_thread(shared_embedding.load_model)
         
         # Weaviate 클라이언트 획득
         client = config.get_weaviate_client()
@@ -723,15 +722,45 @@ async def run_text_indexing_v2(task_id: str, file_names: List[str], tasks_dict: 
         try:
             # late chunking 프로세스 실행 (session_id 전달)
             await asyncio.to_thread(process_markdown_files, client, processed_files, session_id=session_id)
-            
-            tasks_dict[task_id].update({
-                'status': 'index_completed',
-                'message': '파일 처리 및 인덱싱 완료',
-                'progress': 100
-            })
-            logger.info(f"[{task_id}] 텍스트 인덱싱 성공")
+            logger.info(f"[{task_id}] Weaviate 벡터 인덱싱 성공")
         finally:
             client.close()
+
+        # 3. Graph Extraction → .graph.json → Neo4j 저장
+        tasks_dict[task_id].update({
+            'status': 'graph_indexing',
+            'message': '그래프 메타데이터 추출 및 Neo4j 저장 중...',
+            'progress': 85
+        })
+
+        try:
+            from nextits_data.pipe.langgraph_upload_pipeline import LangGraphUploadPipeline
+            pipeline = LangGraphUploadPipeline(config)
+            
+            # run_post_ocr_pipeline의 metadata 단계만 실행
+            # (벡터 인덱싱은 이미 위에서 완료했으므로 metadata만)
+            from nextits_data.pipe.langgraph_upload_pipeline import UploadWorkflowState
+            state = UploadWorkflowState(
+                file_names=file_names,
+                session_id=session_id,
+                doc_dir=config.get_session_doc_dir(session_id) if session_id else config.DEFAULT_DOC_DIR,
+                results_base=config.DATA_ROOT / "sessions" / session_id / "Results" if session_id else config.DATA_ROOT / "Results",
+            )
+            state.processed_files = processed_files
+            
+            # LLM 메타데이터 추출 + Neo4j 저장
+            state = await asyncio.to_thread(pipeline._run_metadata_stage, state)
+            
+            graph_count = len(state.metadata_files) if state.metadata_files else 0
+            logger.info(f"[{task_id}] 그래프 인덱싱 완료: {graph_count}개 파일")
+        except Exception as graph_err:
+            logger.error(f"[{task_id}] 그래프 인덱싱 실패 (벡터 인덱싱은 성공): {graph_err}", exc_info=True)
+
+        tasks_dict[task_id].update({
+            'status': 'index_completed',
+            'message': '파일 처리 및 인덱싱 완료 (벡터 + 그래프)',
+            'progress': 100
+        })
     except Exception as e:
         logger.error(f"[{task_id}] 텍스트 인덱싱 실패: {e}", exc_info=True)
         tasks_dict[task_id].update({'status': 'index_failed', 'error': str(e), 'progress': 100})
@@ -940,8 +969,6 @@ async def summarize_files(request_data: SummarizeRequest, background_tasks: Back
 
 @router.post("/chat", response_model=ChatResponse, tags=["Chat"])
 async def chat(request: Request, query: ChatQuery, background_tasks: BackgroundTasks):
-    print("=== ROUTES.PY CHAT ENDPOINT CALLED ===")
-    logger.info("=== ROUTES.PY CHAT ENDPOINT CALLED ===")
     task_id = str(uuid.uuid4())
     cancellation_event = threading.Event()
     request.app.state.running_tasks[task_id] = cancellation_event
@@ -952,9 +979,6 @@ async def chat(request: Request, query: ChatQuery, background_tasks: BackgroundT
     session_id = getattr(request.state, "session_id", "default_session")
     logger.info(f"[Task {task_id}] Session ID: {session_id}")
     
-    # DEBUG: UUID 형식 확인
-    for i, source in enumerate(query.sources):
-        logger.info(f"[Task {task_id}] Source[{i}]: '{source}' (length: {len(source)}, is_uuid: {bool(UUID_PATTERN.match(source))})")
 
     model_manager = getattr(request.app.state, "model_manager", None)
     if model_manager is None:
@@ -985,21 +1009,15 @@ async def chat(request: Request, query: ChatQuery, background_tasks: BackgroundT
             config = RAGConfig()
             paths = get_session_paths(request)
             
-            # 세션 파일 목록 수집 (세션 + 글로벌 기본 파일들 모두 포함)
+            # 세션 파일 목록 수집 (해당 세션에서 업로드한 파일만)
             session_files = set()
             
-            # 1. 세션 디렉토리 파일들 추가
+            # 세션 디렉토리 파일들만 추가
             for d in [paths["doc_dir"]]:
                 if d.exists():
                     for f in d.iterdir():
                         if f.is_file() and not f.name.startswith('.'):
                             session_files.add(f.name)
-            
-            # 2. 글로벌 기본 파일들도 추가 (세션 사용자가 접근 가능한 파일들)
-            if config.DEFAULT_DOC_DIR.exists():
-                for f in config.DEFAULT_DOC_DIR.iterdir():
-                    if f.is_file() and not f.name.startswith('.'):
-                        session_files.add(f.name)
             
             if session_files:
                 # 세션별 UUID 매핑 가져오기
@@ -1009,55 +1027,28 @@ async def chat(request: Request, query: ChatQuery, background_tasks: BackgroundT
                     session_uuid_map = get_document_uuid_map_with_session(client, list(session_files), session_id)
                     client.close()
                     
-                    # resolved_sources를 세션의 모든 파일 UUID로 교체
+                    # resolved_sources를 세션 파일 UUID로 교체
                     resolved_sources = list(session_uuid_map.values())
-                    logger.info(f"[Task {task_id}] Auto-selected {len(resolved_sources)} files (session + default): {resolved_sources}")
+                    logger.info(f"[Task {task_id}] Auto-selected {len(resolved_sources)} session files: {resolved_sources}")
         except Exception as e:
             logger.error(f"[Task {task_id}] Failed to auto-select session files: {e}")
     else:
         logger.info(f"[Task {task_id}] Specific sources selected: {len(resolved_sources)} files")
 
-    try:
-        rag_pipeline = model_manager.acquire("rag_pipeline")
-        # SGLang 엔진 로드 확인 (추가)
-        if hasattr(rag_pipeline, "load_engine"):
-            await rag_pipeline.load_engine()
-
-        background_tasks.add_task(
-            run_rag_in_background,
-            task_id=task_id,
-            query=query.query,
-            sources=resolved_sources,
-            source_filter_requested=source_filter_requested,
-            rag_pipeline=rag_pipeline,
-            cancellation_event=cancellation_event,
-            tasks_dict=tasks,  # app.state.tasks를 전달
-            running_tasks_dict=request.app.state.running_tasks, # app.state.running_tasks를 전달
-            app_state=request.app.state,  # app.state 전체를 전달
-            session_id=session_id  # 세션 ID 전달
-        )
-    finally:
-        # 주의: 백그라운드 작업이 끝난 후 release해야 하므로 
-        # run_rag_in_background 내부에서 release하거나 별도 스케줄링 필요
-        async def schedule_rag_task():
-            # run_rag_in_background 완료를 기다리는 로직이 필요할 수 있음
-            # 현재는 단순 큐 등록이므로 release 시점 조정 필요
-            # pass 
-            model_manager.release("rag_pipeline")
-
-        background_tasks.add_task(schedule_rag_task)
+    # acquire + load_engine은 백그라운드에서 수행 (HTTP 응답 블로킹 방지)
+    background_tasks.add_task(
+        run_rag_in_background,
+        task_id=task_id,
+        query=query.query,
+        sources=resolved_sources,
+        source_filter_requested=source_filter_requested,
+        rag_pipeline=None,
+        cancellation_event=cancellation_event,
+        tasks_dict=tasks,
+        running_tasks_dict=request.app.state.running_tasks,
+        app_state=request.app.state,
+        session_id=session_id,
+        model_manager=model_manager,
+    )
 
     return ChatResponse(task_id=task_id, message="채팅 작업이 시작되었습니다.")
-
-    for task_id in task_ids:
-        if task_id in running_tasks:
-            try:
-                running_tasks[task_id].set() # 취소 신호 보내기
-                logger.info(f"[{task_id}] 작업 취소 요청됨.")
-                cancelled_count += 1
-            except Exception as e:
-                logger.error(f"[{task_id}] 작업 취소 요청 중 오류: {e}", exc_info=True)
-        else:
-            logger.warning(f"취소 요청된 작업 ID를 찾을 수 없음: {task_id}")
-
-    return {"message": f"총 {len(task_ids)}개 중 {cancelled_count}개 작업에 대한 취소 요청이 전달되었습니다."}

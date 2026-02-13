@@ -1,0 +1,2106 @@
+{
+  "document_id": "RL_Slides_13_RLHF_DPO_r2",
+  "entities": [
+    {
+      "entity_id": "c1_ENT_1",
+      "name": "Language Model",
+      "type": "Model",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_2",
+      "name": "Token",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_3",
+      "name": "Vocabulary",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_4",
+      "name": "Reinforcement Learning from Human Feedback",
+      "type": "Algorithm",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_5",
+      "name": "Direct Preference Optimization",
+      "type": "Algorithm",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_6",
+      "name": "Human Feedback",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_7",
+      "name": "RLHF",
+      "type": "Algorithm",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_8",
+      "name": "Contrastive Preference Learning",
+      "type": "Paper",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_9",
+      "name": "Contextual Bandit",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_10",
+      "name": "Markov Decision Process",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_11",
+      "name": "Token Sequence",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_13",
+      "name": "Autoregressive Model",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_14",
+      "name": "Distribution",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_15",
+      "name": "Probability Distribution",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_16",
+      "name": "Sequence",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_17",
+      "name": "Reinforcement Learning",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_18",
+      "name": "Feedback",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_19",
+      "name": "Training",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_20",
+      "name": "General-Purpose",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_21",
+      "name": "Rule",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_22",
+      "name": "Entity",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_23",
+      "name": "Relation",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_24",
+      "name": "Algorithm",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_25",
+      "name": "Optimization",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_26",
+      "name": "Application",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_27",
+      "name": "Model",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_28",
+      "name": "Tokenization",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_29",
+      "name": "Sequence of Tokens",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_30",
+      "name": "Distribution Over Tokens",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_31",
+      "name": "Probability",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_32",
+      "name": "Contextual Bandit Interpretation",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_33",
+      "name": "Per-Token MDP Interpretation",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_34",
+      "name": "Human",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_35",
+      "name": "Feedback Mechanism",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_37",
+      "name": "Language Model Training",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_38",
+      "name": "Preference Learning",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_39",
+      "name": "Contrastive Learning",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_40",
+      "name": "Preference",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_41",
+      "name": "Optimization Technique",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_42",
+      "name": "Direct Optimization",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_44",
+      "name": "Training Process",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_47",
+      "name": "Feedback Loop",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_48",
+      "name": "Model Training",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c2_ENT_2",
+      "name": "Reward",
+      "type": "Concept",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_3",
+      "name": "Human",
+      "type": "Concept",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_4",
+      "name": "Feedback",
+      "type": "Concept",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_5",
+      "name": "Helpfulness",
+      "type": "Concept",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_11",
+      "name": "Salt",
+      "type": "Concept",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c3_ENT_12",
+      "name": "Step",
+      "type": "Procedure",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_17",
+      "name": "Sample",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_19",
+      "name": "Bradley-Terry Model",
+      "type": "Algorithm",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_20",
+      "name": "Logistic Sigmoid",
+      "type": "Function",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_21",
+      "name": "Score",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_22",
+      "name": "Response",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_23",
+      "name": "Prompt",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_25",
+      "name": "Data",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_26",
+      "name": "Preference",
+      "type": "Relation",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_27",
+      "name": "Optimizes",
+      "type": "Relation",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_28",
+      "name": "Connects",
+      "type": "Relation",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_29",
+      "name": "Translates",
+      "type": "Relation",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_30",
+      "name": "Assumptions",
+      "type": "Relation",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_31",
+      "name": "Corresponds",
+      "type": "Relation",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_32",
+      "name": "Higher",
+      "type": "Relation",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_33",
+      "name": "Likelihood",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_34",
+      "name": "Implicit",
+      "type": "Relation",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_35",
+      "name": "Unobserved",
+      "type": "Relation",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c4_ENT_2",
+      "name": "Bradley-Terry Model",
+      "type": "Model",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_3",
+      "name": "Reward Model",
+      "type": "Model",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_4",
+      "name": "Neural Network",
+      "type": "Model",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_9",
+      "name": "Log-Likelihood",
+      "type": "Concept",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_10",
+      "name": "Negative Log-Likelihood",
+      "type": "Concept",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_11",
+      "name": "Human Annotator",
+      "type": "Entity",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_13",
+      "name": "Dataset",
+      "type": "Concept",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_14",
+      "name": "Model Sample",
+      "type": "Concept",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_15",
+      "name": "Preference Over Model Samples",
+      "type": "Concept",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c5_ENT_3",
+      "name": "Policy",
+      "type": "Model",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_4",
+      "name": "Reference Model",
+      "type": "Model",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_5",
+      "name": "PPO",
+      "type": "Algorithm",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_6",
+      "name": "CLIP",
+      "type": "Model",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c6_ENT_1",
+      "name": "latent space",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_2",
+      "name": "human judgements",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_3",
+      "name": "similarity",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_5",
+      "name": "AI model",
+      "type": "Entity",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_6",
+      "name": "preference feedback",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_7",
+      "name": "constitutional rules",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_8",
+      "name": "helpful model",
+      "type": "Entity",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_9",
+      "name": "critique",
+      "type": "Action",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_10",
+      "name": "revise",
+      "type": "Action",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_11",
+      "name": "answers",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_12",
+      "name": "scalable",
+      "type": "Attribute",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_13",
+      "name": "consistent",
+      "type": "Attribute",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_14",
+      "name": "helpfulness",
+      "type": "Attribute",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_15",
+      "name": "harmlessness",
+      "type": "Attribute",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_16",
+      "name": "LLMs",
+      "type": "Entity",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_17",
+      "name": "comparison",
+      "type": "Action",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_18",
+      "name": "demonstration",
+      "type": "Action",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_19",
+      "name": "preference model",
+      "type": "Entity",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_20",
+      "name": "reward learning",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_21",
+      "name": "preference annotations",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_22",
+      "name": "fine-tune",
+      "type": "Action",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_23",
+      "name": "SFT model",
+      "type": "Entity",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_24",
+      "name": "standard RL",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_29",
+      "name": "implementation complexity",
+      "type": "Attribute",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_30",
+      "name": "resource requirements",
+      "type": "Attribute",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_32",
+      "name": "reward model",
+      "type": "Entity",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_33",
+      "name": "policy model",
+      "type": "Entity",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_34",
+      "name": "training pipeline",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_35",
+      "name": "sampling",
+      "type": "Action",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_36",
+      "name": "reward evaluation",
+      "type": "Action",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_37",
+      "name": "PPO updates",
+      "type": "Action",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_38",
+      "name": "stability",
+      "type": "Attribute",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_39",
+      "name": "training",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_40",
+      "name": "rewards",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_41",
+      "name": "degree of freedom",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_42",
+      "name": "L",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_43",
+      "name": "R",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_44",
+      "name": "phi",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_45",
+      "name": "D",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_46",
+      "name": "E",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_47",
+      "name": "x",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_48",
+      "name": "y_w",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_49",
+      "name": "y_l",
+      "type": "Concept",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_50",
+      "name": "log",
+      "type": "Function",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_51",
+      "name": "sigma",
+      "type": "Function",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_52",
+      "name": "r_phi",
+      "type": "Function",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c7_ENT_1",
+      "name": "Reward Function",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_2",
+      "name": "Additive Constant",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_4",
+      "name": "Preference Ordering",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_6",
+      "name": "Reward Scale",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_7",
+      "name": "PPO",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_8",
+      "name": "Variance",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_9",
+      "name": "Policy Learning",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_12",
+      "name": "Maximum-Entropy RL",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_13",
+      "name": "Policy",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_14",
+      "name": "Reference Model",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_15",
+      "name": "KL-regularized Maximum-Entropy RL",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_16",
+      "name": "Objective",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_18",
+      "name": "Policy Update",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_19",
+      "name": "Loss",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_20",
+      "name": "Closed-form Structure",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_21",
+      "name": "One-to-one Correspondence",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_22",
+      "name": "Preference Data",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_23",
+      "name": "Policy Optimization",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_24",
+      "name": "Policy Determination",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_26",
+      "name": "Optimal Policy",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_27",
+      "name": "Mapping",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_28",
+      "name": "Transformation",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c8_ENT_1",
+      "name": "KL-divergence",
+      "type": "MathematicalConcept",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_2",
+      "name": "π_θ(y",
+      "type": "x)",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_3",
+      "name": "π_ref(y",
+      "type": "x)",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_4",
+      "name": "π*(y",
+      "type": "x)",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_5",
+      "name": "Z(x)",
+      "type": "NormalizationConstant",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_6",
+      "name": "r(x,y)",
+      "type": "RewardFunction",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_7",
+      "name": "β",
+      "type": "Hyperparameter",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_9",
+      "name": "Maximum-entropy RL",
+      "type": "ReinforcementLearningMethod",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_10",
+      "name": "Closed-form Solution",
+      "type": "MathematicalSolution",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_11",
+      "name": "Normalization Constant",
+      "type": "MathematicalConcept",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_12",
+      "name": "Reward Function",
+      "type": "MathematicalConcept",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_13",
+      "name": "Optimal Policy",
+      "type": "PolicyType",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_14",
+      "name": "Reference Policy",
+      "type": "PolicyType",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_15",
+      "name": "Exponential Form",
+      "type": "MathematicalForm",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_16",
+      "name": "Direct Preference Optimization",
+      "type": "OptimizationMethod",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_17",
+      "name": "Intractable",
+      "type": "ComputationalComplexity",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c9_ENT_1",
+      "name": "loss function on reward functions",
+      "type": "Concept",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_2",
+      "name": "reward functions",
+      "type": "Concept",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_3",
+      "name": "policies",
+      "type": "Concept",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_5",
+      "name": "Bradley-Terry model",
+      "type": "Concept",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_8",
+      "name": "Direct Preference Optimization",
+      "type": "Concept",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_9",
+      "name": "log-odds",
+      "type": "Concept",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_10",
+      "name": "beta",
+      "type": "Concept",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c10_ENT_1",
+      "name": "DPO",
+      "type": "Algorithm",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_4",
+      "name": "Sigmoid",
+      "type": "Concept",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_5",
+      "name": "Log",
+      "type": "Concept",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_6",
+      "name": "Log-likelihood ratio",
+      "type": "Concept",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_7",
+      "name": "Gradient",
+      "type": "Concept",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_8",
+      "name": "Preference pairs",
+      "type": "Concept",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_10",
+      "name": "Reward model",
+      "type": "Concept",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_11",
+      "name": "RL optimization",
+      "type": "Concept",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_12",
+      "name": "GPT2-XL",
+      "type": "Model",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_13",
+      "name": "Positive sentiment",
+      "type": "Concept",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_14",
+      "name": "Movie reviews",
+      "type": "Concept",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_15",
+      "name": "Ground truth reward function",
+      "type": "Concept",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_16",
+      "name": "Sentiment classifier",
+      "type": "Concept",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_17",
+      "name": "DPO",
+      "type": "Algorithm -> ENT_13",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_18",
+      "name": "DPO",
+      "type": "Algorithm -> ENT_12",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_19",
+      "name": "DPO",
+      "type": "Algorithm -> ENT_10",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_20",
+      "name": "DPO",
+      "type": "Algorithm -> ENT_11",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_21",
+      "name": "DPO",
+      "type": "Algorithm -> ENT_9",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_22",
+      "name": "RLHF",
+      "type": "Algorithm -> ENT_10",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_23",
+      "name": "RLHF",
+      "type": "Algorithm -> ENT_11",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_24",
+      "name": "GPT2-XL",
+      "type": "Model -> ENT_12",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_25",
+      "name": "Preferred-FT",
+      "type": "Algorithm -> ENT_12",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_26",
+      "name": "Unlikelihood",
+      "type": "Algorithm -> ENT_12",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_28",
+      "name": "PPO",
+      "type": "Algorithm -> ENT_12",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_29",
+      "name": "Log-likelihood ratio",
+      "type": "Concept -> ENT_7",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_30",
+      "name": "Sigmoid",
+      "type": "Concept -> ENT_5",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_31",
+      "name": "Log",
+      "type": "Concept -> ENT_4",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_32",
+      "name": "Reward",
+      "type": "Concept -> ENT_3",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_33",
+      "name": "Gradient",
+      "type": "Concept -> ENT_7",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_34",
+      "name": "Preference pairs",
+      "type": "Concept -> ENT_9",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_35",
+      "name": "Reward model",
+      "type": "Concept -> ENT_10",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_36",
+      "name": "RL optimization",
+      "type": "Concept -> ENT_11",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_37",
+      "name": "Ground truth reward function",
+      "type": "Concept -> ENT_13",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_38",
+      "name": "Sentiment classifier",
+      "type": "Concept -> ENT_16",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_39",
+      "name": "DPO",
+      "type": "Algorithm -> ENT_16",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_40",
+      "name": "RLHF-PPO",
+      "type": "Algorithm -> ENT_12",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_41",
+      "name": "DPO",
+      "type": "Algorithm -> ENT_14",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_42",
+      "name": "GPT2-XL",
+      "type": "Model -> ENT_14",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_43",
+      "name": "DPO",
+      "type": "Algorithm -> ENT_15",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c11_ENT_2",
+      "name": "RLHF",
+      "type": "Technique",
+      "chunk_id": 11
+    },
+    {
+      "entity_id": "c11_ENT_3",
+      "name": "DPO",
+      "type": "Technique",
+      "chunk_id": 11
+    },
+    {
+      "entity_id": "c11_ENT_4",
+      "name": "Reward model",
+      "type": "Component",
+      "chunk_id": 11
+    },
+    {
+      "entity_id": "c11_ENT_5",
+      "name": "Ground truth reward function",
+      "type": "Component",
+      "chunk_id": 11
+    },
+    {
+      "entity_id": "c11_ENT_6",
+      "name": "Hallucination",
+      "type": "Problem",
+      "chunk_id": 11
+    },
+    {
+      "entity_id": "c11_ENT_7",
+      "name": "CNET",
+      "type": "Organization",
+      "chunk_id": 11
+    },
+    {
+      "entity_id": "c11_ENT_8",
+      "name": "ChatGPT",
+      "type": "Model",
+      "chunk_id": 11
+    },
+    {
+      "entity_id": "c11_ENT_9",
+      "name": "Lawyers",
+      "type": "Entity",
+      "chunk_id": 11
+    },
+    {
+      "entity_id": "c11_ENT_10",
+      "name": "Court",
+      "type": "Entity",
+      "chunk_id": 11
+    },
+    {
+      "entity_id": "c11_ENT_11",
+      "name": "LLMs",
+      "type": "Component",
+      "chunk_id": 11
+    },
+    {
+      "entity_id": "c11_ENT_12",
+      "name": "Factuality",
+      "type": "Attribute",
+      "chunk_id": 11
+    },
+    {
+      "entity_id": "c12_ENT_1",
+      "name": "factuality",
+      "type": "Concept",
+      "chunk_id": 12
+    },
+    {
+      "entity_id": "c12_ENT_4",
+      "name": "truthfulness",
+      "type": "Concept",
+      "chunk_id": 12
+    },
+    {
+      "entity_id": "c12_ENT_5",
+      "name": "atomic claims",
+      "type": "Concept",
+      "chunk_id": 12
+    },
+    {
+      "entity_id": "c12_ENT_6",
+      "name": "reference sources",
+      "type": "Concept",
+      "chunk_id": 12
+    },
+    {
+      "entity_id": "c12_ENT_7",
+      "name": "consensus",
+      "type": "Concept",
+      "chunk_id": 12
+    },
+    {
+      "entity_id": "c12_ENT_8",
+      "name": "long-form generation tasks",
+      "type": "Concept",
+      "chunk_id": 12
+    },
+    {
+      "entity_id": "c12_ENT_9",
+      "name": "bios",
+      "type": "Concept",
+      "chunk_id": 12
+    },
+    {
+      "entity_id": "c12_ENT_10",
+      "name": "popular figures",
+      "type": "Concept",
+      "chunk_id": 12
+    },
+    {
+      "entity_id": "c13_ENT_1",
+      "name": "Pulmonary Edema",
+      "type": "MedicalCondition",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_2",
+      "name": "Symptoms",
+      "type": "MedicalSymptom",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_5",
+      "name": "ITI",
+      "type": "Algorithm",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_6",
+      "name": "DOLA",
+      "type": "Algorithm",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_8",
+      "name": "Factuality",
+      "type": "Property",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_9",
+      "name": "Long-form Generation",
+      "type": "Task",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_10",
+      "name": "Bios",
+      "type": "Task",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_11",
+      "name": "Medical Questions",
+      "type": "Task",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_12",
+      "name": "NLP",
+      "type": "Field",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_13",
+      "name": "Human Feedback",
+      "type": "Concept",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_15",
+      "name": "Preferences",
+      "type": "Concept",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_17",
+      "name": "Automated Preference Generation",
+      "type": "Technique",
+      "chunk_id": 13
+    }
+  ],
+  "events": [],
+  "relations": [
+    {
+      "source_id": "c2_ENT_1",
+      "target_id": "c2_ENT_2",
+      "relation": "relies on",
+      "chunk_id": 2,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c2_ENT_1",
+      "target_id": "c2_ENT_3",
+      "relation": "involves",
+      "chunk_id": 2,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c2_ENT_1",
+      "target_id": "c2_ENT_4",
+      "relation": "uses",
+      "chunk_id": 2,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c2_ENT_1",
+      "target_id": "c2_ENT_5",
+      "relation": "measures",
+      "chunk_id": 2,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_2",
+      "relation": "connects",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_3",
+      "relation": "trains",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_4",
+      "relation": "approximates",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_5",
+      "relation": "relies on",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_10",
+      "relation": "minimizes",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_11",
+      "relation": "involves",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_13",
+      "relation": "uses",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_2",
+      "target_id": "c4_ENT_6",
+      "relation": "connects",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_3",
+      "target_id": "c4_ENT_7",
+      "relation": "assigns",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_3",
+      "target_id": "c4_ENT_12",
+      "relation": "assigns to",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_4",
+      "target_id": "c4_ENT_6",
+      "relation": "approximates",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_4",
+      "target_id": "c4_ENT_12",
+      "relation": "inputs",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_7",
+      "target_id": "c4_ENT_12",
+      "relation": "assigns to",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_10",
+      "target_id": "c4_ENT_1",
+      "relation": "minimizes",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_11",
+      "target_id": "c4_ENT_12",
+      "relation": "prefers",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_12",
+      "target_id": "c4_ENT_7",
+      "relation": "assigns to",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_13",
+      "target_id": "c4_ENT_1",
+      "relation": "uses",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_2",
+      "relation": "represents",
+      "chunk_id": 5,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c5_ENT_3",
+      "target_id": "c5_ENT_2",
+      "relation": "achieves high reward while staying close to",
+      "chunk_id": 5,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c5_ENT_3",
+      "target_id": "c5_ENT_4",
+      "relation": "staying close to",
+      "chunk_id": 5,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c5_ENT_5",
+      "target_id": "c5_ENT_3",
+      "relation": "stabilizes policy updates",
+      "chunk_id": 5,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c5_ENT_5",
+      "target_id": "c5_ENT_2",
+      "relation": "prevents large, sudden changes",
+      "chunk_id": 5,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c5_ENT_5",
+      "target_id": "c5_ENT_3",
+      "relation": "keeps close to",
+      "chunk_id": 5,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c5_ENT_2",
+      "target_id": "c5_ENT_4",
+      "relation": "accurate near",
+      "chunk_id": 5,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c5_ENT_6",
+      "target_id": "c5_ENT_3",
+      "relation": "aligns latent space with human visual perception",
+      "chunk_id": 5,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_1",
+      "target_id": "c6_ENT_2",
+      "relation": "reflects",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_1",
+      "target_id": "c6_ENT_3",
+      "relation": "learned to reflect",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_4",
+      "target_id": "c6_ENT_5",
+      "relation": "uses",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_4",
+      "target_id": "c6_ENT_6",
+      "relation": "generates",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_4",
+      "target_id": "c6_ENT_7",
+      "relation": "applies",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_4",
+      "target_id": "c6_ENT_8",
+      "relation": "first train",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_4",
+      "target_id": "c6_ENT_9",
+      "relation": "critique",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_4",
+      "target_id": "c6_ENT_10",
+      "relation": "revise",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_4",
+      "target_id": "c6_ENT_11",
+      "relation": "answers",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_4",
+      "target_id": "c6_ENT_12",
+      "relation": "enables scalable",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_4",
+      "target_id": "c6_ENT_13",
+      "relation": "enables consistent",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_4",
+      "target_id": "c6_ENT_14",
+      "relation": "improving",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_4",
+      "target_id": "c6_ENT_15",
+      "relation": "improving",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_16",
+      "target_id": "c6_ENT_17",
+      "relation": "provide",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_16",
+      "target_id": "c6_ENT_18",
+      "relation": "can provide",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_16",
+      "target_id": "c6_ENT_19",
+      "relation": "scalable in terms of quantity of data",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_16",
+      "target_id": "c6_ENT_19",
+      "relation": "likely quality too",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_19",
+      "target_id": "c6_ENT_20",
+      "relation": "derive",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_20",
+      "target_id": "c6_ENT_21",
+      "relation": "from",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_22",
+      "target_id": "c6_ENT_23",
+      "relation": "fine-tune",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_22",
+      "target_id": "c6_ENT_24",
+      "relation": "using",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_22",
+      "target_id": "c6_ENT_25",
+      "relation": "learned",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_26",
+      "target_id": "c6_ENT_4",
+      "relation": "related to",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_27",
+      "target_id": "c6_ENT_28",
+      "relation": "not ideal about",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_27",
+      "target_id": "c6_ENT_29",
+      "relation": "implementation complexity",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_27",
+      "target_id": "c6_ENT_30",
+      "relation": "resource requirements",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_27",
+      "target_id": "c6_ENT_31",
+      "relation": "need multiple models",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c6_ENT_27",
+      "target_id": "c6_ENT_32",
+      "relation": "need multiple models",
+      "chunk_id": 6,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_2",
+      "relation": "represents",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_3",
+      "relation": "represents",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_4",
+      "relation": "minimizes",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_6",
+      "target_id": "c8_ENT_4",
+      "relation": "influences",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_6",
+      "target_id": "c8_ENT_5",
+      "relation": "influences",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_6",
+      "target_id": "c8_ENT_7",
+      "relation": "influences",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_8",
+      "target_id": "c8_ENT_16",
+      "relation": "related to",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_9",
+      "target_id": "c8_ENT_16",
+      "relation": "related to",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_10",
+      "target_id": "c8_ENT_4",
+      "relation": "provides",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_11",
+      "target_id": "c8_ENT_5",
+      "relation": "defines",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_12",
+      "target_id": "c8_ENT_6",
+      "relation": "defines",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_13",
+      "target_id": "c8_ENT_4",
+      "relation": "is",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_14",
+      "target_id": "c8_ENT_3",
+      "relation": "is",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_15",
+      "target_id": "c8_ENT_4",
+      "relation": "takes",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_16",
+      "target_id": "c8_ENT_12",
+      "relation": "simplifies",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_16",
+      "target_id": "c8_ENT_17",
+      "relation": "has",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c11_ENT_1",
+      "target_id": "c11_ENT_2",
+      "relation": "used on",
+      "chunk_id": 11,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c11_ENT_1",
+      "target_id": "c11_ENT_5",
+      "relation": "used on",
+      "chunk_id": 11,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c11_ENT_2",
+      "target_id": "c11_ENT_3",
+      "relation": "replaces",
+      "chunk_id": 11,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c11_ENT_2",
+      "target_id": "c11_ENT_4",
+      "relation": "uses",
+      "chunk_id": 11,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c11_ENT_3",
+      "target_id": "c11_ENT_4",
+      "relation": "optimizes",
+      "chunk_id": 11,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c11_ENT_3",
+      "target_id": "c11_ENT_5",
+      "relation": "uses",
+      "chunk_id": 11,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c11_ENT_6",
+      "target_id": "c11_ENT_7",
+      "relation": "case",
+      "chunk_id": 11,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c11_ENT_6",
+      "target_id": "c11_ENT_8",
+      "relation": "case",
+      "chunk_id": 11,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c11_ENT_6",
+      "target_id": "c11_ENT_9",
+      "relation": "case",
+      "chunk_id": 11,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c11_ENT_6",
+      "target_id": "c11_ENT_10",
+      "relation": "case",
+      "chunk_id": 11,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c11_ENT_11",
+      "target_id": "c11_ENT_12",
+      "relation": "affects",
+      "chunk_id": 11,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c11_ENT_12",
+      "target_id": "c11_ENT_2",
+      "relation": "aimed to improve",
+      "chunk_id": 11,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c12_ENT_2",
+      "target_id": "c12_ENT_1",
+      "relation": "encourages",
+      "chunk_id": 12,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c12_ENT_3",
+      "target_id": "c12_ENT_1",
+      "relation": "fine-tunes",
+      "chunk_id": 12,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c12_ENT_1",
+      "target_id": "c12_ENT_4",
+      "relation": "estimates",
+      "chunk_id": 12,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c12_ENT_5",
+      "target_id": "c12_ENT_4",
+      "relation": "based on",
+      "chunk_id": 12,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c12_ENT_6",
+      "target_id": "c12_ENT_4",
+      "relation": "supported by",
+      "chunk_id": 12,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c12_ENT_7",
+      "target_id": "c12_ENT_4",
+      "relation": "supported by",
+      "chunk_id": 12,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c12_ENT_1",
+      "target_id": "c12_ENT_8",
+      "relation": "evaluated on",
+      "chunk_id": 12,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c12_ENT_8",
+      "target_id": "c12_ENT_9",
+      "relation": "involves",
+      "chunk_id": 12,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c12_ENT_9",
+      "target_id": "c12_ENT_10",
+      "relation": "about",
+      "chunk_id": 12,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    }
+  ]
+}

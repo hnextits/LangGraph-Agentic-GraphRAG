@@ -19,7 +19,6 @@ from datetime import datetime
 from typing import List, Dict, Tuple, Any, Optional
 from weaviate.util import generate_uuid5
 from PIL import Image
-from transformers import AutoTokenizer, AutoModel, AutoProcessor
 from tqdm import tqdm
 from shared_embedding import shared_embedding
 

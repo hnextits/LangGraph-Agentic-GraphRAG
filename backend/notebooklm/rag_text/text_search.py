@@ -22,7 +22,7 @@ from weaviate_utils import create_schema
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)  # 로그 레벨을 DEBUG로 변경
+logger.setLevel(logging.INFO)
 
 class TextSearcher:
     def __init__(self, model_name: str = None, device: str = None):
@@ -189,29 +189,24 @@ class TextSearcher:
                 
                 # 1. 세션 필터 (session_id가 제공된 경우) - 기본 파일들도 포함
                 if session_id:
-                    # 세션 검색 시에도 기본 파일들을 포함하기 위해 전체 검색 후 필터링
-                    filters = None  # 전체 검색
-                    logger.info(f"텍스트 검색: 세션 {session_id} + 기본 파일 포함 (전체 검색)")
+                    filters = None
                 else:
-                    logger.info("텍스트 검색: 전체 데이터베이스에서 검색")
+                    pass
                 
                 # 2. UUID 필터 (allowed_document_uuids가 제공된 경우)
                 if allowed_document_uuids:
                     uuids = [uuid for uuid in allowed_document_uuids if uuid]
-                    logger.info(f"DEBUG: Applying UUID filter with {len(uuids)} UUIDs: {uuids}")
                     uuid_filter = None
                     if len(uuids) == 1:
                         uuid_filter = Filter.by_property("document_uuid").equal(uuids[0])
-                        logger.info(f"DEBUG: Single UUID filter: {uuids[0]}")
                     elif len(uuids) > 1:
                         uuid_filter = Filter.by_property("document_uuid").contains_any(uuids)
-                        logger.info(f"DEBUG: Multiple UUID filter: {uuids}")
                     
                     if uuid_filter:
                         filters = filters & uuid_filter if filters else uuid_filter
-                        logger.info(f"DEBUG: Final filters configured: {filters}")
+                        logger.debug(f"UUID 필터 적용: {len(uuids)}개")
                 else:
-                    logger.info("DEBUG: No UUID filter applied (allowed_document_uuids is empty or None)")
+                    pass
                 
                 # 벡터 검색 실행
                 response = collection.query.near_vector(
@@ -236,10 +231,6 @@ class TextSearcher:
                 # 거리를 유사도 점수로 변환 (1 - 거리)
                 similarity_score = 1 - score if score <= 1 else 0
                 
-                # 모든 속성 출력해서 확인
-                logger.info(f"DEBUG: Object {i} all properties: {obj.properties}")
-                logger.info(f"DEBUG: Object {i} document_uuid from properties: {obj.properties.get('document_uuid')}")
-                
                 result = {
                     'score': similarity_score,
                     'index': i,
@@ -251,7 +242,6 @@ class TextSearcher:
                     'metadata': {},
                     'document_uuid': obj.properties.get("document_uuid"),
                 }
-                logger.info(f"DEBUG: Search result {i}: document_uuid={result['document_uuid']}, obj.uuid={obj.uuid}")
                 results.append(result)
             
             logger.info(f"쿼리 '{query}'에 대한 검색 완료, 결과 수: {len(results)}")
@@ -287,14 +277,6 @@ class TextSearcher:
                         results = reranked_results
                         logger.info(f"쿼리 '{query}'에 대한 개선된 리랭킹 완료, 결과 수: {len(results)}")
                         
-                        logger.info(f"리랭킹 적용된 검색 결과 (최대 5개):")
-                        for i, result in enumerate(results[:5]):
-                            title = result.get('title', '제목 없음')
-                            page_num_str = f"(페이지 {result.get('page_num', 'N/A')})" if 'page_num' in result else ''
-                            logger.info(f"{i+1}. {title} {page_num_str} - 리랭크 점수: {result.get('score', 0):.4f}")
-                            logger.info(f"   ID: {result.get('id', 'N/A')}, 인덱스: {result.get('index', 'N/A')}")
-                            text_preview = result.get('text', '')[:100] + '...' if len(result.get('text', '')) > 100 else result.get('text', '')
-                            logger.info(f"   텍스트: {text_preview}")
                     
                     except Exception as e:
                         logger.error(f"개선된 리랭킹 중 오류 발생: {e}")

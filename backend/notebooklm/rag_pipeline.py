@@ -32,6 +32,7 @@ from router import RAGRouter
 from generator import SGLangGenerator as Generator
 from evaluator import Evaluator
 from refiner import Refiner
+from graph_reasoner import GraphReasoner
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -55,6 +56,12 @@ class RAGPipeline:
         self.evaluator = Evaluator(self.config)
         # 환경 문제로 인해 Refiner 사용 안함
         self.refiner = None
+        # LangGraph 기반 그래프 라우터 (필요 시)
+        try:
+            self.graph_reasoner = GraphReasoner(self.config)
+        except Exception as exc:
+            logger.warning("GraphReasoner 초기화 실패: %s", exc)
+            self.graph_reasoner = None
         logger.info("환경 문제로 인해 Refiner를 사용하지 않습니다.")
         
         logger.info("RAG 파이프라인 초기화 완료")
@@ -96,6 +103,11 @@ class RAGPipeline:
                 self.router.cleanup()
         except Exception:
             logger.exception("Router 정리 중 오류 발생")
+        try:
+            if self.graph_reasoner and hasattr(self.graph_reasoner, "close"):
+                self.graph_reasoner.close()
+        except Exception:
+            logger.exception("GraphReasoner 정리 중 오류 발생")
     
     def _process_image_document(self, img_doc: Dict[str, Any], processed_images: List[Dict[str, Any]], image_paths: List[str]) -> None:
         """
@@ -145,6 +157,50 @@ class RAGPipeline:
         else:
             logger.warning(f"이미지 문서에 file_path가 없음: {img_doc.get('id', 'unknown')}")
     
+    def _build_graph_search_results(self, graph_payload: Dict[str, Any]) -> Dict[str, Any]:
+        """GraphReasoner의 결과를 generator가 기대하는 search_results 형태로 변환합니다."""
+        retrieval_path = graph_payload.get("retrieval_path", "unknown")
+        max_hops = graph_payload.get("max_hops", 1)
+        snippets = graph_payload.get("context_snippets", [])
+        nodes = graph_payload.get("nodes", [])
+        relations = graph_payload.get("relations", [])
+
+        # 노드에서 document_id 수집 → 실제 문서명 출처로 사용
+        doc_ids = set()
+        for node in nodes:
+            did = node.get("document_id", "") or node.get("doc_id", "")
+            if did:
+                doc_ids.add(did)
+        # 문서명이 없으면 retrieval_path 표시
+        doc_source = ", ".join(sorted(doc_ids)) if doc_ids else f"GraphRAG/{retrieval_path}"
+
+        text_results = []
+        seen_texts = set()  # 중복 스니펫 제거
+        for snippet in snippets:
+            if snippet in seen_texts:
+                continue
+            seen_texts.add(snippet)
+            # 스니펫에서 이름 추출: [엔티티] Name (Type) 또는 [관계] A --[rel]--> B
+            title = snippet.split("]", 1)[-1].strip() if "]" in snippet else snippet
+            title = title[:60] + "…" if len(title) > 60 else title
+            text_results.append({
+                "text": snippet,
+                "title": title,
+                "source": doc_source,
+                "score": 1.0,
+                "content_type": "text",
+            })
+        return {
+            "text_documents": text_results,
+            "image_documents": [],
+            "metadata": {
+                "search_mode": "GraphRAG",
+                "retrieval_path": retrieval_path,
+                "max_hops": max_hops,
+                "graph_notes": graph_payload.get("notes", []),
+            },
+        }
+
     def process_query(
         self,
         query: str,
@@ -172,29 +228,57 @@ class RAGPipeline:
         if cancellation_event and cancellation_event.is_set():
             raise InterruptedError("Operation cancelled before routing and search")
 
-        # 1. 라우팅 및 검색
-        # 취소 확인
-        if cancellation_event and cancellation_event.is_set():
-            raise InterruptedError("Operation cancelled before search")
-        search_results = self.router.search(
-            query,
-            top_k=top_k,
-            cancellation_event=cancellation_event,
-            allowed_document_uuids=allowed_document_uuids,
-            session_id=session_id,
-        )
+        use_graph_rag = False
+        graph_payload = None
+
+        if (
+            self.graph_reasoner
+            and getattr(self.graph_reasoner, "graph_enabled", False)
+        ):
+            try:
+                graph_payload = self.graph_reasoner.retrieve(
+                    query, session_id=session_id,
+                    allowed_document_uuids=allowed_document_uuids,
+                )
+                rp = graph_payload.get("retrieval_path", "unknown")
+                mh = graph_payload.get("max_hops", 1)
+                quality = graph_payload.get("retrieval_quality", 0.0)
+                logger.info("GraphReasoner 결과: path=%s, hops=%d, quality=%.2f, snippets=%d",
+                            rp, mh, quality, len(graph_payload.get("context_snippets", [])))
+                if rp == "vector":
+                    logger.info(
+                        "GraphReasoner [%s] → 기존 벡터 검색으로 위임 (max_hops=%d)",
+                        rp, mh,
+                    )
+                elif graph_payload.get("context_snippets") and quality >= 0.3:
+                    search_results = self._build_graph_search_results(graph_payload)
+                    use_graph_rag = True
+                    logger.info(
+                        "GraphReasoner [%s] 검색 완료 (max_hops=%d, %d 스니펫, quality=%.2f)",
+                        rp, mh, len(graph_payload.get("context_snippets", [])), quality,
+                    )
+                elif graph_payload.get("context_snippets"):
+                    logger.info(
+                        "GraphReasoner [%s] quality 부족 (%.2f < 0.3), 기본 벡터 검색으로 폴백",
+                        rp, quality,
+                    )
+                else:
+                    logger.info("GraphReasoner 결과 스니펫이 없어 기본 RAG로 대체")
+            except Exception as exc:
+                logger.warning("GraphReasoner 실행 실패, 기본 RAG로 전환: %s", exc)
+
+        if not use_graph_rag:
+            # 1. 라우팅 및 검색 (기존 RAG)
+            if cancellation_event and cancellation_event.is_set():
+                raise InterruptedError("Operation cancelled before search")
+            search_results = self.router.search(
+                query,
+                top_k=top_k,
+                cancellation_event=cancellation_event,
+                allowed_document_uuids=allowed_document_uuids,
+                session_id=session_id,
+            )
         
-        # 검색 결과 로깅
-        for searcher_name, results_data in search_results.items():
-            if searcher_name == "metadata":
-                continue
-            # 'results' 키를 가진 딕셔너리 또는 리스트 형태의 결과를 처리
-            count = 0
-            if isinstance(results_data, dict) and 'results' in results_data:
-                count = len(results_data['results'])
-            elif isinstance(results_data, list):
-                count = len(results_data)
-            logger.info(f"{searcher_name} 검색기 결과: {count}개 항목 검색됨")
 
         # 취소 확인
         if cancellation_event and cancellation_event.is_set():
@@ -210,6 +294,11 @@ class RAGPipeline:
             cancellation_event=cancellation_event,
             allowed_document_uuids=allowed_document_uuids,
         )
+
+        if use_graph_rag and graph_payload:
+            results["graph_reasoner"] = graph_payload
+            notes = graph_payload.get("notes") or []
+            results.setdefault("answer_notes", notes)
         
         # 4. 피드백 루프 (필요시)
         if self.config.use_feedback_loop:
@@ -226,7 +315,6 @@ class RAGPipeline:
         processed_ids = set()  # 중복 방지를 위한 ID 추적
         
         # search_results에서 이미지 문서 추출 및 처리
-        logger.info(f"search_results 구조: {list(search_results.keys()) if isinstance(search_results, dict) else type(search_results)}")
         
         # 모든 이미지 문서를 수집
         all_image_docs = []
@@ -234,7 +322,6 @@ class RAGPipeline:
         # 1. 직접 image_documents 키에서 수집
         if isinstance(search_results, dict) and 'image_documents' in search_results:
             all_image_docs.extend(search_results['image_documents'])
-            logger.info(f"image_documents에서 {len(search_results['image_documents'])}개 수집")
         
         # 2. searcher별 구조에서 수집 (하위 호환성)
         for searcher_name, searcher_results in search_results.items():
@@ -243,10 +330,8 @@ class RAGPipeline:
             
             if isinstance(searcher_results, dict) and 'image_documents' in searcher_results:
                 all_image_docs.extend(searcher_results['image_documents'])
-                logger.info(f"{searcher_name}에서 {len(searcher_results['image_documents'])}개 수집")
         
         # 3. 수집된 모든 이미지 문서를 한 번에 처리 (중복 제거)
-        logger.info(f"총 {len(all_image_docs)}개의 이미지 문서 처리 시작")
         for img_doc in all_image_docs:
             # ID 기반 중복 체크
             doc_id = img_doc.get('id')
@@ -262,22 +347,13 @@ class RAGPipeline:
                 processed_ids.add(doc_id)
         
         # 처리된 이미지를 결과에 추가
-        logger.info(f"processed_images 리스트 길이: {len(processed_images)}")
         if processed_images:
             results['images'] = processed_images
             results['image_count'] = len(processed_images)
-            logger.info(f"최종 처리된 이미지 수: {len(processed_images)}개")
-            # 첫 번째 이미지 정보 로깅
-            if processed_images:
-                first_img = processed_images[0]
-                logger.info(f"첫 번째 이미지 키: {list(first_img.keys()) if isinstance(first_img, dict) else type(first_img)}")
-        else:
-            logger.warning("processed_images가 비어있어서 results['images']에 추가하지 않음")
+            logger.info(f"이미지 처리 완료: {len(processed_images)}개")
         
-        # 이미지 경로도 별도로 저장 (이미지 변환에 실패한 경우를 대비)
         if image_paths:
             results['image_paths'] = image_paths
-            logger.info(f"이미지 경로 수: {len(image_paths)}개")
 
         # 취소 확인
         if cancellation_event and cancellation_event.is_set():
@@ -310,7 +386,7 @@ class RAGPipeline:
                 if key in results:
                     del results[key]
         
-        logger.info("질문 처리 완료. 최종 결과 키: %s", list(results.keys()))
+        logger.info("질문 처리 완료")
         return results
 
 def main():

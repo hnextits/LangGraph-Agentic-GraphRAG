@@ -19,8 +19,8 @@ LangGraph-Graph RAG is a vector–graph hybrid RAG platform powered by **LangGra
 
 - **LangGraph state machines**: ingestion, query reasoning, summarization, and mindmap generation all run on LangGraph `StateGraph` with `MemorySaver` checkpointing.
 - **Checkpoint & backtracking**: every node transition is checkpointed; the quality gate backtracks to alternative retrieval paths when results are insufficient (up to 2 retries).
-- **3-way retrieval routing**: hop ≤ 2 → Weaviate Dense Similarity, hop 3–5 → Weaviate Cross-Reference GraphRAG, hop ≥ 6 → Neo4j Deep Graph Traversal.
-- **SGLang inference**: generator, embedding, reranker, and hop classifier services run on SGLang with GPU-dedicated scheduling via `LazyModelManager`.
+- **3-way retrieval routing**: hop ≤ 2 → existing Vector RAG (TextSearcher + Reranker), hop 3–5 → Weaviate Cross-Reference GraphQL traversal, hop ≥ 6 → Neo4j Deep Graph Traversal.
+- **SGLang inference**: generator, embedding, reranker, hop classifier, and observer LLM services run on SGLang with GPU-dedicated scheduling via `LazyModelManager`.
 - **Automatic graph upsert**: OCR → LLM entity/event/relation extraction → simultaneous Weaviate + Neo4j ingestion.
 - **Async job monitoring**: upload, OCR, and embedding progress tracked through task APIs.
 
@@ -47,9 +47,9 @@ LangGraph-Graph RAG is a vector–graph hybrid RAG platform powered by **LangGra
        ┌──────────────────────────┼──────────────────────────┐
        │                          │                          │
    Path 1                    Path 2                     Path 3
-   Weaviate Vector           Weaviate Cross-Ref         Neo4j GraphDB
-   Dense Similarity          GraphRAG (3–5 hop)         Deep Traversal
-   (≤ 2 hop)                 GraphQL-based              (≥ 6 hop)
+   Vector RAG                Weaviate Cross-Ref         Neo4j GraphDB
+   TextSearcher+Reranker     GraphQL QueryReference     Deep Traversal
+   (≤ 2 hop, delegated)      (3–5 hop, multi-hop)       (≥ 6 hop)
 ```
 
 ### Workflow Graph (Query)
@@ -84,10 +84,10 @@ Handled by `GraphReasoner` (`graph_reasoner.py`) with `MemorySaver` checkpointin
 2. **Planner**: analyzes the query, sets `max_hops`, and initializes the search plan.
 3. **Router**: selects Path 1/2/3 based on hop classification.
 4. **Retrieval Nodes**:
-   - **Path 1 – Vector RAG**: `_search_entities` + `_search_events` via Weaviate `near_text` (limit=5).
-   - **Path 2 – Cross-Ref GraphRAG**: expanded search (limit=10) with cross-reference traversal.
-   - **Path 3 – Neo4j GraphDB**: deep traversal (limit=15) via `legacy_graph_client.py` Cypher templates.
-5. **Quality Gate**: evaluates retrieval quality (0.0–1.0) based on node count, relation count, and vector distance. If quality < 0.3, backtracks to an alternative path (max 2 retries).
+   - **Path 1 – Vector RAG**: delegates to `rag_pipeline`'s existing TextSearcher + Reranker (no internal GraphReasoner search; quality=1.0 bypass).
+   - **Path 2 – Cross-Ref GraphRAG**: BM25 seed entities → Weaviate Cross-Reference `QueryReference` multi-hop traversal (source/target/event refs).
+   - **Path 3 – Neo4j GraphDB**: deep traversal via `legacy_graph_client.py` Cypher templates.
+5. **Quality Gate**: Path 2/3 quality is evaluated by an observer LLM (0.0–1.0 relevance score). Path 1 bypasses the gate (quality=1.0). If quality < 0.3, backtracks to an alternative path with state reset (max 2 retries).
 6. **GoT Thought Expander** (optional): multi-step graph expansion with snapshot-based backtracking on consecutive failures.
 7. **Aggregator**: builds context snippets from entities/events/relations for LLM generation.
 8. **Generation** (`generator.py`): produces the answer from original query + context, optionally refined by `refiner.py` / `evaluator.py`.
@@ -243,7 +243,7 @@ docker run -d --name neo4j-dev \
 - `sglang_embedding_server.log`, `sglang_reranker_server.log` – SGLang model server health.
 - `Results/8.graph_metadata/*.graph.json` – archive of LLM extraction results.
 - `LegacyGraphIngestor` auto-creates constraints on first run; no manual setup required.
-- `LazyModelManager` releases GPU memory after ~20 seconds of idling.
+- `LazyModelManager` releases GPU memory after ~60 seconds of idling.
 - All LangGraph workflows log checkpoint IDs and backtrack counts for traceability.
 
 ---

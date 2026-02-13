@@ -53,13 +53,15 @@ class RAGRouter:
             if CrossEncoder is None:
                 logger.warning("sentence-transformers 가 설치되지 않아 CrossEncoder 기능을 비활성화합니다.")
         
-        # 쿼리 재작성기 초기화 (먼저 초기화)
-        self.query_rewriter = QueryRewriter()  # 쿼리 재작성기 인스턴스 생성
+        # 쿼리 재작성기 초기화 (config에서 비활성화 가능)
+        if getattr(config, "use_query_rewriter", False):
+            self.query_rewriter = QueryRewriter()
+        else:
+            self.query_rewriter = None
         
         # 병렬 검색 조정기 초기화 (쿼리 재작성기 전달)
         self.parallel_searcher = ParallelSearcher(self.rag_config, self.searchers, self.query_rewriter)
         
-        logger.info("RAGRouter 초기화 완료 (QueryRewriter 포함)")
 
     def cleanup(self):
         """라우터가 로드한 모든 서브 컴포넌트를 정리합니다."""
@@ -68,7 +70,6 @@ class RAGRouter:
             if callable(cleanup_fn):
                 try:
                     cleanup_fn()
-                    logger.info("검색기 정리 완료: %s", name)
                 except Exception:
                     logger.exception("검색기 정리 중 오류 발생: %s", name)
         self.searchers.clear()
@@ -76,7 +77,6 @@ class RAGRouter:
         if self.query_rewriter and hasattr(self.query_rewriter, "cleanup"):
             try:
                 self.query_rewriter.cleanup()
-                logger.info("QueryRewriter 정리 완료")
             except Exception:
                 logger.exception("QueryRewriter 정리 중 오류 발생")
     
@@ -105,7 +105,6 @@ class RAGRouter:
             "cross_encoder_model": "cross-encoder/ms-marco-MiniLM-L-6-v2"
         }
         
-        logger.info("기본 설정 사용")
         return default_config
     
     def _load_searchers(self):
@@ -124,7 +123,6 @@ class RAGRouter:
                 
                 # 검색기 인스턴스 생성
                 self.searchers[name] = searcher_class()
-                logger.info(f"검색기 로드 완료: {name}")
             except (ImportError, AttributeError) as e:
                 logger.warning(f"검색기 로드 실패: {name}, 오류: {str(e)}")
 
@@ -145,12 +143,8 @@ class RAGRouter:
         # text 검색기가 있으면 추가
         if 'text' in self.searchers:
             selected_searchers.append('text')
-            logger.info("RAG 검색을 위해 text 검색기를 추가합니다.")
-        
-        # image 검색기가 있으면 추가
         if 'image' in self.searchers:
             selected_searchers.append('image')
-            logger.info("RAG 검색을 위해 image 검색기를 추가합니다.")
         
         # 선택된 검색기가 없으면 기본 검색기 사용 (예외 처리)
         if not selected_searchers:
@@ -185,7 +179,6 @@ class RAGRouter:
         """
         # 1. 항상 text와 image 검색기를 사용하도록 route_query 호출
         selected_searchers = self.route_query(query)
-        logger.info(f"RAG 검색을 위해 선택된 검색기: {selected_searchers} (session: {session_id})")
 
         # 취소 확인
         if cancellation_event and cancellation_event.is_set():

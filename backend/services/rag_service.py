@@ -190,6 +190,7 @@ def run_rag_in_background(
     running_tasks_dict: Dict[str, Any],
     app_state: Any,  # app.state를 직접 받음
     session_id: Optional[str] = None,
+    model_manager=None,
 ):
     """백그라운드에서 RAG 파이프라인을 실행하고 결과를 app_state에 저장합니다."""
     import time
@@ -198,8 +199,35 @@ def run_rag_in_background(
     task_cache = app_state.task_cache
     task_cache_timestamps = app_state.task_cache_timestamps
 
-    tasks_dict[task_id].update({"status": "processing", "message": "RAG 파이프라인 실행 중..."})
+    tasks_dict[task_id].update({"status": "processing", "message": "RAG 파이프라인 로딩 중..."})
     logger.info(f"[Task {task_id}] Session ID for RAG: {session_id}")
+
+    # rag_pipeline이 None이면 백그라운드에서 acquire + load_engine 수행
+    _acquired_here = False
+    if rag_pipeline is None and model_manager is not None:
+        try:
+            rag_pipeline = model_manager.acquire("rag_pipeline")
+            _acquired_here = True
+            if hasattr(rag_pipeline, "load_engine_sync"):
+                rag_pipeline.load_engine_sync()
+            tasks_dict[task_id].update({"message": "RAG 파이프라인 실행 중..."})
+        except Exception as e:
+            logger.error(f"[Task {task_id}] RAG 파이프라인 acquire/load 실패: {e}", exc_info=True)
+            final_status = {
+                "status": "failed",
+                "message": "RAG 파이프라인을 로드할 수 없습니다.",
+                "error": str(e)
+            }
+            tasks_dict[task_id].update(final_status)
+            task_cache[task_id] = tasks_dict[task_id].copy()
+            task_cache_timestamps[task_id] = time.time()
+            if _acquired_here and model_manager:
+                try:
+                    model_manager.release("rag_pipeline")
+                except Exception:
+                    pass
+            return
+
     try:
         response_data = get_rag_response(
             query,
@@ -240,6 +268,12 @@ def run_rag_in_background(
         if task_id in running_tasks_dict:
             del running_tasks_dict[task_id]
             logger.info(f"[Task {task_id}] running_tasks에서 제거 완료.")
+        # 백그라운드 작업 완료 후 rag_pipeline release (idle 타이머 시작)
+        if model_manager:
+            try:
+                model_manager.release("rag_pipeline")
+            except Exception:
+                logger.exception(f"[Task {task_id}] rag_pipeline release 실패")
 
 def _filter_results_by_uuid(results: List[Dict[str, Any]], allowed_uuids: Set[str]) -> List[Dict[str, Any]]:
     """주어진 document_uuid 집합에 속하는 결과만 필터링합니다."""
@@ -271,8 +305,6 @@ def get_rag_response(
         # RAG 파이프라인 실행 (취소 이벤트 전달)
         allowed_uuids: Set[str] = {src for src in sources if src}
         
-        logger.info(f"get_rag_response called with session_id: {session_id}")
-        logger.info(f"source_filter_requested: {source_filter_requested}, allowed_uuids: {allowed_uuids}")
 
         if source_filter_requested and not allowed_uuids:
             logger.warning(
@@ -289,7 +321,6 @@ def get_rag_response(
         )
 
         if allowed_uuids:
-            logger.info("선택된 document_uuid로 검색 결과 필터링을 수행합니다: %s", allowed_uuids)
 
             text_documents = results.get('text_documents')
             if isinstance(text_documents, list):
@@ -313,7 +344,6 @@ def get_rag_response(
         # 2. RAG 파이프라인이 직접 반환한 이미지 처리 (핵심)
         pipeline_images = results.get('images', [])
         if pipeline_images:
-            logger.info(f"RAG 파이프라인에서 직접 반환된 {len(pipeline_images)}개의 이미지를 처리합니다.")
             for img_item in pipeline_images:
                 # file_path가 있고, 아직 추가되지 않았으며, base64 또는 image_base64 데이터가 있는지 확인
                 base64_data = img_item.get('base64') or img_item.get('image_base64')
@@ -321,7 +351,6 @@ def get_rag_response(
                 
                 # base64가 없는데 file_path만 있는 경우 백엔드에서 변환 시도
                 if not base64_data and file_path:
-                    logger.info(f"이미지 경로 발견, base64 변환 시도: {file_path}")
                     base64_data = encode_image_to_base64(file_path)
                 
                 if file_path and file_path not in processed_image_paths and base64_data:
@@ -336,7 +365,6 @@ def get_rag_response(
         # image_paths 리스트도 처리 (경로만 온 경우 대비)
         image_paths = results.get('image_paths', [])
         if image_paths:
-            logger.info(f"image_paths 리스트에서 {len(image_paths)}개의 이미지를 처리합니다.")
             for path in image_paths:
                 if path and path not in processed_image_paths:
                     base64_data = encode_image_to_base64(path)

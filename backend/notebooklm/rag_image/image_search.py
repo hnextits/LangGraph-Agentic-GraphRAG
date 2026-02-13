@@ -26,7 +26,7 @@ from weaviate_utils import create_schema
 
 # 로깅 설정
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)  # 로그 레벨을 DEBUG로 변경
+logger.setLevel(logging.INFO)
 
 class ImageSearcher:
     """이미지 검색을 위한 클래스입니다. 이미지와 차트 모두 검색 가능합니다."""
@@ -166,7 +166,6 @@ class ImageSearcher:
         try:
             # 쿼리 전처리 - 공백 제거 및 정규화
             normalized_query = query.strip()
-            logger.info(f"정규화된 쿼리: '{normalized_query}'")
             
             # 취소 확인
             if cancellation_event and cancellation_event.is_set():
@@ -175,12 +174,6 @@ class ImageSearcher:
             # 쿼리 임베딩 생성
             query_embedding = self.shared_embedding.generate_embedding(normalized_query)
             
-            # 임베딩 정보 로깅
-            embedding_norm = np.linalg.norm(query_embedding)
-            embedding_mean = np.mean(query_embedding)
-            embedding_std = np.std(query_embedding)
-            logger.info(f"이미지 검색 쿼리 임베딩 생성 성공: '{normalized_query[:50]}...'")
-            logger.info(f"임베딩 통계 - 노름: {embedding_norm:.4f}, 평균: {embedding_mean:.4f}, 표준편차: {embedding_std:.4f}")
         except Exception as e:
             logger.error(f"이미지 검색 쿼리 임베딩 생성 실패: {str(e)}")
             import traceback
@@ -209,11 +202,9 @@ class ImageSearcher:
                 
                 # 1. 세션 필터 (session_id가 제공된 경우) - 기본 파일들도 포함
                 if session_id:
-                    # 세션 검색 시에도 기본 파일들을 포함하기 위해 전체 검색 후 필터링
-                    filters = None  # 전체 검색
-                    logger.info(f"이미지 검색: 세션 {session_id} + 기본 파일 포함 (전체 검색)")
+                    filters = None
                 else:
-                    logger.info("이미지 검색: 전체 데이터베이스에서 검색")
+                    pass
                 
                 # 2. UUID 필터 구성 (use_uuid_filter가 True일 때만 적용)
                 if use_uuid_filter and allowed_document_uuids:
@@ -221,16 +212,11 @@ class ImageSearcher:
                     uuid_filter = None
                     if len(uuids) == 1:
                         uuid_filter = Filter.by_property("document_uuid").equal(uuids[0])
-                        logger.info(f"이미지 검색에 UUID 필터 적용: {uuids[0]}")
                     elif len(uuids) > 1:
                         uuid_filter = Filter.by_property("document_uuid").contains_any(uuids)
-                        logger.info(f"이미지 검색에 UUID 필터 적용: {len(uuids)}개 문서")
                     
                     if uuid_filter:
                         filters = filters & uuid_filter if filters else uuid_filter
-                
-                if not filters:
-                    logger.info("이미지 검색: 전체 이미지 데이터베이스에서 검색")
                 
                 # 벡터 검색 실행 (v4 API)
                 response = collection.query.near_vector(
@@ -313,21 +299,7 @@ class ImageSearcher:
                 except Exception as e:
                     logger.error(f"후처리 중 기본 이미지 검색 오류: {e}")
             
-            logger.info(f"쿼리 '{query}'에 대한 검색 완료, 결과 수: {len(results)}")
-            
-            # 검색 결과의 content_type 확인
-            content_types = {}
-            for r in results[:10]:
-                ct = r.get('content_type', 'None')  # 이미 변환된 content_type 사용
-                if ct in content_types:
-                    content_types[ct] += 1
-                else:
-                    content_types[ct] = 1
-            logger.info(f"검색 결과의 content_type 분포: {content_types}")
-            
-            # 상위 3개 결과 상세 로깅
-            for i, r in enumerate(results[:3]):
-                logger.info(f"검색 결과 {i+1}: ID={r.get('id', 'N/A')}, 점수={r.get('score', 0):.4f}, content_type={r.get('content_type', 'N/A')}")
+            logger.info(f"이미지 검색 완료: '{query[:30]}', 결과 수: {len(results)}")
             
             # 임계값 필터링
             config = RAGConfig()
@@ -337,17 +309,7 @@ class ImageSearcher:
                                r.get('content_type', 'image') in self.supported_types]  # 이미 변환된 content_type 사용
             
             if len(filtered_results) < len(results):
-                logger.info(f"임계값({config.IMAGE_THRESHOLD}) 및 타입 필터링 후 결과 수: {len(filtered_results)}")
-                
-            # 검색 결과의 content_type 분포 확인
-            content_types_filtered = {}
-            for r in filtered_results[:10]:
-                ct = r.get('content_type', 'None')  # 이미 변환된 content_type 사용
-                if ct in content_types_filtered:
-                    content_types_filtered[ct] += 1
-                else:
-                    content_types_filtered[ct] = 1
-            logger.info(f"필터링 후 content_type 분포: {content_types_filtered}")
+                logger.debug(f"임계값 필터링: {len(results)} → {len(filtered_results)}")
             
             # use_uuid_filter가 True일 때만 후처리 필터링도 적용
             if use_uuid_filter and allowed_document_uuids:
@@ -364,39 +326,18 @@ class ImageSearcher:
             original_results = filtered_results.copy()
             
             # reranker를 사용하여 결과 재정렬
-            logger.info(f"Rerank 파라미터: {rerank}, 리랭커 사용 설정: {self.use_reranker}, 리랭커 객체 존재: {self.reranker is not None}, 결과 수: {len(filtered_results)}")
             
             if self.use_reranker and self.reranker and filtered_results:
                 try:
-                    logger.info(f"Reranker를 사용하여 결과 재정렬 시작")
-                    # 취소 확인
                     if cancellation_event and cancellation_event.is_set():
                         raise InterruptedError("Operation cancelled before image reranking")
                     
                     reranked_results = self.reranker.rerank(query, filtered_results, top_k=top_k, cancellation_event=cancellation_event)
                     
-                    # 점수 분포 확인을 위한 로깅
-                    scores = [r['score'] for r in reranked_results]
-                    if scores:
-                        logger.info(f"점수 분포 - 최소: {min(scores):.4f}, 최대: {max(scores):.4f}, 평균: {sum(scores)/len(scores):.4f}")
-                    
-                    # 원본 점수 그대로 사용 (정규화 없이)
                     for result in reranked_results:
-                        # 원본 점수를 그대로 유지
-                        result['original_score'] = result.get('score', 0.0)  # 참조용으로 원본 점수 저장
+                        result['original_score'] = result.get('score', 0.0)
                     
-                    logger.info(f"Reranker를 사용하여 결과 재정렬 완료, 결과 수: {len(reranked_results)}")
-                    
-                    # 리랭킹된 이미지 결과 출력
-                    print(f"\n=== 이미지 리랭킹 결과 (top {min(len(reranked_results), 3)}) ===")
-                    for i, result in enumerate(reranked_results[:3]):
-                        print(f"{i+1}. ID: {result.get('id', 'N/A')}")
-                        print(f"   정규화 점수: {result.get('score', 0):.4f}")
-                        print(f"   원본 점수: {result.get('original_score', 0):.4f}")
-                        print(f"   제목: {result.get('title', '제목 없음')}")
-                        caption = result.get('caption') or '캡션 없음'
-                        print(f"   캡션: {caption[:100]}...")
-                        print()
+                    logger.info(f"이미지 리랭킹 완료: {len(reranked_results)}개")
                     
                     return reranked_results[:top_k]
                 except Exception as e:

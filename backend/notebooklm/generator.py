@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 
 """
-RAG 시스템 생성기 - SGLang을 사용하여 로컬에서 모델을 로드하고 추론합니다.
+RAG 시스템 생성기 - SGLang 서버 API를 사용하여 텍스트를 생성합니다.
 """
 
 import os, re, copy, logging
 import threading
+import requests
 from typing import List, Dict, Any, Optional, Set
-import sglang as sgl
 
 # 로깅 설정
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -16,8 +16,12 @@ logger = logging.getLogger(__name__)
 
 class SGLangGenerator:
     """
-    RAG 시스템 생성기 (SGLang 버전)
+    RAG 시스템 생성기 (SGLang 서버 API 버전)
+    
+    모델을 직접 로드하지 않고 main.py에서 기동한
+    SGLang 생성기 서버(port 30000)의 /v1/chat/completions API를 호출합니다.
     """
+    _ready = False
     
     def __init__(self, config):
         """
@@ -26,98 +30,76 @@ class SGLangGenerator:
         self.config = config
         self.model_name = self.config.LLM_MODEL
         self.prompt_template = self.config.PROMPT_TEMPLATES
-        self.runtime = None
+        self.endpoint = self.config.SGLANG_GENERATOR_ENDPOINT  # e.g. "http://localhost:30000"
+        self._api_url = f"{self.endpoint}/v1/chat/completions"
+        self._timeout = 180
+        self._session = requests.Session()
         self.model_loaded = False
-        self.tokenizer = None  # 임시 토크나이저 속성 추가
-        self.engine = None
-        logger.info("Generator 초기화 완료 (모델은 최초 요청 시 로드)")
+        self.tokenizer = None  # 하위 호환성 유지
+        self.engine = None     # 하위 호환성 유지
+        logger.info(f"Generator 초기화 완료 (SGLang 서버): {self.model_name} -> {self.endpoint}")
+
+    def _ensure_server_ready(self) -> bool:
+        """SGLang 생성기 서버가 응답 가능한지 확인합니다. 미기동 시 자동 기동."""
+        from notebooklm.sglang_server_manager import sglang_manager
+
+        # _ready=True여도 실제 health check로 서버 생존 확인
+        if self.__class__._ready:
+            try:
+                resp = self._session.get(f"{self.endpoint}/health", timeout=3)
+                if resp.status_code == 200:
+                    sglang_manager.touch("generator")
+                    return True
+            except Exception:
+                pass
+            self.__class__._ready = False
+            self.model_loaded = False
+
+        try:
+            resp = self._session.get(f"{self.endpoint}/health", timeout=5)
+            if resp.status_code == 200:
+                self.__class__._ready = True
+                self.model_loaded = True
+                sglang_manager.touch("generator")
+                logger.info("SGLang generator server ready: %s", self.endpoint)
+                return True
+        except (requests.ConnectionError, requests.Timeout, Exception):
+            pass
+
+        # 서버가 응답하지 않으면 sglang_manager로 자동 기동
+        logger.info("SGLang generator server 미기동 → acquire로 자동 기동 시도")
+        try:
+            if sglang_manager.acquire("generator"):
+                # acquire 성공 → 즉시 release하지 않음
+                # 실제 API 호출 완료 후 _generate_text_sglang에서 release
+                sglang_manager.release("generator")
+                self.__class__._ready = True
+                self.model_loaded = True
+                return True
+        except Exception as e:
+            logger.error("SGLang generator 자동 기동 실패: %s", e)
+        return False
 
     def _load_model(self):
-        """SGLang Engine 초기화"""
-        try:
-            logger.info(f"SGLang Engine 초기화 중: {self.model_name}")
-            
-            # PyTorch를 사용하여 GPU 메모리 정리
-            import torch
-            if torch.cuda.is_available():
-                # 미사용 캐시 메모리 해제
-                torch.cuda.empty_cache()
-                logger.info("GPU 캐시 메모리 정리 완료")
-            
-            logger.info("SGLang Engine API 직접 사용 - 모델 직접 로드")
-            
-            # Config에서 디바이스 설정 가져오기 (TEST_MODE 지원)
-            import os
-            device = self.config.TEXT_GENERATOR_DEVICE
-            logger.info(f"SGLang Engine 디바이스 설정: {device}")
-            
-            # device가 "cuda:N" 형식이면 환경 변수로 설정
-            original_cuda_visible = os.environ.get('CUDA_VISIBLE_DEVICES')
-            if device != "auto" and device.startswith("cuda:"):
-                gpu_id = device.split(":")[1]
-                os.environ['CUDA_VISIBLE_DEVICES'] = gpu_id
-                logger.info(f"CUDA_VISIBLE_DEVICES 설정: {gpu_id}")
-            
-            # Engine 클래스를 사용하여 모델 초기화
-            # mem_fraction_static: SGLang이 사용할 GPU 메모리 비율
-            # RAGConfig에서 설정한 값 사용 (기본값 0.3)
-            mem_fraction = getattr(self.config, 'GENERATOR_MEM_FRACTION', 0.3)
-            try:
-                # signal.signal 관련 오류 방지를 위해 전역 Interpreter 체크 및 thread safety 확보
-                import threading
-                is_main_thread = threading.current_thread() is threading.main_thread()
-                
-                self.engine = sgl.Engine(
-                    model_path=self.model_name,
-                    mem_fraction_static=mem_fraction,  # 메모리 할당량 제한
-                    disable_cuda_graph=True,  # CUDA 그래프 비활성화로 안정성 향상
-                    trust_remote_code=True,   # 원격 코드 신뢰
-                    dtype="auto"              # 자동으로 적절한 dtype 선택
-                )
-            finally:
-                # 환경 변수 복원
-                if original_cuda_visible is not None:
-                    os.environ['CUDA_VISIBLE_DEVICES'] = original_cuda_visible
-                elif 'CUDA_VISIBLE_DEVICES' in os.environ:
-                    del os.environ['CUDA_VISIBLE_DEVICES']
-            
-            self.model_loaded = True
-            logger.info("SGLang Engine 초기화 완료")
-        except Exception as e:
-            logger.error(f"SGLang Engine 초기화 실패: {e}")
-            self.model_loaded = False
-            raise
+        """서버 연결 확인 (하위 호환성 유지)."""
+        self._ensure_server_ready()
 
     def _ensure_model_loaded(self):
-        """
-        모델이 로드되지 않았다면 로드합니다.
-        """
-        if not self.model_loaded or self.engine is None:
-            self._load_model()
+        """서버 연결 확인 (하위 호환성 유지)."""
+        self._ensure_server_ready()
 
     def ensure_model_loaded(self):
         """외부에서 호출 가능한 공개 메서드."""
-        self._ensure_model_loaded()
+        self._ensure_server_ready()
 
     def cleanup_model(self):
-        """SGLang 엔진과 GPU 리소스를 정리"""
+        """HTTP 세션 정리 (서버는 main.py에서 관리)"""
         try:
-            if self.engine is not None:
-                shutdown = getattr(self.engine, "shutdown", None)
-                if callable(shutdown):
-                    shutdown()
-                self.engine = None
+            self.__class__._ready = False
             self.model_loaded = False
-
-            try:
-                import torch
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-            except Exception:  # pragma: no cover
-                logger.exception("GPU 캐시 정리 중 오류")
-
+            self._session.close()
             logger.info("SGLangGenerator 리소스 정리 완료")
-        except Exception as exc:  # pragma: no cover
+        except Exception as exc:
             logger.error("SGLangGenerator cleanup 실패: %s", exc, exc_info=True)
 
     def generate_response(
@@ -307,82 +289,77 @@ class SGLangGenerator:
         return "\n".join(context_parts)
     
     def _generate_text_sglang(self, system_prompt: str, user_prompt: str, cancellation_event: Optional[threading.Event] = None) -> str:
-        """SGLang Engine을 사용하여 텍스트 생성"""
+        """SGLang /v1/chat/completions API를 사용하여 텍스트 생성"""
+        from notebooklm.sglang_server_manager import sglang_manager
+
         self._ensure_model_loaded()
 
+        # 요청 처리 중 유휴 타임아웃으로 서버가 죽지 않도록 acquire/release로 보호
+        sglang_manager.acquire("generator")
         try:
-            logger.info("SGLang Engine으로 텍스트 생성 시작")
+            logger.info("SGLang 서버로 텍스트 생성 시작")
             
             # 취소 확인
             if cancellation_event and cancellation_event.is_set():
                 raise InterruptedError("Operation cancelled before text generation")
 
-            # 채팅 형식 프롬프트 구성
-            prompt = f"""<|im_start|>system
-{system_prompt}<|im_end|>
-<|im_start|>user
-{user_prompt}<|im_end|>
-<|im_start|>assistant
-"""
-            
-            # 샘플링 파라미터 설정
-            sampling_params = {
+            stop_tokens = ["<" + "|im_end|" + ">", "<" + "|endoftext|" + ">"]
+
+            payload = {
+                "model": self.model_name,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                "max_tokens": self.config.GENERATOR_MAX_TOKENS,
                 "temperature": self.config.GENERATOR_TEMPERATURE,
                 "top_p": self.config.GENERATOR_TOP_P,
-                "max_new_tokens": self.config.GENERATOR_MAX_TOKENS,
-                "stop": ["<|im_end|>", "<|endoftext|>", "### 질문:", "### 답변:", "### 시스템:"]
+                "stop": stop_tokens,
+                "chat_template_kwargs": {"enable_thinking": False},
             }
-            
-            # 백그라운드 스레드에서 실행될 때 이벤트 루프 문제 해결
-            try:
-                # 일반 동기 방식으로 시도
-                result = self.engine.generate(prompt=prompt, sampling_params=sampling_params)
-                response = result["text"]
 
-                response = re.sub(r'<[tT]hink>.*?</[tT]hink>', '', response, flags=re.DOTALL)
+            resp = self._session.post(
+                self._api_url,
+                json=payload,
+                timeout=self._timeout,
+            )
+            resp.raise_for_status()
+            data = resp.json()
 
-                # 2. 불필요한 공백/줄바꿈 정리
-                response = response.strip()
+            response = data["choices"][0]["message"]["content"]
 
-
-                return response
-
-            except RuntimeError as e:
-                if "no current event loop" in str(e):
-                    # 이벤트 루프 문제 발생 시 이벤트 루프 생성 후 다시 시도
-                    import asyncio
-                    try:
-                        loop = asyncio.get_event_loop()
-                    except RuntimeError:
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-                    
-                    # 다시 시도
-                    result = self.engine.generate(prompt=prompt, sampling_params=sampling_params)
-                    response = result["text"]
-
-                    # <think> 태그 제거 로직 추가
-                    response = re.sub(r'<[tT]hink>.*?</[tT]hink>', '', response, flags=re.DOTALL)
-                    
-                    # 불필요한 공백/줄바꿈 정리
-                    response = response.strip()
-                    
-                else:
-                    # 다른 오류는 그대로 전파
-                    raise
+            # <think> 태그 제거
+            response = re.sub(r'<[tT]hink>.*?</[tT]hink>', '', response, flags=re.DOTALL)
+            response = response.strip()
 
             logger.info("SGLang 텍스트 생성 완료")
             return response
-            
+
+        except (requests.exceptions.ReadTimeout, requests.exceptions.ConnectionError) as e:
+            logger.warning("SGLang generator 타임아웃/연결실패, 서버 재시작 후 재시도: %s", e)
+            # 서버 재시작 후 1회 재시도
+            try:
+                sglang_manager.shutdown_server("generator")
+                self.__class__._ready = False
+                self.model_loaded = False
+                if sglang_manager.acquire("generator"):
+                    resp = self._session.post(
+                        self._api_url, json=payload, timeout=self._timeout,
+                    )
+                    resp.raise_for_status()
+                    data = resp.json()
+                    response = data["choices"][0]["message"]["content"]
+                    response = re.sub(r'<[tT]hink>.*?</[tT]hink>', '', response, flags=re.DOTALL)
+                    logger.info("SGLang 텍스트 생성 완료 (재시도 성공)")
+                    return response.strip()
+            except Exception as retry_err:
+                logger.error("SGLang generator 재시도도 실패: %s", retry_err)
+            return f"죄송합니다. 텍스트 생성 서버에 연결할 수 없습니다."
         except Exception as e:
             logger.error(f"SGLang 텍스트 생성 실패: {str(e)}", exc_info=True)
-            # 오류 발생 시 임시 응답 생성
-            fallback_response = f"""오류 발생: {str(e)}
-
-질문: {user_prompt}
-
-응답: 죄송합니다. 텍스트 생성 중 오류가 발생했습니다. 오류 내용: {str(e)}"""
-            return fallback_response
+            return f"죄송합니다. 텍스트 생성 중 오류가 발생했습니다: {str(e)}"
+        finally:
+            sglang_manager.release("generator")
 
     def get_model_info(self):
         """모델 상태 정보 반환 (디버깅용)"""

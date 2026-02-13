@@ -1,18 +1,14 @@
 """
-RAG 시스템을 위한 리랭커 모듈
-Qwen3-Reranker-8B 모델을 사용하여 검색 결과를 재정렬합니다.
+RAG 시스템을 위한 이미지 리랭커 모듈
+SGLang /v1/rerank API + Qwen3-Reranker 프롬프트 포맷으로 검색 결과를 재정렬합니다.
 """
 import os
-import json
 import logging
-import torch
-import numpy as np
 import sys
 import time
 import threading
+import requests
 from typing import List, Dict, Any, Optional, Union
-from tqdm import tqdm
-from transformers import AutoTokenizer, AutoModelForCausalLM
 
 # 상위 디렉토리를 모듈 경로에 추가
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -27,131 +23,77 @@ from config import RAGConfig
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)  # 디버깅을 위해 INFO 레벨로 변경
 
+# Qwen3-Reranker 프롬프트 포맷 상수
+_QUERY_PREFIX = '<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".<|im_end|>\n<|im_start|>user\n'
+_DOC_SUFFIX = '<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n'
+_INSTRUCTION = 'Given a web search query, retrieve relevant passages that answer the query.\n'
+
+
 class RAGReranker:
+    """SGLang /v1/rerank API + Qwen3-Reranker 프롬프트 포맷 기반 이미지 리랭커."""
+    _ready = False
+    _lock = threading.Lock()
+
     def __init__(self, model_name: str = None, ollama_host: str = None):
-        """리랭커 초기화 - 모델을 즉시 로드합니다."""
+        """리랭커 초기화 - SGLang 서버 연결을 확인합니다."""
         config = RAGConfig()
-        self.model_name = model_name if model_name else config.RERANKER_MODEL_NAME
-        self.ollama_host = ollama_host if ollama_host else config.OLLAMA_API_URL
+        self.model_name = model_name or config.SGLANG_RERANKER_MODEL
+        self.endpoint = config.SGLANG_RERANKER_ENDPOINT  # e.g. "http://localhost:30002"
+        self._api_url = f"{self.endpoint}/v1/rerank"
+        self._timeout = 60
+        self._session = requests.Session()
         
-        # 디바이스 설정 - 메모리에 따라 RERANKER_DEVICE 사용
-        self.device = torch.device(config.RERANKER_DEVICE if hasattr(config, 'RERANKER_DEVICE') else ('cuda' if torch.cuda.is_available() else 'cpu'))
-        logger.info(f"디바이스 설정: {self.device}")
+        self.stats = {
+            'total_queries': 0,
+            'total_documents': 0,
+            'total_time': 0.0
+        }
         
-        # 배치 처리 관련 설정 (텍스트 리랭커와 일관성 유지)
-        self.batch_size = getattr(config, 'RERANKER_BATCH_SIZE', 4)
-        self.max_length = getattr(config, 'RERANKER_MAX_LENGTH', 8192)  # Qwen3-Reranker-4B 권장 값
-        
-        # 모델 dtype 설정 (텍스트 리랭커와 일관성 유지)
-        if hasattr(config, 'RERANKER_DTYPE') and config.RERANKER_DTYPE in ["float16", "bfloat16", "float32"]:
-            if config.RERANKER_DTYPE == "float16":
-                self.torch_dtype = torch.float16
-            elif config.RERANKER_DTYPE == "bfloat16":
-                self.torch_dtype = torch.bfloat16
-            else:
-                self.torch_dtype = torch.float32
-        else:
-            # 기본값은 float32
-            self.torch_dtype = torch.float32
-            
-        # SequenceClassification 모델은 logits를 직접 사용하므로 토큰 ID 불필요
-            
-        logger.info(f"이미지 리랭커 모델 dtype 설정: {self.torch_dtype}")
-        
-        # 모델 즉시 로드
-        self.tokenizer = None
-        self.model = None
-        self._load_model()
+        logger.info(f"이미지 리랭커 초기화 완료 (SGLang): {self.model_name} -> {self.endpoint}")
     
-    def _load_model(self):
-        """모델과 토크나이저를 로드합니다."""
-        if self.tokenizer is not None and self.model is not None:
-            logger.info("모델이 이미 로드되어 있습니다.")
-            return True
-        
-        config = RAGConfig()
-        try:
-            logger.info(f"리랭커 모델 로드 중: {self.model_name}")
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model_name, 
-                padding_side='left',  # Qwen3-Reranker 공식 방식
-                trust_remote_code=True,
-                cache_dir=config.CACHE_DIR, 
-                local_files_only=True
-            )
-            
-            # 패딩 토큰 설정 (배치 처리를 위해 필수)
-            if self.tokenizer.pad_token is None:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
-                logger.info(f"패딩 토큰을 EOS 토큰으로 설정: {self.tokenizer.eos_token}")
-            
-            # pad_token_id도 명시적으로 설정
-            if self.tokenizer.pad_token_id is None:
-                self.tokenizer.pad_token_id = self.tokenizer.eos_token_id
-                logger.info(f"패딩 토큰 ID 설정: {self.tokenizer.pad_token_id}")
-            
-            # CausalLM 모델 로드 (공식 방식)
-            logger.info(f"모델 로딩 시작: {self.model_name}")
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.model_name,
-                cache_dir=config.CACHE_DIR,
-                local_files_only=True,
-                trust_remote_code=True,
-                torch_dtype=torch.bfloat16,
-                device_map=self.device  # 직접 디바이스에 로드
-            ).eval()  # 평가 모드로 설정
-            logger.info(f"모델 로딩 완료: {self.model_name}")
-            
-            # 모델 파라미터 dtype 및 값 확인
+    def _ensure_server_ready(self) -> bool:
+        """SGLang 리랭커 서버가 응답 가능한지 확인합니다. 미기동 시 자동 기동."""
+        from notebooklm.sglang_server_manager import sglang_manager
+
+        if self.__class__._ready:
             try:
-                first_param = next(self.model.parameters())
-                model_dtype = first_param.dtype
-                param_mean = first_param.mean().item()
-                param_std = first_param.std().item()
-                logger.info(f"모델 파라미터 dtype: {model_dtype}")
-                logger.info(f"첫 번째 파라미터 통계 - mean: {param_mean:.6f}, std: {param_std:.6f}")
-                logger.info(f"모델 총 파라미터 수: {sum(p.numel() for p in self.model.parameters()):,}")
+                resp = self._session.get(f"{self.endpoint}/health", timeout=3)
+                if resp.status_code == 200:
+                    sglang_manager.touch("reranker")
+                    return True
+            except Exception:
+                pass
+            self.__class__._ready = False
+
+        with self.__class__._lock:
+            if self.__class__._ready:
+                sglang_manager.touch("reranker")
+                return True
+            try:
+                resp = self._session.get(f"{self.endpoint}/health", timeout=5)
+                if resp.status_code == 200:
+                    self.__class__._ready = True
+                    sglang_manager.touch("reranker")
+                    logger.info("SGLang image reranker server ready: %s", self.endpoint)
+                    return True
+            except (requests.ConnectionError, requests.Timeout, Exception):
+                pass
+
+            # 서버가 응답하지 않으면 sglang_manager로 자동 기동
+            logger.info("SGLang reranker server 미기동 → acquire로 자동 기동 시도")
+            try:
+                if sglang_manager.acquire("reranker"):
+                    sglang_manager.release("reranker")
+                    self.__class__._ready = True
+                    return True
             except Exception as e:
-                logger.error(f"모델 파라미터 확인 실패: {e}")
-            
-            # yes/no 토큰 ID 설정
-            self.token_false_id = self.tokenizer.convert_tokens_to_ids("no")
-            self.token_true_id = self.tokenizer.convert_tokens_to_ids("yes")
-            logger.info(f"토큰 ID - yes: {self.token_true_id}, no: {self.token_false_id}")
-            
-            # 프롬프트 템플릿 (공식 방식)
-            self.prefix = "<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be \"yes\" or \"no\".<|im_end|>\n<|im_start|>user\n"
-            self.suffix = "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
-            self.prefix_tokens = self.tokenizer.encode(self.prefix, add_special_tokens=False)
-            self.suffix_tokens = self.tokenizer.encode(self.suffix, add_special_tokens=False)
-            logger.info(f"Prefix tokens 길이: {len(self.prefix_tokens)}, Suffix tokens 길이: {len(self.suffix_tokens)}")
-            
-            logger.info(f"CausalLM 모델 로드 완료 - 디바이스: {self.device}")
-            
-            # 모델 파라미터의 dtype 확인 및 로깅
-            param_dtypes = set(p.dtype for p in self.model.parameters())
-            logger.info(f"모델 파라미터 dtype: {param_dtypes}")
-            
-            self.model.eval()
-            logger.info(f"리랭커 모델 로드 완료: {self.model_name}")
-            return True
-        except Exception as e:
-            logger.error(f"리랭커 모델 로드 실패: {str(e)}")
-            import traceback
-            logger.error(traceback.format_exc())
-            self.tokenizer = None
-            self.model = None
+                logger.error("SGLang reranker 자동 기동 실패: %s", e)
             return False
+
+    def _load_model(self) -> bool:
+        """서버 연결 확인 (하위 호환성 유지)."""
+        return self._ensure_server_ready()
     
-    def format_instruction(self, instruction: str, query: str, doc: str) -> str:
-        """공식 프롬프트 형식"""
-        if instruction is None:
-            instruction = 'Given a web search query, retrieve relevant passages that answer the query'
-        output = "<Instruct>: {instruction}\n<Query>: {query}\n<Document>: {doc}".format(
-            instruction=instruction, query=query, doc=doc
-        )
-        return output
-            
     def format_passage(self, doc: Union[Dict[str, Any], str]) -> str:
         """
         문서를 텍스트로 변환합니다 (SequenceClassification 모델용).
@@ -193,138 +135,59 @@ class RAGReranker:
         return doc_text
     
     def compute_similarity(self, query: str, item: Union[Dict[str, Any], str]) -> float:
-        """
-        쿼리와 아이템 간의 유사도를 계산합니다 (SequenceClassification 모델 사용).
-        """
+        """쿼리와 아이템 간의 유사도를 계산합니다 (SGLang API)."""
         try:
-            # 모델이 로드되지 않았으면 기본값 반환
-            if self.tokenizer is None or self.model is None:
-                logger.warning("리랭커 모델이 로드되지 않음")
-                return 0.5
-            
-            # 문서 텍스트 추출
             passage = self.format_passage(item)
-            
-            # 텍스트가 비어있는 경우 기본값 반환
             if not passage.strip():
                 logger.warning("문서 텍스트가 비어있어 기본 점수를 사용합니다.")
                 return 0.5
-                
-            # 토큰화 (query와 passage를 pair로)
-            inputs = self.tokenizer(
-                query,
-                passage,
-                padding=True,
-                truncation=True,
-                max_length=self.max_length,
-                return_tensors="pt"
-            )
-            
-            # 입력을 디바이스로 이동
-            inputs = {k: v.to(device=self.device) for k, v in inputs.items()}
-            
-            # 모델 추론 - 점수 계산
-            with torch.no_grad():
-                with torch.amp.autocast(device_type='cuda' if self.device.type == 'cuda' else 'cpu'):
-                    outputs = self.model(**inputs, return_dict=True)
-                    
-                    # logits는 [batch_size, 2] 형태 - [관련없음, 관련있음]
-                    logits = outputs.logits.to(dtype=torch.float32)
-                    
-                    # 텍스트 리랭커와 동일한 방식으로 점수 계산
-                    score = torch.sigmoid((logits[:, 1] * 1.2 - logits[:, 0]) * 1.0).item()
-                    
-                    # 점수 로깅
-                    logger.info(f"이미지 리랭커 점수: {score:.4f} (쿼리: '{query[:30]}...', 문서: '{passage[:50]}...')")
-                    
-                    return score
-                
+            scores = self.compute_similarity_batch(query, [passage])
+            return scores[0] if scores else 0.5
         except Exception as e:
             logger.error(f"유사도 계산 오류: {str(e)}")
-            import traceback
-            logger.error(traceback.format_exc())
             return 0.5
 
-    @torch.no_grad()
     def compute_similarity_batch(self, query: str, passages: List[str], cancellation_event: Optional[threading.Event] = None) -> List[float]:
-        """배치로 여러 문서의 유사도를 계산합니다 (SequenceClassification 방식)."""
-        # 모델이 로드되지 않았으면 기본값 반환
-        if self.tokenizer is None or self.model is None:
-            logger.error("모델이 로드되지 않았습니다.")
+        """SGLang /v1/rerank API를 호출하여 배치 유사도를 계산합니다."""
+        if not self._ensure_server_ready():
+            logger.error("SGLang image reranker server not available")
             return [0.5] * len(passages)
         
-        # 취소 이벤트 처리
         if cancellation_event and cancellation_event.is_set():
             raise InterruptedError("Image reranking operation cancelled")
-        
-        all_scores = []
-        
-        # 배치 단위로 처리
-        for i in range(0, len(passages), self.batch_size):
-            # 취소 이벤트 확인
-            if cancellation_event and cancellation_event.is_set():
-                raise InterruptedError("Image reranking operation cancelled")
+
+        try:
+            # Qwen3-Reranker 프롬프트 포맷 적용
+            formatted_query = f"{_QUERY_PREFIX}<Instruct>: {_INSTRUCTION}<Query>: {query}\n"
+            formatted_docs = [f"<Document>: {doc} {_DOC_SUFFIX}" for doc in passages]
+
+            payload = {
+                "query": formatted_query,
+                "documents": formatted_docs,
+            }
+            resp = self._session.post(
+                self._api_url,
+                json=payload,
+                timeout=self._timeout,
+            )
+            resp.raise_for_status()
+            data = resp.json()
             
-            batch_passages = passages[i:i + self.batch_size]
-            batch_size = len(batch_passages)
+            # SGLang /v1/rerank 응답: {"results": [{"index": 0, "relevance_score": 0.95}, ...]}
+            results_data = data.get("results", [])
+            score_map = {item["index"]: item["relevance_score"] for item in results_data}
+            scores = [score_map.get(i, 0.5) for i in range(len(passages))]
             
-            try:
-                # 프롬프트 형식으로 변환 (공식 방식)
-                pairs = [self.format_instruction(None, query, passage) for passage in batch_passages]
-                
-                # 토큰화 (공식 방식)
-                inputs = self.tokenizer(
-                    pairs,
-                    padding=False,
-                    truncation='longest_first',
-                    return_attention_mask=False,
-                    max_length=self.max_length - len(self.prefix_tokens) - len(self.suffix_tokens)
-                )
-                
-                # prefix와 suffix 토큰 추가
-                for idx, ele in enumerate(inputs['input_ids']):
-                    inputs['input_ids'][idx] = self.prefix_tokens + ele + self.suffix_tokens
-                
-                # 패딩 적용
-                inputs = self.tokenizer.pad(inputs, padding=True, return_tensors="pt", max_length=self.max_length)
-                
-                # 입력을 디바이스로 이동
-                for key in inputs:
-                    inputs[key] = inputs[key].to(self.device)
-                
-                # 모델 추론 (공식 방식)
-                with torch.no_grad():
-                    outputs = self.model(**inputs)
-                    
-                    # 마지막 토큰의 logits 사용
-                    batch_logits = outputs.logits[:, -1, :]
-                    
-                    # yes/no 토큰의 logits 추출
-                    true_vector = batch_logits[:, self.token_true_id]
-                    false_vector = batch_logits[:, self.token_false_id]
-                    
-                    # 점수 계산
-                    batch_logits = torch.stack([false_vector, true_vector], dim=1)
-                    batch_logits = torch.nn.functional.log_softmax(batch_logits, dim=1)
-                    batch_scores = batch_logits[:, 1].exp().cpu().tolist()
-                    all_scores.extend(batch_scores)
-                
-                # 배치별 점수 분포 로깅
-                logger.info(f"배치 {i//self.batch_size + 1} 점수 분포 - 최소: {min(batch_scores):.4f}, 최대: {max(batch_scores):.4f}, 평균: {sum(batch_scores)/len(batch_scores):.4f}")
-                
-            except Exception as e:
-                logger.error(f"배치 처리 중 오류 발생: {str(e)}")
-                import traceback
-                logger.error(traceback.format_exc())
-                # 오류 발생 시 기본 점수 사용
-                logger.warning(f"오류로 인해 배치 {i//self.batch_size + 1}의 {batch_size}개 문서에 기본 점수 0.5 할당")
-                all_scores.extend([0.5] * batch_size)
-        
-        # 전체 점수 분포 로깅
-        if all_scores:
-            logger.info(f"배치 처리 완료: {len(passages)}개 문서, {len(all_scores)}개 점수")
-            logger.info(f"전체 점수 분포 - 최소: {min(all_scores):.4f}, 최대: {max(all_scores):.4f}, 평균: {sum(all_scores)/len(all_scores):.4f}")
-        return all_scores
+            if scores:
+                logger.info(f"이미지 리랭킹 점수 - 최소: {min(scores):.4f}, 최대: {max(scores):.4f}, 평균: {sum(scores)/len(scores):.4f}")
+            return scores
+            
+        except requests.ConnectionError:
+            logger.error("SGLang image reranker server connection failed: %s", self._api_url)
+            return [0.5] * len(passages)
+        except Exception as e:
+            logger.error(f"SGLang image rerank API 호출 오류: {e}")
+            return [0.5] * len(passages)
         
     def rerank(
         self,
@@ -347,31 +210,21 @@ class RAGReranker:
         Returns:
             List[Dict[str, Any]]: 재정렬된 결과 목록
         """
-        # 시작 시간 기록 및 디버깅 정보 출력
         start_time = time.time()
-        logger.info(f"이미지 리랭커 호출: 쿼리='{query}', 결과 수={len(results)}, top_k={top_k}, 모델 dtype={self.torch_dtype}")
+        logger.info(f"이미지 리랭커 호출 (SGLang): 쿼리='{query}', 결과 수={len(results)}, top_k={top_k}")
         
         if not results:
             logger.info("리랭킹할 결과가 없습니다.")
             return []
         
-        # 모델이 로드되지 않았으면 원본 결과 반환
-        if self.tokenizer is None or self.model is None:
-            logger.warning(f"리랭커 모델이 로드되지 않았습니다. 원본 결과를 그대로 반환합니다.")
+        # 서버가 준비되지 않았으면 원본 결과 반환
+        if not self._ensure_server_ready():
+            logger.warning("SGLang 리랭커 서버가 준비되지 않았습니다. 원본 결과를 그대로 반환합니다.")
             return results[:top_k] if top_k else results
         
-        # config에서 설정값 가져오기
         config = RAGConfig()
         if min_score is None:
             min_score = getattr(config, 'IMAGE_RERANK_SCORE_THRESHOLD', 0.7)
-            
-        # 텍스트 리랭커와 일관성을 위해 통계 추적 추가
-        if not hasattr(self, 'stats'):
-            self.stats = {
-                'total_queries': 0,
-                'total_documents': 0,
-                'total_time': 0.0
-            }
         
         self.stats['total_queries'] += 1
         self.stats['total_documents'] += len(results)
