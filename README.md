@@ -19,7 +19,7 @@ LangGraph-Graph RAG is a vector–graph hybrid RAG platform powered by **LangGra
 
 - **LangGraph state machines**: ingestion, query reasoning, summarization, and mindmap generation all run on LangGraph `StateGraph` with `MemorySaver` checkpointing.
 - **Checkpoint & backtracking**: every node transition is checkpointed; the quality gate and GoT snapshotting roll back to alternative retrieval paths or earlier expansions when quality is insufficient (up to 2 retries).
-- **3-way retrieval routing**: hop ≤ 2 → 기존 Vector RAG (TextSearcher + Reranker), hop 3–5 → Weaviate Cross-Reference GraphQL traversal, hop ≥ 6 → Neo4j Deep Graph Traversal.
+- **3-way retrieval routing**: hop ≤ 2 → Vector RAG (TextSearcher + Reranker), hop 3–5 → Weaviate Cross-Reference GraphQL traversal, hop ≥ 6 → Neo4j Deep Graph Traversal.
 - **Observer LLM + GoT expansion**: an observer LLM scores each path result (0–1). Passing results trigger Graph-of-Thought branching/merging for deeper context.
 - **SGLang inference**: generator, embedding, reranker, hop classifier, and the observer LLM all run on SGLang servers with lazy loading (`LazyModelManager` + `SGLangServerManager`).
 - **Automatic graph upsert**: OCR → LLM entity/event/relation extraction → simultaneous Weaviate + Neo4j ingestion.
