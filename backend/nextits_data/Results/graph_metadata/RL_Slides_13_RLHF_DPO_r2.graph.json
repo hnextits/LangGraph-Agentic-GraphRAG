@@ -15,7 +15,7 @@
     },
     {
       "entity_id": "c1_ENT_3",
-      "name": "Vocabulary",
+      "name": "Sequence",
       "type": "Entity",
       "chunk_id": 1
     },
@@ -39,224 +39,230 @@
     },
     {
       "entity_id": "c1_ENT_7",
-      "name": "RLHF",
-      "type": "Algorithm",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_8",
       "name": "Contrastive Preference Learning",
       "type": "Paper",
       "chunk_id": 1
     },
     {
+      "entity_id": "c1_ENT_8",
+      "name": "Eric Mitchell",
+      "type": "Person",
+      "chunk_id": 1
+    },
+    {
       "entity_id": "c1_ENT_9",
-      "name": "Contextual Bandit",
-      "type": "Concept",
+      "name": "UC Berkeley",
+      "type": "Organization",
       "chunk_id": 1
     },
     {
       "entity_id": "c1_ENT_10",
-      "name": "Markov Decision Process",
-      "type": "Concept",
+      "name": "cs285",
+      "type": "Course",
       "chunk_id": 1
     },
     {
       "entity_id": "c1_ENT_11",
-      "name": "Token Sequence",
+      "name": "Autoregressive Model",
+      "type": "Model",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_12",
+      "name": "Vocabulary",
       "type": "Entity",
       "chunk_id": 1
     },
     {
       "entity_id": "c1_ENT_13",
-      "name": "Autoregressive Model",
-      "type": "Concept",
+      "name": "Token Sequence",
+      "type": "Entity",
       "chunk_id": 1
     },
     {
       "entity_id": "c1_ENT_14",
       "name": "Distribution",
-      "type": "Concept",
+      "type": "Entity",
       "chunk_id": 1
     },
     {
       "entity_id": "c1_ENT_15",
-      "name": "Probability Distribution",
+      "name": "Contextual Bandit",
       "type": "Concept",
       "chunk_id": 1
     },
     {
       "entity_id": "c1_ENT_16",
-      "name": "Sequence",
-      "type": "Entity",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_17",
-      "name": "Reinforcement Learning",
+      "name": "Per-Token MDP",
       "type": "Concept",
       "chunk_id": 1
     },
     {
+      "entity_id": "c1_ENT_17",
+      "name": "RLHF",
+      "type": "Algorithm",
+      "chunk_id": 1
+    },
+    {
       "entity_id": "c1_ENT_18",
-      "name": "Feedback",
-      "type": "Entity",
+      "name": "DPO",
+      "type": "Algorithm",
       "chunk_id": 1
     },
     {
       "entity_id": "c1_ENT_19",
-      "name": "Training",
-      "type": "Process",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_20",
       "name": "General-Purpose",
       "type": "Concept",
       "chunk_id": 1
     },
     {
+      "entity_id": "c1_ENT_20",
+      "name": "Reinforcement Learning",
+      "type": "Field",
+      "chunk_id": 1
+    },
+    {
       "entity_id": "c1_ENT_21",
-      "name": "Rule",
-      "type": "Concept",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_22",
-      "name": "Entity",
-      "type": "Concept",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_23",
-      "name": "Relation",
-      "type": "Concept",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_24",
-      "name": "Algorithm",
-      "type": "Concept",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_25",
-      "name": "Optimization",
-      "type": "Process",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_26",
-      "name": "Application",
-      "type": "Concept",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_27",
-      "name": "Model",
-      "type": "Concept",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_28",
-      "name": "Tokenization",
-      "type": "Process",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_29",
-      "name": "Sequence of Tokens",
-      "type": "Entity",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_30",
-      "name": "Distribution Over Tokens",
-      "type": "Concept",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_31",
-      "name": "Probability",
-      "type": "Concept",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_32",
-      "name": "Contextual Bandit Interpretation",
-      "type": "Concept",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_33",
-      "name": "Per-Token MDP Interpretation",
-      "type": "Concept",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_34",
       "name": "Human",
       "type": "Entity",
       "chunk_id": 1
     },
     {
+      "entity_id": "c1_ENT_22",
+      "name": "Feedback",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_23",
+      "name": "Preference",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_24",
+      "name": "Optimization",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_25",
+      "name": "Training",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_26",
+      "name": "Rule",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_27",
+      "name": "Entity",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_28",
+      "name": "Relation",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_30",
+      "name": "Output",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_32",
+      "name": "Value",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_33",
+      "name": "Sequential",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_34",
+      "name": "Number",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
       "entity_id": "c1_ENT_35",
-      "name": "Feedback Mechanism",
-      "type": "Concept",
+      "name": "Extraction",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_36",
+      "name": "Named",
+      "type": "Entity",
       "chunk_id": 1
     },
     {
       "entity_id": "c1_ENT_37",
-      "name": "Language Model Training",
-      "type": "Process",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_38",
-      "name": "Preference Learning",
-      "type": "Concept",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_39",
-      "name": "Contrastive Learning",
-      "type": "Concept",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_40",
-      "name": "Preference",
-      "type": "Concept",
+      "name": "Technical",
+      "type": "Entity",
       "chunk_id": 1
     },
     {
       "entity_id": "c1_ENT_41",
-      "name": "Optimization Technique",
-      "type": "Concept",
+      "name": "Algorithm",
+      "type": "Entity",
       "chunk_id": 1
     },
     {
       "entity_id": "c1_ENT_42",
-      "name": "Direct Optimization",
-      "type": "Concept",
+      "name": "Paper",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_43",
+      "name": "Person",
+      "type": "Entity",
       "chunk_id": 1
     },
     {
       "entity_id": "c1_ENT_44",
-      "name": "Training Process",
-      "type": "Process",
+      "name": "Organization",
+      "type": "Entity",
       "chunk_id": 1
     },
     {
-      "entity_id": "c1_ENT_47",
-      "name": "Feedback Loop",
-      "type": "Concept",
+      "entity_id": "c1_ENT_45",
+      "name": "Course",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_46",
+      "name": "Model",
+      "type": "Entity",
       "chunk_id": 1
     },
     {
       "entity_id": "c1_ENT_48",
-      "name": "Model Training",
-      "type": "Process",
+      "name": "Concept",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_49",
+      "name": "Process",
+      "type": "Entity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_50",
+      "name": "Field",
+      "type": "Entity",
       "chunk_id": 1
     },
     {
@@ -267,25 +273,13 @@
     },
     {
       "entity_id": "c2_ENT_3",
-      "name": "Human",
+      "name": "Human Feedback",
       "type": "Concept",
       "chunk_id": 2
     },
     {
       "entity_id": "c2_ENT_4",
-      "name": "Feedback",
-      "type": "Concept",
-      "chunk_id": 2
-    },
-    {
-      "entity_id": "c2_ENT_5",
       "name": "Helpfulness",
-      "type": "Concept",
-      "chunk_id": 2
-    },
-    {
-      "entity_id": "c2_ENT_11",
-      "name": "Salt",
       "type": "Concept",
       "chunk_id": 2
     },
@@ -293,6 +287,18 @@
       "entity_id": "c3_ENT_12",
       "name": "Step",
       "type": "Procedure",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_15",
+      "name": "Preference",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_16",
+      "name": "Model",
+      "type": "Concept",
       "chunk_id": 3
     },
     {
@@ -328,6 +334,12 @@
     {
       "entity_id": "c3_ENT_23",
       "name": "Prompt",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_24",
+      "name": "Feedback",
       "type": "Concept",
       "chunk_id": 3
     },
@@ -398,6 +410,120 @@
       "chunk_id": 3
     },
     {
+      "entity_id": "c3_ENT_36",
+      "name": "Implicit Score",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_37",
+      "name": "Choice",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_38",
+      "name": "Preference Likelihood",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_39",
+      "name": "Preference Over",
+      "type": "Relation",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_40",
+      "name": "Model Sample",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_41",
+      "name": "Preference Data",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_42",
+      "name": "Preference Pair",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_43",
+      "name": "Preferred Response",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_44",
+      "name": "Dispreferred Response",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_45",
+      "name": "Preference Feedback",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_46",
+      "name": "Learning",
+      "type": "Relation",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_47",
+      "name": "Reward Function",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_48",
+      "name": "Implicit Score",
+      "type": "Relation",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_49",
+      "name": "Logistic Sigmoid Function",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_50",
+      "name": "Logistic Sigmoid",
+      "type": "Relation",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_51",
+      "name": "Reward Gap",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_52",
+      "name": "Preference Likelihood",
+      "type": "Relation",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_53",
+      "name": "Higher Preference",
+      "type": "Relation",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_54",
+      "name": "Higher Likelihood",
+      "type": "Relation",
+      "chunk_id": 3
+    },
+    {
       "entity_id": "c4_ENT_2",
       "name": "Bradley-Terry Model",
       "type": "Model",
@@ -413,6 +539,12 @@
       "entity_id": "c4_ENT_4",
       "name": "Neural Network",
       "type": "Model",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_8",
+      "name": "Probability",
+      "type": "Concept",
       "chunk_id": 4
     },
     {
@@ -440,12 +572,6 @@
       "chunk_id": 4
     },
     {
-      "entity_id": "c4_ENT_14",
-      "name": "Model Sample",
-      "type": "Concept",
-      "chunk_id": 4
-    },
-    {
       "entity_id": "c4_ENT_15",
       "name": "Preference Over Model Samples",
       "type": "Concept",
@@ -453,13 +579,13 @@
     },
     {
       "entity_id": "c5_ENT_3",
-      "name": "Policy",
+      "name": "policy",
       "type": "Model",
       "chunk_id": 5
     },
     {
       "entity_id": "c5_ENT_4",
-      "name": "Reference Model",
+      "name": "original model",
       "type": "Model",
       "chunk_id": 5
     },
@@ -497,12 +623,6 @@
       "entity_id": "c6_ENT_5",
       "name": "AI model",
       "type": "Entity",
-      "chunk_id": 6
-    },
-    {
-      "entity_id": "c6_ENT_6",
-      "name": "preference feedback",
-      "type": "Concept",
       "chunk_id": 6
     },
     {
@@ -752,12 +872,6 @@
       "chunk_id": 6
     },
     {
-      "entity_id": "c7_ENT_1",
-      "name": "Reward Function",
-      "type": "Concept",
-      "chunk_id": 7
-    },
-    {
       "entity_id": "c7_ENT_2",
       "name": "Additive Constant",
       "type": "Concept",
@@ -824,62 +938,38 @@
       "chunk_id": 7
     },
     {
-      "entity_id": "c7_ENT_18",
+      "entity_id": "c7_ENT_17",
       "name": "Policy Update",
       "type": "Concept",
       "chunk_id": 7
     },
     {
-      "entity_id": "c7_ENT_19",
+      "entity_id": "c7_ENT_18",
       "name": "Loss",
       "type": "Concept",
       "chunk_id": 7
     },
     {
       "entity_id": "c7_ENT_20",
-      "name": "Closed-form Structure",
-      "type": "Concept",
-      "chunk_id": 7
-    },
-    {
-      "entity_id": "c7_ENT_21",
-      "name": "One-to-one Correspondence",
-      "type": "Concept",
-      "chunk_id": 7
-    },
-    {
-      "entity_id": "c7_ENT_22",
-      "name": "Preference Data",
-      "type": "Concept",
-      "chunk_id": 7
-    },
-    {
-      "entity_id": "c7_ENT_23",
-      "name": "Policy Optimization",
-      "type": "Concept",
-      "chunk_id": 7
-    },
-    {
-      "entity_id": "c7_ENT_24",
-      "name": "Policy Determination",
-      "type": "Concept",
-      "chunk_id": 7
-    },
-    {
-      "entity_id": "c7_ENT_26",
       "name": "Optimal Policy",
       "type": "Concept",
       "chunk_id": 7
     },
     {
-      "entity_id": "c7_ENT_27",
-      "name": "Mapping",
+      "entity_id": "c7_ENT_21",
+      "name": "Closed-form Structure",
       "type": "Concept",
       "chunk_id": 7
     },
     {
-      "entity_id": "c7_ENT_28",
-      "name": "Transformation",
+      "entity_id": "c7_ENT_22",
+      "name": "Correspondence",
+      "type": "Concept",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_27",
+      "name": "Optimization",
       "type": "Concept",
       "chunk_id": 7
     },
@@ -891,13 +981,13 @@
     },
     {
       "entity_id": "c8_ENT_2",
-      "name": "π_θ(y",
+      "name": "πθ(y",
       "type": "x)",
       "chunk_id": 8
     },
     {
       "entity_id": "c8_ENT_3",
-      "name": "π_ref(y",
+      "name": "πref(y",
       "type": "x)",
       "chunk_id": 8
     },
@@ -938,48 +1028,6 @@
       "chunk_id": 8
     },
     {
-      "entity_id": "c8_ENT_11",
-      "name": "Normalization Constant",
-      "type": "MathematicalConcept",
-      "chunk_id": 8
-    },
-    {
-      "entity_id": "c8_ENT_12",
-      "name": "Reward Function",
-      "type": "MathematicalConcept",
-      "chunk_id": 8
-    },
-    {
-      "entity_id": "c8_ENT_13",
-      "name": "Optimal Policy",
-      "type": "PolicyType",
-      "chunk_id": 8
-    },
-    {
-      "entity_id": "c8_ENT_14",
-      "name": "Reference Policy",
-      "type": "PolicyType",
-      "chunk_id": 8
-    },
-    {
-      "entity_id": "c8_ENT_15",
-      "name": "Exponential Form",
-      "type": "MathematicalForm",
-      "chunk_id": 8
-    },
-    {
-      "entity_id": "c8_ENT_16",
-      "name": "Direct Preference Optimization",
-      "type": "OptimizationMethod",
-      "chunk_id": 8
-    },
-    {
-      "entity_id": "c8_ENT_17",
-      "name": "Intractable",
-      "type": "ComputationalComplexity",
-      "chunk_id": 8
-    },
-    {
       "entity_id": "c9_ENT_1",
       "name": "loss function on reward functions",
       "type": "Concept",
@@ -994,6 +1042,12 @@
     {
       "entity_id": "c9_ENT_3",
       "name": "policies",
+      "type": "Concept",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_4",
+      "name": "transformation",
       "type": "Concept",
       "chunk_id": 9
     },
@@ -1020,12 +1074,6 @@
       "name": "beta",
       "type": "Concept",
       "chunk_id": 9
-    },
-    {
-      "entity_id": "c10_ENT_1",
-      "name": "DPO",
-      "type": "Algorithm",
-      "chunk_id": 10
     },
     {
       "entity_id": "c10_ENT_4",
@@ -1316,12 +1364,6 @@
       "chunk_id": 11
     },
     {
-      "entity_id": "c11_ENT_12",
-      "name": "Factuality",
-      "type": "Attribute",
-      "chunk_id": 11
-    },
-    {
       "entity_id": "c12_ENT_1",
       "name": "factuality",
       "type": "Concept",
@@ -1424,12 +1466,6 @@
       "chunk_id": 13
     },
     {
-      "entity_id": "c13_ENT_13",
-      "name": "Human Feedback",
-      "type": "Concept",
-      "chunk_id": 13
-    },
-    {
       "entity_id": "c13_ENT_15",
       "name": "Preferences",
       "type": "Concept",
@@ -1444,34 +1480,6 @@
   ],
   "events": [],
   "relations": [
-    {
-      "source_id": "c2_ENT_1",
-      "target_id": "c2_ENT_2",
-      "relation": "relies on",
-      "chunk_id": 2,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c2_ENT_1",
-      "target_id": "c2_ENT_3",
-      "relation": "involves",
-      "chunk_id": 2,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c2_ENT_1",
-      "target_id": "c2_ENT_4",
-      "relation": "uses",
-      "chunk_id": 2,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c2_ENT_1",
-      "target_id": "c2_ENT_5",
-      "relation": "measures",
-      "chunk_id": 2,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
     {
       "source_id": "c4_ENT_1",
       "target_id": "c4_ENT_2",
@@ -1496,7 +1504,7 @@
     {
       "source_id": "c4_ENT_1",
       "target_id": "c4_ENT_5",
-      "relation": "relies on",
+      "relation": "based on",
       "chunk_id": 4,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
@@ -1522,8 +1530,29 @@
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_14",
+      "relation": "involves",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_15",
+      "relation": "involves",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
       "source_id": "c4_ENT_2",
       "target_id": "c4_ENT_6",
+      "relation": "connects",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_2",
+      "target_id": "c4_ENT_7",
       "relation": "connects",
       "chunk_id": 4,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
@@ -1538,7 +1567,7 @@
     {
       "source_id": "c4_ENT_3",
       "target_id": "c4_ENT_12",
-      "relation": "assigns to",
+      "relation": "assigns",
       "chunk_id": 4,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
@@ -1551,15 +1580,15 @@
     },
     {
       "source_id": "c4_ENT_4",
-      "target_id": "c4_ENT_12",
-      "relation": "inputs",
+      "target_id": "c4_ENT_7",
+      "relation": "approximates",
       "chunk_id": 4,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
-      "source_id": "c4_ENT_7",
+      "source_id": "c4_ENT_4",
       "target_id": "c4_ENT_12",
-      "relation": "assigns to",
+      "relation": "approximates",
       "chunk_id": 4,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
@@ -1578,16 +1607,23 @@
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
-      "source_id": "c4_ENT_12",
-      "target_id": "c4_ENT_7",
-      "relation": "assigns to",
+      "source_id": "c4_ENT_13",
+      "target_id": "c4_ENT_1",
+      "relation": "uses",
       "chunk_id": 4,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
-      "source_id": "c4_ENT_13",
+      "source_id": "c4_ENT_14",
       "target_id": "c4_ENT_1",
-      "relation": "uses",
+      "relation": "involves",
+      "chunk_id": 4,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c4_ENT_15",
+      "target_id": "c4_ENT_1",
+      "relation": "involves",
       "chunk_id": 4,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
@@ -1601,7 +1637,7 @@
     {
       "source_id": "c5_ENT_3",
       "target_id": "c5_ENT_2",
-      "relation": "achieves high reward while staying close to",
+      "relation": "achieves high reward",
       "chunk_id": 5,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
@@ -1609,6 +1645,13 @@
       "source_id": "c5_ENT_3",
       "target_id": "c5_ENT_4",
       "relation": "staying close to",
+      "chunk_id": 5,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c5_ENT_3",
+      "target_id": "c5_ENT_5",
+      "relation": "optimized by",
       "chunk_id": 5,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
@@ -1627,13 +1670,6 @@
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
-      "source_id": "c5_ENT_5",
-      "target_id": "c5_ENT_3",
-      "relation": "keeps close to",
-      "chunk_id": 5,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
       "source_id": "c5_ENT_2",
       "target_id": "c5_ENT_4",
       "relation": "accurate near",
@@ -1641,9 +1677,37 @@
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
+      "source_id": "c5_ENT_5",
+      "target_id": "c5_ENT_4",
+      "relation": "keeps close to",
+      "chunk_id": 5,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_5",
+      "relation": "uses",
+      "chunk_id": 5,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_6",
+      "relation": "related to",
+      "chunk_id": 5,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
       "source_id": "c5_ENT_6",
       "target_id": "c5_ENT_3",
-      "relation": "aligns latent space with human visual perception",
+      "relation": "aligns latent space with",
+      "chunk_id": 5,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c5_ENT_6",
+      "target_id": "c5_ENT_2",
+      "relation": "scores",
       "chunk_id": 5,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
@@ -1804,7 +1868,7 @@
     {
       "source_id": "c6_ENT_26",
       "target_id": "c6_ENT_4",
-      "relation": "related to",
+      "relation": "direct preference optimization",
       "chunk_id": 6,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
@@ -1844,199 +1908,129 @@
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
-      "source_id": "c8_ENT_1",
-      "target_id": "c8_ENT_2",
-      "relation": "represents",
-      "chunk_id": 8,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c8_ENT_1",
+      "source_id": "c8_ENT_2",
       "target_id": "c8_ENT_3",
-      "relation": "represents",
+      "relation": "KL divergence between",
       "chunk_id": 8,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
-      "source_id": "c8_ENT_1",
+      "source_id": "c8_ENT_4",
+      "target_id": "c8_ENT_2",
+      "relation": "optimizes",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_2",
       "target_id": "c8_ENT_4",
-      "relation": "minimizes",
+      "relation": "sums over",
       "chunk_id": 8,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
-      "source_id": "c8_ENT_6",
-      "target_id": "c8_ENT_4",
-      "relation": "influences",
-      "chunk_id": 8,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c8_ENT_6",
-      "target_id": "c8_ENT_5",
-      "relation": "influences",
-      "chunk_id": 8,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c8_ENT_6",
-      "target_id": "c8_ENT_7",
-      "relation": "influences",
-      "chunk_id": 8,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c8_ENT_8",
-      "target_id": "c8_ENT_16",
-      "relation": "related to",
+      "source_id": "c8_ENT_4",
+      "target_id": "c8_ENT_2",
+      "relation": "exponentially weighted by",
       "chunk_id": 8,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
       "source_id": "c8_ENT_9",
-      "target_id": "c8_ENT_16",
-      "relation": "related to",
+      "target_id": "c8_ENT_1",
+      "relation": "simplifies",
       "chunk_id": 8,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
-      "source_id": "c8_ENT_10",
+      "source_id": "c8_ENT_1",
       "target_id": "c8_ENT_4",
       "relation": "provides",
       "chunk_id": 8,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
-      "source_id": "c8_ENT_11",
+      "source_id": "c8_ENT_4",
       "target_id": "c8_ENT_5",
-      "relation": "defines",
+      "relation": "used in calculation of",
       "chunk_id": 8,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
-      "source_id": "c8_ENT_12",
+      "source_id": "c8_ENT_6",
+      "target_id": "c8_ENT_4",
+      "relation": "expressed as function of",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_2",
+      "target_id": "c8_ENT_4",
+      "relation": "assigns higher probability than",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_2",
+      "target_id": "c8_ENT_4",
+      "relation": "assigns lower probability than",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_4",
+      "target_id": "c8_ENT_5",
+      "relation": "ensures normalization of",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_4",
+      "target_id": "c8_ENT_5",
+      "relation": "intractable for long-form generation",
+      "chunk_id": 8,
+      "document_id": "RL_Slides_13_RLHF_DPO_r2"
+    },
+    {
+      "source_id": "c8_ENT_10",
       "target_id": "c8_ENT_6",
-      "relation": "defines",
+      "relation": "rewrites as function of",
       "chunk_id": 8,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
-      "source_id": "c8_ENT_13",
-      "target_id": "c8_ENT_4",
-      "relation": "is",
+      "source_id": "c8_ENT_4",
+      "target_id": "c8_ENT_6",
+      "relation": "derived from",
       "chunk_id": 8,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
-      "source_id": "c8_ENT_14",
-      "target_id": "c8_ENT_3",
-      "relation": "is",
+      "source_id": "c8_ENT_2",
+      "target_id": "c8_ENT_6",
+      "relation": "ratio of",
       "chunk_id": 8,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
-      "source_id": "c8_ENT_15",
-      "target_id": "c8_ENT_4",
-      "relation": "takes",
+      "source_id": "c8_ENT_4",
+      "target_id": "c8_ENT_6",
+      "relation": "log ratio of",
       "chunk_id": 8,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
-      "source_id": "c8_ENT_16",
-      "target_id": "c8_ENT_12",
-      "relation": "simplifies",
+      "source_id": "c8_ENT_5",
+      "target_id": "c8_ENT_6",
+      "relation": "log Z(x",
       "chunk_id": 8,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {
-      "source_id": "c8_ENT_16",
-      "target_id": "c8_ENT_17",
-      "relation": "has",
+      "source_id": "c8_ENT_2",
+      "target_id": "c8_ENT_6",
+      "relation": "log ratio of",
       "chunk_id": 8,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c11_ENT_1",
-      "target_id": "c11_ENT_2",
-      "relation": "used on",
-      "chunk_id": 11,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c11_ENT_1",
-      "target_id": "c11_ENT_5",
-      "relation": "used on",
-      "chunk_id": 11,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c11_ENT_2",
-      "target_id": "c11_ENT_3",
-      "relation": "replaces",
-      "chunk_id": 11,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c11_ENT_2",
-      "target_id": "c11_ENT_4",
-      "relation": "uses",
-      "chunk_id": 11,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c11_ENT_3",
-      "target_id": "c11_ENT_4",
-      "relation": "optimizes",
-      "chunk_id": 11,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c11_ENT_3",
-      "target_id": "c11_ENT_5",
-      "relation": "uses",
-      "chunk_id": 11,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c11_ENT_6",
-      "target_id": "c11_ENT_7",
-      "relation": "case",
-      "chunk_id": 11,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c11_ENT_6",
-      "target_id": "c11_ENT_8",
-      "relation": "case",
-      "chunk_id": 11,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c11_ENT_6",
-      "target_id": "c11_ENT_9",
-      "relation": "case",
-      "chunk_id": 11,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c11_ENT_6",
-      "target_id": "c11_ENT_10",
-      "relation": "case",
-      "chunk_id": 11,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c11_ENT_11",
-      "target_id": "c11_ENT_12",
-      "relation": "affects",
-      "chunk_id": 11,
-      "document_id": "RL_Slides_13_RLHF_DPO_r2"
-    },
-    {
-      "source_id": "c11_ENT_12",
-      "target_id": "c11_ENT_2",
-      "relation": "aimed to improve",
-      "chunk_id": 11,
       "document_id": "RL_Slides_13_RLHF_DPO_r2"
     },
     {

@@ -217,8 +217,19 @@ class RAGConfig:
         #############################################
         self.GRAPH_RAG_ENABLED = os.getenv("GRAPH_RAG_ENABLED", "true").lower() == "true"
         self.LANGGRAPH_ENABLED = os.getenv("LANGGRAPH_ENABLED", "true").lower() == "true"
-        self.GOT_MODE_ENABLED = os.getenv("GOT_MODE_ENABLED", "false").lower() == "true"
+        self.GOT_MODE_ENABLED = os.getenv("GOT_MODE_ENABLED", "true").lower() == "true"
         self.GRAPH_MAX_HOPS = int(os.getenv("GRAPH_MAX_HOPS", "6"))
+
+        # GoT (Graph of Thought) 세부 설정
+        self.GOT_MAX_STEPS = int(os.getenv("GOT_MAX_STEPS", "5"))
+        self.GOT_BRANCH_FACTOR = int(os.getenv("GOT_BRANCH_FACTOR", "3"))       # 각 단계에서 동시 탐색할 thought 분기 수
+        self.GOT_MERGE_STRATEGY = os.getenv("GOT_MERGE_STRATEGY", "top_k")      # "top_k" | "weighted_union" | "vote"
+        self.GOT_MERGE_TOP_K = int(os.getenv("GOT_MERGE_TOP_K", "1"))           # top_k 병합 시 선택할 상위 thought 수
+        self.GOT_THOUGHT_SCORE_THRESHOLD = float(os.getenv("GOT_THOUGHT_SCORE_THRESHOLD", "0.3"))  # thought 최소 품질 임계값
+        self.GOT_EDGE_PRUNE_THRESHOLD = float(os.getenv("GOT_EDGE_PRUNE_THRESHOLD", "0.2"))        # 엣지 가지치기 임계값
+        self.GOT_MAX_CONSECUTIVE_FAILURES = int(os.getenv("GOT_MAX_CONSECUTIVE_FAILURES", "2"))     # 연속 실패 시 백트래킹
+        self.GOT_OBSERVER_ENDPOINT = os.getenv("GOT_OBSERVER_ENDPOINT", "")      # GoT 전용 관찰자 LLM 엔드포인트 (빈 문자열이면 HOP_CLASSIFIER 공유)
+        self.GOT_OBSERVER_MODEL = os.getenv("GOT_OBSERVER_MODEL", "")            # GoT 전용 관찰자 모델명
         
         #############################################
         # 6. API 엔드포인트 설정

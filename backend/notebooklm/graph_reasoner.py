@@ -512,38 +512,58 @@ class GraphReasoner:
             }
 
         def thought_expander(state: GraphReasonerState) -> dict:
-            """GoT 기반 사고 확장 (백트래킹 포함)"""
+            """GoT 기반 그래프 형태 사고 확장.
+
+            각 단계에서 GOT_BRANCH_FACTOR개의 후보를 동시에 분기 탐색하고,
+            관찰자 LLM이 각 분기를 평가한 뒤 GOT_MERGE_STRATEGY로 병합합니다.
+            연속 실패 시 스냅샷 기반 백트래킹을 수행합니다.
+            """
             if not reasoner.got_enabled:
                 return {}
 
-            # GoT 확장 전 상태 스냅샷 (백트래킹용)
             pre_entities_count = len(state.get("entities", []))
             pre_events_count = len(state.get("events", []))
+            pre_relations_count = len(state.get("relations", []))
 
             got_result = reasoner._run_got_expansion(state)
 
-            post_entities_count = len(got_result.get("entities", []))
-            post_events_count = len(got_result.get("events", []))
-            delta = (post_entities_count - pre_entities_count) + (post_events_count - pre_events_count)
+            # _run_got_expansion()이 state를 직접 수정하므로 결과를 그대로 반환
+            post_entities = got_result.get("entities", [])
+            post_events = got_result.get("events", [])
+            post_relations = got_result.get("relations", [])
+            thought_steps = got_result.get("thought_steps", [])
 
-            if delta == 0:
+            delta_entities = len(post_entities) - pre_entities_count
+            delta_events = len(post_events) - pre_events_count
+            delta_relations = len(post_relations) - pre_relations_count
+            total_delta = delta_entities + delta_events + delta_relations
+
+            # thought_steps에서 통계 추출
+            merged_count = sum(1 for s in thought_steps if s.get("status") == "merged")
+            backtracked_count = sum(1 for s in thought_steps if s.get("backtracked"))
+
+            if total_delta == 0:
                 return {
-                    "answer_notes": ["GoT: 확장 실패 - 새로운 노드 없음, 기존 결과 유지"],
-                    "thought_steps": got_result.get("thought_steps", []),
+                    "answer_notes": [
+                        f"GoT: 확장 실패 - 새로운 노드 없음 "
+                        f"({len(thought_steps)} 단계, 백트래킹 {backtracked_count}회)"
+                    ],
+                    "thought_steps": thought_steps,
                 }
 
-            # entities/events/relations는 replace 방식이므로 기존 + 신규를 합쳐서 반환
-            merged_entities = list(state.get("entities", [])) + got_result.get("entities", [])
-            merged_events = list(state.get("events", [])) + got_result.get("events", [])
-            merged_relations = list(state.get("relations", [])) + got_result.get("relations", [])
+            summary = (
+                f"GoT: +{delta_entities} 엔티티, +{delta_events} 이벤트, +{delta_relations} 관계 "
+                f"({merged_count}/{len(thought_steps)} 단계 병합 성공, 백트래킹 {backtracked_count}회)"
+            )
+
             return {
-                "entities": merged_entities,
-                "events": merged_events,
-                "relations": merged_relations,
-                "thought_steps": got_result.get("thought_steps", []),
+                "entities": post_entities,
+                "events": post_events,
+                "relations": post_relations,
+                "thought_steps": thought_steps,
                 "candidate_queries": got_result.get("candidate_queries", []),
                 "visited_queries": got_result.get("visited_queries", set()),
-                "answer_notes": [f"GoT: {delta}개 노드 확장 성공"],
+                "answer_notes": [summary],
             }
 
         def aggregator(state: GraphReasonerState) -> dict:
@@ -1072,12 +1092,53 @@ class GraphReasoner:
         return 0.0
 
     def _maybe_adjust_edges(self, state: GraphReasonerState) -> None:
+        """엣지 가중치 평가 및 저품질 엣지 가지치기.
+
+        각 관계(엣지)에 대해 쿼리와의 관련성을 키워드 매칭으로 빠르게 평가하고,
+        GOT_EDGE_PRUNE_THRESHOLD 미만인 엣지를 제거합니다.
+        """
         relations = state.get("relations", [])
         if not relations:
             return
-        high_density = [rel for rel in relations if rel.get("relation")]
-        if len(high_density) > 5:
-            pass  # 과밀 엣지 축소 로직 (향후 구현)
+
+        prune_threshold = getattr(self.config, "GOT_EDGE_PRUNE_THRESHOLD", 0.2)
+        query = state.get("query", "").lower()
+        query_tokens = set(re.findall(r"[a-zA-Z가-힣]+", query))
+
+        if not query_tokens:
+            return
+
+        scored_relations: List[Dict[str, Any]] = []
+        pruned_count = 0
+
+        for rel in relations:
+            # 엣지 텍스트 수집: relation, source_name, target_name
+            edge_text_parts = []
+            for key in ["relation", "source_name", "target_name", "source", "target"]:
+                val = rel.get(key)
+                if isinstance(val, str) and val.strip():
+                    edge_text_parts.append(val.lower())
+            edge_text = " ".join(edge_text_parts)
+            edge_tokens = set(re.findall(r"[a-zA-Z가-힣]+", edge_text))
+
+            # 키워드 오버랩 기반 관련성 점수 (0.0 ~ 1.0)
+            if edge_tokens:
+                overlap = len(query_tokens & edge_tokens)
+                score = overlap / max(len(query_tokens), 1)
+            else:
+                score = 0.0
+
+            rel["_edge_score"] = score
+
+            if score >= prune_threshold:
+                scored_relations.append(rel)
+            else:
+                pruned_count += 1
+
+        if pruned_count > 0:
+            state["relations"] = scored_relations
+            logger.info("엣지 가지치기: %d/%d 관계 제거 (threshold=%.2f)",
+                        pruned_count, len(relations), prune_threshold)
 
     # ------------------------------------------------------------------
     # 워크플로우 실행
@@ -1198,20 +1259,254 @@ class GraphReasoner:
         return str(hash(json.dumps(item, sort_keys=True, ensure_ascii=False)))
 
     # ------------------------------------------------------------------
-    # GoT 확장 (백트래킹 포함)
+    # GoT: Thought 품질 평가 (LLM 기반)
+    # ------------------------------------------------------------------
+    def _score_thought(
+        self,
+        query: str,
+        thought_entities: List[Dict[str, Any]],
+        thought_events: List[Dict[str, Any]],
+        thought_relations: List[Dict[str, Any]],
+    ) -> float:
+        """개별 thought branch의 품질을 관찰자 LLM으로 평가 (0.0~1.0).
+
+        GoT 전용 엔드포인트가 설정되어 있으면 사용하고,
+        없으면 HOP_CLASSIFIER 엔드포인트를 공유합니다.
+        LLM 호출 실패 시 키워드 매칭 기반 fallback 점수를 반환합니다.
+        """
+        total_items = len(thought_entities) + len(thought_events)
+        if total_items == 0:
+            return 0.0
+
+        # 엔드포인트 결정: GoT 전용 > HOP_CLASSIFIER 공유
+        endpoint = getattr(self.config, "GOT_OBSERVER_ENDPOINT", "") or \
+                   getattr(self.config, "HOP_CLASSIFIER_SGLANG_ENDPOINT", None)
+        model = getattr(self.config, "GOT_OBSERVER_MODEL", "") or \
+                getattr(self.config, "HOP_CLASSIFIER_MODEL", "default")
+
+        if not endpoint:
+            # LLM 없으면 키워드 매칭 fallback
+            return self._score_thought_keyword_fallback(
+                query, thought_entities, thought_events, thought_relations
+            )
+
+        # 검색 결과 요약 (토큰 절약)
+        snippets = []
+        for e in thought_entities[:8]:
+            snippets.append(f"[엔티티] {e.get('name', '?')} ({e.get('type', '')})")
+        for ev in thought_events[:5]:
+            snippets.append(f"[이벤트] {ev.get('title', '?')}")
+        for r in thought_relations[:5]:
+            snippets.append(f"[관계] {r.get('source_name', '?')} --[{r.get('relation', '?')}]--> {r.get('target_name', '?')}")
+        context_text = "\n".join(snippets)
+
+        system_prompt = (
+            "You are a thought quality evaluator for Graph-of-Thought reasoning. "
+            "Given a user query and a set of graph nodes/relations discovered by one thought branch, "
+            "rate how useful this thought branch is for answering the query.\n"
+            "Consider: coverage of key concepts, relevance of relations, novelty of information.\n"
+            "Output ONLY a single decimal number between 0.0 and 1.0.\n"
+            "0.0 = completely useless, 1.0 = perfectly useful.\n"
+            "Output ONLY the number."
+        )
+        user_prompt = f"Query: {query}\n\nThought Branch Results:\n{context_text}"
+
+        try:
+            resp = requests.post(
+                f"{endpoint}/v1/chat/completions",
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt},
+                    ],
+                    "max_tokens": 8,
+                    "temperature": 0.0,
+                    "chat_template_kwargs": {"enable_thinking": False},
+                },
+                timeout=15,
+            )
+            resp.raise_for_status()
+            text = resp.json()["choices"][0]["message"]["content"].strip()
+            text = re.sub(r'<[tT]hink>.*?</[tT]hink>', '', text, flags=re.DOTALL).strip()
+            text = re.sub(r'<[tT]hink>.*', '', text, flags=re.DOTALL).strip()
+            match = re.search(r'([01]\.?\d*)', text)
+            if match:
+                score = max(0.0, min(float(match.group(1)), 1.0))
+                logger.info("GoT thought 점수: %.2f (raw='%s')", score, text)
+                return score
+            logger.warning("GoT thought 점수 파싱 실패: raw='%s'", text)
+        except Exception as exc:
+            logger.warning("GoT thought 점수 LLM 호출 실패: %s", exc)
+
+        return self._score_thought_keyword_fallback(
+            query, thought_entities, thought_events, thought_relations
+        )
+
+    def _score_thought_keyword_fallback(
+        self,
+        query: str,
+        entities: List[Dict[str, Any]],
+        events: List[Dict[str, Any]],
+        relations: List[Dict[str, Any]],
+    ) -> float:
+        """LLM 없을 때 키워드 매칭 기반 thought 점수 fallback."""
+        query_tokens = set(re.findall(r"[a-zA-Z가-힣]+", query.lower()))
+        if not query_tokens:
+            return 0.0
+
+        # 엔티티/이벤트/관계에서 토큰 수집
+        result_tokens: set = set()
+        for e in entities:
+            for key in ["name", "type", "description"]:
+                val = e.get(key, "")
+                if isinstance(val, str):
+                    result_tokens.update(re.findall(r"[a-zA-Z가-힣]+", val.lower()))
+        for ev in events:
+            for key in ["title", "description"]:
+                val = ev.get(key, "")
+                if isinstance(val, str):
+                    result_tokens.update(re.findall(r"[a-zA-Z가-힣]+", val.lower()))
+        for r in relations:
+            for key in ["relation", "source_name", "target_name"]:
+                val = r.get(key, "")
+                if isinstance(val, str):
+                    result_tokens.update(re.findall(r"[a-zA-Z가-힣]+", val.lower()))
+
+        if not result_tokens:
+            return 0.0
+
+        overlap = len(query_tokens & result_tokens)
+        # 커버리지 (쿼리 토큰 중 몇 %가 결과에 있는지) + 풍부함 보너스
+        coverage = overlap / len(query_tokens)
+        richness_bonus = min(0.2, len(result_tokens) / 100.0)
+        return min(1.0, coverage + richness_bonus)
+
+    # ------------------------------------------------------------------
+    # GoT: 분기/병합 전략
+    # ------------------------------------------------------------------
+    def _merge_thought_branches(
+        self,
+        branches: List[Dict[str, Any]],
+        strategy: str = "top_k",
+        top_k: int = 1,
+    ) -> Dict[str, Any]:
+        """여러 thought branch 결과를 병합 전략에 따라 통합.
+
+        Args:
+            branches: 각 branch는 {"query", "score", "entities", "events", "relations", ...}
+            strategy: "top_k" | "weighted_union" | "vote"
+            top_k: top_k 전략에서 선택할 상위 branch 수
+
+        Returns:
+            병합된 {"entities", "events", "relations"} 딕셔너리
+        """
+        if not branches:
+            return {"entities": [], "events": [], "relations": []}
+
+        # 점수 내림차순 정렬
+        sorted_branches = sorted(branches, key=lambda b: b.get("score", 0.0), reverse=True)
+
+        if strategy == "top_k":
+            # 상위 top_k개 branch의 결과만 합침
+            selected = sorted_branches[:top_k]
+            merged_entities: List[Dict[str, Any]] = []
+            merged_events: List[Dict[str, Any]] = []
+            merged_relations: List[Dict[str, Any]] = []
+            for branch in selected:
+                merged_entities.extend(branch.get("entities", []))
+                merged_events.extend(branch.get("events", []))
+                merged_relations.extend(branch.get("relations", []))
+            return {
+                "entities": merged_entities,
+                "events": merged_events,
+                "relations": merged_relations,
+            }
+
+        elif strategy == "weighted_union":
+            # 모든 branch를 합치되, 점수가 높은 branch의 항목에 가중치 부여
+            merged_entities = []
+            merged_events = []
+            merged_relations = []
+            entity_scores: Dict[str, float] = {}
+            for branch in sorted_branches:
+                branch_score = branch.get("score", 0.0)
+                for e in branch.get("entities", []):
+                    sig = e.get("name", str(id(e)))
+                    if sig not in entity_scores or branch_score > entity_scores[sig]:
+                        entity_scores[sig] = branch_score
+                        e["_thought_score"] = branch_score
+                        merged_entities.append(e)
+                merged_events.extend(branch.get("events", []))
+                merged_relations.extend(branch.get("relations", []))
+            return {
+                "entities": merged_entities,
+                "events": merged_events,
+                "relations": merged_relations,
+            }
+
+        elif strategy == "vote":
+            # 2개 이상의 branch에서 등장한 엔티티만 채택
+            entity_votes: Dict[str, List[Dict[str, Any]]] = {}
+            all_events = []
+            all_relations = []
+            for branch in sorted_branches:
+                seen_in_branch: set = set()
+                for e in branch.get("entities", []):
+                    sig = e.get("name", str(id(e)))
+                    if sig not in seen_in_branch:
+                        seen_in_branch.add(sig)
+                        entity_votes.setdefault(sig, []).append(e)
+                all_events.extend(branch.get("events", []))
+                all_relations.extend(branch.get("relations", []))
+            # 2표 이상 받은 엔티티만 채택
+            voted_entities = [
+                votes[0] for sig, votes in entity_votes.items() if len(votes) >= 2
+            ]
+            # 투표 통과 엔티티가 없으면 최고 점수 branch의 결과 사용
+            if not voted_entities and sorted_branches:
+                voted_entities = sorted_branches[0].get("entities", [])
+            return {
+                "entities": voted_entities,
+                "events": all_events,
+                "relations": all_relations,
+            }
+
+        # 알 수 없는 전략이면 top_k=1 fallback
+        logger.warning("알 수 없는 GoT 병합 전략: %s → top_k=1 fallback", strategy)
+        return self._merge_thought_branches(branches, strategy="top_k", top_k=1)
+
+    # ------------------------------------------------------------------
+    # GoT 확장 (그래프 형태 분기/병합 + 백트래킹)
     # ------------------------------------------------------------------
     def _run_got_expansion(self, state: GraphReasonerState) -> GraphReasonerState:
-        """GoT 기반 그래프 확장. 실패 시 이전 상태로 백트래킹."""
-        max_steps = max(1, getattr(self.config, "GOT_MAX_STEPS", 3))
+        """GoT 기반 그래프 확장.
+
+        각 단계에서:
+        1. candidate_queries에서 최대 GOT_BRANCH_FACTOR개를 동시에 분기
+        2. 각 분기별로 독립적으로 그래프 탐색 수행
+        3. 관찰자 LLM이 각 분기의 품질을 평가 (thought scoring)
+        4. GOT_MERGE_STRATEGY에 따라 최선의 분기를 병합
+        5. 연속 실패 시 스냅샷 기반 백트래킹
+        """
+        query = state.get("query", "")
+        max_steps = max(1, getattr(self.config, "GOT_MAX_STEPS", 5))
+        branch_factor = max(1, getattr(self.config, "GOT_BRANCH_FACTOR", 3))
+        merge_strategy = getattr(self.config, "GOT_MERGE_STRATEGY", "top_k")
+        merge_top_k = max(1, getattr(self.config, "GOT_MERGE_TOP_K", 1))
+        score_threshold = getattr(self.config, "GOT_THOUGHT_SCORE_THRESHOLD", 0.3)
+        max_consecutive_failures = getattr(self.config, "GOT_MAX_CONSECUTIVE_FAILURES", 2)
+
         candidate_queries = list(state.get("candidate_queries", []))
         visited_queries = set(state.get("visited_queries", set()))
         thought_steps = list(state.get("thought_steps", []))
         query_history = list(state.get("query_history", []))
 
+        # 초기 후보가 없으면 시드 생성
         if not candidate_queries:
             seeds = self._extract_candidate_queries(state)
             if not seeds:
-                seeds = [state.get("query", "")]
+                seeds = [query]
             for s in seeds:
                 s = s.strip()
                 if s and s not in visited_queries and s not in candidate_queries:
@@ -1220,42 +1515,155 @@ class GraphReasoner:
         # 확장 전 스냅샷 (백트래킹용)
         snapshot_entities = list(state.get("entities", []))
         snapshot_events = list(state.get("events", []))
+        snapshot_relations = list(state.get("relations", []))
         consecutive_failures = 0
-        MAX_CONSECUTIVE_FAILURES = 2  # 연속 실패 시 백트래킹
+        step_count = 0
 
-        while candidate_queries and len(thought_steps) < max_steps:
-            candidate = candidate_queries.pop(0).strip()
-            if not candidate or candidate in visited_queries:
+        while candidate_queries and step_count < max_steps:
+            step_count += 1
+
+            # --- 1. 분기: 최대 branch_factor개 후보를 동시에 탐색 ---
+            branch_candidates: List[str] = []
+            while candidate_queries and len(branch_candidates) < branch_factor:
+                cand = candidate_queries.pop(0).strip()
+                if cand and cand not in visited_queries:
+                    branch_candidates.append(cand)
+                    visited_queries.add(cand)
+
+            if not branch_candidates:
                 continue
-            visited_queries.add(candidate)
-            query_history.append(candidate)
-            hop_idx = len(query_history)
-            collected = self._collect_hop(state, hop_idx, candidate)
+
+            # --- 2. 각 분기별 독립 탐색 ---
+            branches: List[Dict[str, Any]] = []
+            for cand in branch_candidates:
+                query_history.append(cand)
+                hop_idx = len(query_history)
+
+                # 독립 탐색을 위해 state의 임시 복사본 사용
+                branch_state = copy.copy(state)
+                branch_state["entities"] = list(state.get("entities", []))
+                branch_state["events"] = list(state.get("events", []))
+                branch_state["relations"] = list(state.get("relations", []))
+
+                collected = self._collect_hop(branch_state, hop_idx, cand)
+
+                if collected:
+                    # 이 분기에서 새로 발견된 항목만 추출
+                    new_entities = branch_state["entities"][len(state.get("entities", [])):]
+                    new_events = branch_state["events"][len(state.get("events", [])):]
+                    new_relations = branch_state["relations"][len(state.get("relations", [])):]
+
+                    branches.append({
+                        "query": cand,
+                        "entities": new_entities,
+                        "events": new_events,
+                        "relations": new_relations,
+                        "score": 0.0,  # 아래에서 채점
+                        "collected": collected,
+                    })
+                else:
+                    branches.append({
+                        "query": cand,
+                        "entities": [],
+                        "events": [],
+                        "relations": [],
+                        "score": 0.0,
+                        "collected": None,
+                    })
+
+            # --- 3. 각 분기 품질 평가 (thought scoring) ---
+            for branch in branches:
+                if branch["collected"]:
+                    branch["score"] = self._score_thought(
+                        query,
+                        branch["entities"],
+                        branch["events"],
+                        branch["relations"],
+                    )
+                # collected가 None이면 score=0.0 유지
+
+            # 분기별 점수 로깅
+            for branch in branches:
+                logger.info(
+                    "GoT 분기 [%s]: score=%.2f, 엔티티=%d, 이벤트=%d, 관계=%d",
+                    branch["query"][:40], branch["score"],
+                    len(branch["entities"]), len(branch["events"]), len(branch["relations"]),
+                )
+
+            # --- 4. 병합: 전략에 따라 최선의 분기 선택 ---
+            # score_threshold 이상인 분기만 병합 대상
+            viable_branches = [b for b in branches if b["score"] >= score_threshold]
+
             thought_record = {
                 "step": len(thought_steps) + 1,
-                "query": candidate,
+                "branches": [
+                    {"query": b["query"], "score": b["score"], "status": "expanded" if b["collected"] else "no_results"}
+                    for b in branches
+                ],
+                "viable_count": len(viable_branches),
             }
-            if collected:
-                thought_record["status"] = "expanded"
-                thought_record["summary"] = self._summarize_thought_delta(collected)
-                thought_record["delta"] = collected
+
+            if viable_branches:
+                merged = self._merge_thought_branches(
+                    viable_branches, strategy=merge_strategy, top_k=merge_top_k
+                )
+
+                # 병합 결과를 state에 반영 (중복 제거, in-place)
+                existing_entities = list(state.get("entities", []))
+                self._extend_unique(existing_entities, merged["entities"])
+                state["entities"] = existing_entities
+
+                existing_events = list(state.get("events", []))
+                self._extend_unique(existing_events, merged["events"])
+                state["events"] = existing_events
+
+                existing_relations = list(state.get("relations", []))
+                self._extend_unique(existing_relations, merged["relations"],
+                                    key_candidates=["id", "uuid", "relation"])
+                state["relations"] = existing_relations
+
+                # 엣지 가지치기 적용
+                self._maybe_adjust_edges(state)
+
+                thought_record["status"] = "merged"
+                thought_record["merge_strategy"] = merge_strategy
+                best_score = max(b["score"] for b in viable_branches)
+                thought_record["best_score"] = best_score
+                thought_record["summary"] = (
+                    f"분기 {len(branches)}개 중 {len(viable_branches)}개 통과 "
+                    f"(best={best_score:.2f}), 병합 전략={merge_strategy}"
+                )
                 consecutive_failures = 0
+
+                # 병합된 결과에서 새 후보 쿼리 추출
                 new_candidates = self._extract_candidate_queries(state)
                 for nc in new_candidates:
                     nc = nc.strip()
                     if nc and nc not in visited_queries and nc not in candidate_queries:
                         candidate_queries.append(nc)
+
+                # 스냅샷 갱신 (성공적 병합 후)
+                snapshot_entities = list(state.get("entities", []))
+                snapshot_events = list(state.get("events", []))
+                snapshot_relations = list(state.get("relations", []))
+
             else:
-                thought_record["status"] = "no_results"
-                thought_record["summary"] = "그래프 확장에서 새로운 노드를 찾지 못함"
+                # 모든 분기가 threshold 미달
+                thought_record["status"] = "all_below_threshold"
+                thought_record["summary"] = (
+                    f"분기 {len(branches)}개 모두 threshold({score_threshold}) 미달"
+                )
                 consecutive_failures += 1
 
-                # 백트래킹: 연속 실패 시 스냅샷으로 복원하고 다른 후보 시도
-                if consecutive_failures >= MAX_CONSECUTIVE_FAILURES:
+                # --- 5. 백트래킹: 연속 실패 시 스냅샷 복원 ---
+                if consecutive_failures >= max_consecutive_failures:
                     thought_record["backtracked"] = True
-                    thought_record["summary"] += f" → 백트래킹 (연속 {consecutive_failures}회 실패)"
+                    thought_record["summary"] += (
+                        f" → 백트래킹 (연속 {consecutive_failures}회 실패, 스냅샷 복원)"
+                    )
                     state["entities"] = list(snapshot_entities)
                     state["events"] = list(snapshot_events)
+                    state["relations"] = list(snapshot_relations)
                     consecutive_failures = 0
                     logger.info("GoT 백트래킹: 연속 실패로 스냅샷 복원")
 
@@ -1266,7 +1674,7 @@ class GraphReasoner:
         state["visited_queries"] = visited_queries
         state["thought_steps"] = thought_steps
         state["query_history"] = query_history
-        state["active_query"] = candidate if candidate_queries else ""
+        state["active_query"] = branch_candidates[-1] if branch_candidates else ""
         return state
 
     def _extract_candidate_queries(self, state: GraphReasonerState, limit: int = 5) -> List[str]:
