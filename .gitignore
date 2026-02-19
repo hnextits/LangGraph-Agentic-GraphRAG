@@ -3,7 +3,7 @@ node_modules/
 npm-debug.log*
 .env
 dist/
-/frontend/.next
+/frontend
 
 # Python 
 __pycache__/
@@ -22,6 +22,9 @@ target/
 *.tmp
 .idea/
 .vscode/
+*.toml
+Jenkinsfile
+*.lock
 
 /logs
 
