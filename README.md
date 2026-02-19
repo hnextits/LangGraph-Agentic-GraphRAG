@@ -12,7 +12,7 @@ English | [한국어](README/README_KO.md) | [中文](README/README_ZH.md)
 LangGraph-Graph RAG is a vector–graph hybrid RAG platform powered by **LangGraph + SGLang**. The ingestion pipeline converts raw documents into Markdown chunks and graph metadata via LangGraph state machines with checkpoint persistence. During query time, a hop-based router with quality-gate backtracking selects among three retrieval paths—Vector, Weaviate GraphRAG, or Neo4j GraphDB—to generate answers.
 
 <div align="center">
-<img src="https://github.com/user-attachments/assets/2c81abe6-8a42-4d28-a9c8-a3cf6aa0d3c6" width="512" height="768" ></img><br/>
+<img src="https://github.com/user-attachments/assets/f1ee3090-a1a2-4962-86d6-03f4347a93b3" width="512" height="768" ></img><br/>
 </div> 
 
 ---
@@ -21,7 +21,7 @@ LangGraph-Graph RAG is a vector–graph hybrid RAG platform powered by **LangGra
 
 - **LangGraph state machines**: ingestion, query reasoning, summarization, and mindmap generation all run on LangGraph `StateGraph` with `MemorySaver` checkpointing.
 - **Checkpoint & backtracking**: every node transition is checkpointed; the quality gate and GoT snapshotting roll back to alternative retrieval paths or earlier expansions when quality is insufficient (up to 2 retries).
-- **3-way retrieval routing**: hop ≤ 2 → Vector RAG (TextSearcher + Reranker), hop 3–5 → Weaviate Cross-Reference GraphQL traversal, hop ≥ 6 → Neo4j Deep Graph Traversal.
+- **3-way retrieval routing**: hop ≤ 2 → Vector RAG (TextSearcher + Reranker), hop 3–5 → Weaviate Cross-Reference GraphQL traversal, hop ≥ 6 → Neo4j Deep Graph Traversal. Hop boundaries mirror the underlying data model: semantic-only questions stay on the TextDocument embedding index, entity/attribute hops leverage Weaviate cross-references, and schema-heavy relationship reasoning (≥ 6 hops) escalates to Neo4j Cypher traversals. Path 1 and Path 2 both live inside Weaviate: Path 1 favors fast semantic similarity on the late-chunked corpus, whereas Path 2 deliberately walks Cross-Reference neighborhoods to surface query-linked entities/events when the prompt demands richer relational context without paying the Neo4j cost yet.
 - **Observer LLM + GoT expansion**: an observer LLM scores each path result (0–1). Passing results trigger Graph-of-Thought branching/merging for deeper context.
 - **SGLang inference**: generator, embedding, reranker, hop classifier, and the observer LLM all run on SGLang servers with lazy loading (`LazyModelManager` + `SGLangServerManager`).
 - **Automatic graph upsert**: OCR → LLM entity/event/relation extraction → simultaneous Weaviate + Neo4j ingestion.
@@ -101,9 +101,9 @@ Handled by `GraphReasoner` (`graph_reasoner.py`) with `MemorySaver` checkpointin
 3. **Router**: selects Path 1/2/3 based on hop classification.
 4. **Retrieval Nodes**:
    - **Path 1 – Vector RAG**: delegates to `rag_pipeline`'s existing TextSearcher + Reranker.
-   - **Path 2 – Cross-Ref GraphRAG**: BM25 seed entities → Weaviate Cross-Reference `QueryReference` multi-hop traversal (source/target/event refs).
-   - **Path 3 – Neo4j GraphDB**: deep traversal via `legacy_graph_client.py` Cypher templates.
-5. **Quality Gate + Observer LLM**: every path result is scored 0.0–1.0 by the observer LLM (Path 1 defaults to 1.0 when delegated). If the score is below 0.3, the workflow rolls back and backtracks to another path (max 2 retries).
+   - **Path 2 – Cross-Ref GraphRAG**: BM25 seed entities → Weaviate Cross-Reference `QueryReference` multi-hop traversal (source/target/event refs) to collect query-adjacent entities/events within Weaviate before escalating to Neo4j.
+   - **Path 3 – Neo4j GraphDB**: deep traversal via `legacy_graph_client.py` Cypher templates for ≥ 6-hop schema-intensive reasoning or when Weaviate cross-references exhaust.
+5. **Quality Gate + Observer LLM**: every path result is scored 0.0–1.0 by the observer LLM (Path 1 defaults to 1.0 when delegated). If the score falls below the configured quality threshold, the workflow re-enters the router with the next retrieval path in the fallback order (Vector → Cross-Ref → GraphDB) and repeats until either a path passes or the 2-retry limit is reached; after the limit it continues with the best-effort context and flags the degradation in `answer_notes`.
 6. **GoT Thought Expander** (`GOT_MODE_ENABLED=true`): graph-shaped thought exploration with branching, scoring, and merging.
    - Each step fans out up to `GOT_BRANCH_FACTOR` candidate queries in parallel.
    - An observer LLM scores each branch (0.0–1.0) for relevance, coverage, and novelty.
@@ -197,7 +197,7 @@ backend/
 2. `hop_classifier.py` estimates query complexity → determines `max_hops`.
 3. `graph_reasoner.py` runs the LangGraph workflow:
    - **planner** → **router** → **retrieval node** (Path 1/2/3) → **quality_gate**
-   - If quality < 0.3 → **backtrack** to router with alternative path (max 2 retries).
+   - If quality < threshold → **backtrack** to router with alternative path (max 2 retries).
    - If GoT enabled → **thought_expander** with snapshot-based backtracking.
    - **aggregator** builds context snippets.
 4. `generator.py` produces the answer from original query + context snippets.
@@ -267,6 +267,8 @@ docker run -d --name neo4j-dev \
 - `LegacyGraphIngestor` auto-creates constraints on first run; no manual setup required.
 - `LazyModelManager` releases GPU memory after ~60 seconds of idling.
 - All LangGraph workflows log checkpoint IDs and backtrack counts for traceability.
+- **SGLang cold start**: lazy loading means the first `/v1/chat` (or hop-classifier) request must warm each SGLang server, which can take 20–60s VRAM load time; issue a warm-up request or keep-alive cron to avoid client timeouts.
+- **Volatile checkpoints**: `MemorySaver` stores graph snapshots in-process, so any FastAPI restart drops in-flight state until the planned migration to `SqliteSaver`/`PostgresSaver` lands.
 
 ---
 

@@ -11,7 +11,7 @@
 LangGraph-Graph RAG는 **LangGraph + SGLang** 기반의 벡터–그래프 하이브리드 RAG 플랫폼입니다. 수집 파이프라인은 LangGraph 상태 머신과 체크포인트 영속성을 통해 원시 문서를 Markdown 청크 및 그래프 메타데이터로 변환합니다. 쿼리 시점에는 품질 게이트 백트래킹이 적용된 홉 기반 라우터가 Vector, Weaviate GraphRAG, Neo4j GraphDB 세 가지 검색 경로 중 하나를 선택하여 답변을 생성합니다.
 
 <div align="center">
-<img src="https://github.com/user-attachments/assets/2c81abe6-8a42-4d28-a9c8-a3cf6aa0d3c6" width="512" height="768" ></img><br/>
+<img src="https://github.com/user-attachments/assets/f1ee3090-a1a2-4962-86d6-03f4347a93b3" width="512" height="768" ></img><br/>
 </div>
 
 ---
@@ -20,7 +20,7 @@ LangGraph-Graph RAG는 **LangGraph + SGLang** 기반의 벡터–그래프 하�
 
 - **LangGraph 상태 머신**: 수집, 쿼리 추론, 요약, 마인드맵 생성이 모두 `MemorySaver` 체크포인팅을 갖춘 LangGraph `StateGraph` 위에서 동작합니다.
 - **체크포인트 & 백트래킹**: 모든 노드 전환이 체크포인팅되며, 품질 게이트와 GoT 스냅샷이 품질 미달 시 대체 검색 경로 또는 이전 확장 단계로 롤백합니다 (최대 2회 재시도).
-- **3-Way 검색 라우팅**: 홉 ≤ 2 → Vector RAG (TextSearcher + Reranker), 홉 3–5 → Weaviate Cross-Reference GraphQL 탐색, 홉 ≥ 6 → Neo4j Deep Graph Traversal.
+- **3-Way 검색 라우팅**: 홉 ≤ 2 → Vector RAG (TextSearcher + Reranker), 홉 3–5 → Weaviate Cross-Reference GraphQL 탐색, 홉 ≥ 6 → Neo4j Deep Graph Traversal. 홉 경계는 데이터 모델 특성을 반영합니다: 의미 기반 질의는 TextDocument 임베딩 인덱스에, 엔티티/속성 추론은 Weaviate Cross-Reference에, 6홉 이상 스키마 중심 관계 추론은 Neo4j Cypher 탐색으로 승격됩니다. Path 1과 Path 2 모두 Weaviate에서 동작하며, Path 1은 Late chunking 코퍼스 위에서 빠른 의미 유사성을, Path 2는 Cross-Reference 이웃을 걸으며 Neo4j까지 가지 않고도 질의 연관 엔티티/이벤트를 추가 발굴합니다.
 - **관찰자 LLM + GoT 확장**: 관찰자 LLM이 각 경로 결과를 0–1 점수로 평가합니다. 통과한 결과는 더 깊은 컨텍스트를 위해 Graph-of-Thought 분기/병합을 트리거합니다.
 - **SGLang 추론**: 생성기, 임베딩, 리랭커, 홉 분류기, 관찰자 LLM 모두 지연 로딩(`LazyModelManager` + `SGLangServerManager`)이 적용된 SGLang 서버에서 동작합니다.
 - **자동 그래프 업서트**: OCR → LLM 엔티티/이벤트/관계 추출 → Weaviate + Neo4j 동시 수집.
@@ -100,9 +100,9 @@ planner →  router →┬→ vector_retriever  ──→┐
 3. **라우터**: 홉 분류에 따라 Path 1/2/3을 선택합니다.
 4. **검색 노드**:
    - **Path 1 – Vector RAG**: `rag_pipeline`의 기존 TextSearcher + Reranker에 위임합니다.
-   - **Path 2 – Cross-Ref GraphRAG**: BM25 시드 엔티티 → Weaviate Cross-Reference `QueryReference` 멀티홉 탐색 (source/target/event refs).
-   - **Path 3 – Neo4j GraphDB**: `legacy_graph_client.py` Cypher 템플릿을 통한 심층 탐색.
-5. **품질 게이트 + 관찰자 LLM**: 모든 경로 결과가 관찰자 LLM에 의해 0.0–1.0으로 점수화됩니다 (Path 1은 위임 시 기본값 1.0). 점수가 0.3 미만이면 워크플로우가 롤백되어 다른 경로로 백트래킹합니다 (최대 2회 재시도).
+   - **Path 2 – Cross-Ref GraphRAG**: BM25 시드 엔티티 → Weaviate Cross-Reference `QueryReference` 멀티홉 탐색 (source/target/event refs)을 수행해 Neo4j로 escalation하기 전에 질의 인접 엔티티/이벤트를 Weaviate 내부에서 추가 확보합니다.
+  - **Path 3 – Neo4j GraphDB**: `legacy_graph_client.py` Cypher 템플릿을 통한 6홉 이상 스키마 집중 탐색 또는 Weaviate Cross-Reference가 바닥났을 때의 심층 탐색.
+5. **품질 게이트 + 관찰자 LLM**: 모든 경로 결과가 관찰자 LLM에 의해 0.0–1.0으로 점수화됩니다 (Path 1은 위임 시 기본값 1.0). 점수가 설정된 품질 임계값(threshold)보다 낮으면 워크플로우가 라우터로 되돌아가 폴백 순서(Vector → Cross-Ref → GraphDB)의 다음 경로를 시도하며, 경로 통과 또는 2회 재시도 한도 도달 시까지 반복합니다. 한도 도달 후에는 현재 컨텍스트로 진행하면서 `answer_notes`에 품질 저하를 표시합니다.
 6. **GoT Thought Expander** (`GOT_MODE_ENABLED=true`): 분기, 점수화, 병합을 통한 그래프 형태의 사고 탐색.
    - 각 단계에서 최대 `GOT_BRANCH_FACTOR`개의 후보 쿼리를 병렬로 확장합니다.
    - 관찰자 LLM이 각 분기를 관련성, 커버리지, 신규성 기준으로 0.0–1.0 점수화합니다.
@@ -196,7 +196,7 @@ backend/
 2. `hop_classifier.py`가 쿼리 복잡도를 추정 → `max_hops` 결정.
 3. `graph_reasoner.py`가 LangGraph 워크플로우 실행:
    - **planner** → **router** → **검색 노드** (Path 1/2/3) → **quality_gate**
-   - 품질 < 0.3이면 → 대체 경로로 라우터에 **백트래킹** (최대 2회 재시도).
+   - 품질 < 임계값이면 → 대체 경로로 라우터에 **백트래킹** (최대 2회 재시도).
    - GoT 활성화 시 → 스냅샷 기반 백트래킹이 적용된 **thought_expander**.
    - **aggregator**가 컨텍스트 스니펫을 구성합니다.
 4. `generator.py`가 원본 쿼리 + 컨텍스트 스니펫으로 답변을 생성합니다.
@@ -266,6 +266,8 @@ docker run -d --name neo4j-dev \
 - `LegacyGraphIngestor`가 첫 실행 시 제약 조건을 자동 생성합니다; 수동 설정 불필요.
 - `LazyModelManager`가 약 60초 유휴 후 GPU 메모리를 해제합니다.
 - 모든 LangGraph 워크플로우가 추적성을 위해 체크포인트 ID와 백트래킹 횟수를 기록합니다.
+- **SGLang 콜드 스타트**: 지연 로딩 구조라 첫 `/v1/chat`(또는 hop classifier) 요청 시 각 SGLang 서버가 VRAM에 모델을 적재하며 20–60초가 소요될 수 있습니다. 클라이언트 타임아웃을 피하려면 웜업 요청 또는 keep-alive cron을 권장합니다.
+- **휘발성 체크포인트**: `MemorySaver`는 프로세스 내부에 그래프 스냅샷을 저장하므로 FastAPI가 재시작되면 진행 중 상태가 모두 소실됩니다. `SqliteSaver`/`PostgresSaver`로의 마이그레이션 전까지는 세션이 휘발성임을 유의하세요.
 
 ---
 

@@ -11,7 +11,7 @@
 LangGraph-Graph RAG 是一个基于 **LangGraph + SGLang** 的向量–图混合 RAG 平台。数据摄取管道通过带有检查点持久化的 LangGraph 状态机将原始文档转换为 Markdown 块和图元数据。在查询阶段，带有质量门控回溯的跳数路由器从 Vector、Weaviate GraphRAG 或 Neo4j GraphDB 三条检索路径中选择一条来生成答案。
 
 <div align="center">
-<img src="https://github.com/user-attachments/assets/2c81abe6-8a42-4d28-a9c8-a3cf6aa0d3c6" width="512" height="768" ></img><br/>
+<img src="https://github.com/user-attachments/assets/f1ee3090-a1a2-4962-86d6-03f4347a93b3" width="512" height="768" ></img><br/>
 </div>
 
 ---
@@ -20,7 +20,7 @@ LangGraph-Graph RAG 是一个基于 **LangGraph + SGLang** 的向量–图混合
 
 - **LangGraph 状态机**：数据摄取、查询推理、摘要生成和思维导图生成均运行在带有 `MemorySaver` 检查点的 LangGraph `StateGraph` 上。
 - **检查点与回溯**：每次节点转换均被检查点记录；当质量不足时，质量门控和 GoT 快照会回滚到备用检索路径或更早的扩展阶段（最多重试 2 次）。
-- **3 路检索路由**：跳数 ≤ 2 → Vector RAG（TextSearcher + Reranker），跳数 3–5 → Weaviate Cross-Reference GraphQL 遍历，跳数 ≥ 6 → Neo4j 深度图遍历。
+- **3 路检索路由**：跳数 ≤ 2 → Vector RAG（TextSearcher + Reranker），跳数 3–5 → Weaviate Cross-Reference GraphQL 遍历，跳数 ≥ 6 → Neo4j 深度图遍历。跳数边界映射了底层数据模型：纯语义问题保留在 TextDocument 嵌入索引，实体/属性推理利用 Weaviate 交叉引用，≥ 6 跳的模式化关系推理会升级到 Neo4j Cypher 查询。Path 1 与 Path 2 均运行在 Weaviate 内：Path 1 偏向于在 late-chunk 语料上执行快速语义相似度，Path 2 则显式遍历 Cross-Reference 邻域，在不进入 Neo4j 的情况下先挖掘与查询关联的实体/事件。
 - **观察者 LLM + GoT 扩展**：观察者 LLM 对每条路径结果进行 0–1 评分。通过评分的结果将触发 Graph-of-Thought 分支/合并以获取更深层的上下文。
 - **SGLang 推理**：生成器、嵌入、重排序器、跳数分类器和观察者 LLM 均运行在带有延迟加载（`LazyModelManager` + `SGLangServerManager`）的 SGLang 服务器上。
 - **自动图更新插入**：OCR → LLM 实体/事件/关系提取 → 同步写入 Weaviate + Neo4j。
@@ -100,9 +100,9 @@ planner →  router →┬→ vector_retriever  ──→┐
 3. **路由器**：根据跳数分类选择路径 1/2/3。
 4. **检索节点**：
    - **路径 1 – Vector RAG**：委托给 `rag_pipeline` 现有的 TextSearcher + Reranker。
-   - **路径 2 – Cross-Ref GraphRAG**：BM25 种子实体 → Weaviate Cross-Reference `QueryReference` 多跳遍历（source/target/event refs）。
-   - **路径 3 – Neo4j GraphDB**：通过 `legacy_graph_client.py` Cypher 模板进行深度遍历。
-5. **质量门控 + 观察者 LLM**：每条路径结果由观察者 LLM 评分为 0.0–1.0（路径 1 委托时默认为 1.0）。如果评分低于 0.3，工作流回滚并回溯到另一条路径（最多重试 2 次）。
+   - **路径 2 – Cross-Ref GraphRAG**：BM25 种子实体 → Weaviate Cross-Reference `QueryReference` 多跳遍历（source/target/event refs），在升级到 Neo4j 之前先在 Weaviate 内收集与查询相邻的实体/事件。
+   - **路径 3 – Neo4j GraphDB**：通过 `legacy_graph_client.py` Cypher 模板执行 ≥ 6 跳的模式化深度推理，或在 Weaviate cross-reference 结果枯竭后继续深化。
+5. **质量门控 + 观察者 LLM**：每条路径结果由观察者 LLM 评分为 0.0–1.0（路径 1 委托时默认为 1.0）。如果评分低于配置的质量阈值，工作流会返回路由器并按照回退顺序（Vector → Cross-Ref → GraphDB）尝试下一条检索路径，直到有路径通过或达到 2 次重试上限；一旦达到上限，将携带当前上下文继续，并在 `answer_notes` 中标记退化。
 6. **GoT 思维扩展器**（`GOT_MODE_ENABLED=true`）：通过分支、评分和合并进行图形化思维探索。
    - 每步并行扩展最多 `GOT_BRANCH_FACTOR` 个候选查询。
    - 观察者 LLM 从相关性、覆盖率和新颖性维度对每个分支评分（0.0–1.0）。
@@ -196,7 +196,7 @@ backend/
 2. `hop_classifier.py` 估计查询复杂度 → 确定 `max_hops`。
 3. `graph_reasoner.py` 运行 LangGraph 工作流：
    - **planner** → **router** → **检索节点**（路径 1/2/3）→ **quality_gate**
-   - 如果质量 < 0.3 → **回溯**到路由器选择备用路径（最多重试 2 次）。
+   - 如果质量 < 阈值 → **回溯**到路由器选择备用路径（最多重试 2 次）。
    - 如果启用 GoT → 带有基于快照回溯的 **thought_expander**。
    - **aggregator** 构建上下文片段。
 4. `generator.py` 从原始查询 + 上下文片段生成答案。
@@ -266,6 +266,8 @@ docker run -d --name neo4j-dev \
 - `LegacyGraphIngestor` 在首次运行时自动创建约束；无需手动设置。
 - `LazyModelManager` 在空闲约 60 秒后释放 GPU 内存。
 - 所有 LangGraph 工作流记录检查点 ID 和回溯次数以供追踪。
+- **SGLang 冷启动**：延迟加载意味着首次 `/v1/chat`（或 hop classifier）请求需为每个 SGLang 服务器加载模型到 VRAM，耗时 20–60 秒；建议在对外提供服务前进行预热请求或使用 keep-alive cron 以避免客户端超时。
+- **易失性检查点**：`MemorySaver` 将图快照存储在进程内，只要 FastAPI 重启，进行中的状态就会丢失；在迁移至 `SqliteSaver`/`PostgresSaver` 之前，请将其视作易失会话。
 
 ---
 
