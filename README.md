@@ -30,12 +30,12 @@ LangGraph-Graph RAG is a vector–graph hybrid RAG platform powered by **LangGra
 
 ```
 ┌──────────────┐    ┌─────────────────────────────┐
-│ Input Layer  │ → │ LangGraph Upload Pipeline   │ → Markdown + *.graph.json
+│ Input Layer  │ →  │ LangGraph Upload Pipeline   │ →  Markdown + *.graph.json
 │ (PDF/IMG/…)  │    │ (MemorySaver checkpoint)    │
 └──────────────┘    └─────────────────────────────┘
                                   │
 ┌──────────────┐    ┌─────────────────────────────┐    ┌────────────────┐
-│ User Query   │ → │ LangGraph RAG Workflow      │ → │ LLM Generation │
+│ User Query   │ →  │ LangGraph RAG Workflow      │ →  │ LLM Generation │
 └──────────────┘    │ (MemorySaver checkpoint)    │    └────────────────┘
                     └─────────────────────────────┘
                                   │
@@ -84,11 +84,16 @@ Handled by `GraphReasoner` (`graph_reasoner.py`) with `MemorySaver` checkpointin
 2. **Planner**: analyzes the query, sets `max_hops`, and initializes the search plan.
 3. **Router**: selects Path 1/2/3 based on hop classification.
 4. **Retrieval Nodes**:
-   - **Path 1 – Vector RAG**: delegates to `rag_pipeline`'s existing TextSearcher + Reranker (no internal GraphReasoner search; quality=1.0 bypass).
+   - **Path 1 – Vector RAG**: delegates to `rag_pipeline`'s existing TextSearcher + Reranker.
    - **Path 2 – Cross-Ref GraphRAG**: BM25 seed entities → Weaviate Cross-Reference `QueryReference` multi-hop traversal (source/target/event refs).
    - **Path 3 – Neo4j GraphDB**: deep traversal via `legacy_graph_client.py` Cypher templates.
 5. **Quality Gate**: Path 2/3 quality is evaluated by an observer LLM (0.0–1.0 relevance score). Path 1 bypasses the gate (quality=1.0). If quality < 0.3, backtracks to an alternative path with state reset (max 2 retries).
-6. **GoT Thought Expander** (optional): multi-step graph expansion with snapshot-based backtracking on consecutive failures.
+6. **GoT Thought Expander** (optional, `GOT_MODE_ENABLED=true`): graph-shaped thought exploration with branching, scoring, and merging.
+   - Each step fans out up to `GOT_BRANCH_FACTOR` candidate queries in parallel.
+   - An observer LLM scores each branch (0.0–1.0) for relevance, coverage, and novelty.
+   - Branches above `GOT_THOUGHT_SCORE_THRESHOLD` are merged via `GOT_MERGE_STRATEGY` (`top_k` / `weighted_union` / `vote`).
+   - Low-quality edges are pruned by `GOT_EDGE_PRUNE_THRESHOLD` keyword-overlap scoring.
+   - Consecutive all-branch failures trigger snapshot-based backtracking (state rollback to last successful merge).
 7. **Aggregator**: builds context snippets from entities/events/relations for LLM generation.
 8. **Generation** (`generator.py`): produces the answer from original query + context, optionally refined by `refiner.py` / `evaluator.py`.
 
@@ -219,6 +224,7 @@ docker run -d --name neo4j-dev \
 ## Key Settings (`notebooklm/config.py`)
 
 - **Graph RAG toggles**: `GRAPH_RAG_ENABLED`, `LANGGRAPH_ENABLED`, `GOT_MODE_ENABLED`, `GRAPH_MAX_HOPS`.
+- **GoT tuning**: `GOT_BRANCH_FACTOR`, `GOT_MERGE_STRATEGY` (`top_k`/`weighted_union`/`vote`), `GOT_MERGE_TOP_K`, `GOT_THOUGHT_SCORE_THRESHOLD`, `GOT_EDGE_PRUNE_THRESHOLD`, `GOT_MAX_STEPS`, `GOT_MAX_CONSECUTIVE_FAILURES`, `GOT_OBSERVER_ENDPOINT`/`GOT_OBSERVER_MODEL`.
 - **Legacy graph**: `LEGACY_GRAPH_ENABLED`, `LEGACY_GRAPH_URI`, `LEGACY_GRAPH_LABELS`, `LEGACY_GRAPH_MAX_PATHS`.
 - **Weaviate**: `WEAVIATE_HOST/PORT`, `WEAVIATE_TEXT_CLASS`, `WEAVIATE_VECTORIZER`.
 - **Embedding/Reranker**: `EMBEDDING_DEVICE` (SGLang server URL).
@@ -250,8 +256,8 @@ docker run -d --name neo4j-dev \
 
 ## Roadmap
 
-1. **GoT (Graph of Thought)**
-   - Add LLM-driven reasoning loop inside `thought_expander`: the LLM evaluates the current graph state, proposes branching exploration paths, and merges the best results. Currently the node structure and snapshot-based backtracking skeleton exist, but the core LLM reasoning calls are not yet wired.
+1. ~~**GoT (Graph of Thought)**~~ Implemented
+   - `thought_expander` now performs graph-shaped exploration: each step fans out `GOT_BRANCH_FACTOR` branches, an observer LLM scores each branch, and the best results are merged via `GOT_MERGE_STRATEGY`. Low-quality edges are pruned, and consecutive failures trigger snapshot-based backtracking.
 2. **Advanced hop classifier**
    - Augment with query metadata (token length, entity counts) for a hybrid router.
 3. **Multi-graph retrieval optimization**
