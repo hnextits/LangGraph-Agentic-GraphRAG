@@ -18,9 +18,10 @@ LangGraph-Graph RAG is a vector–graph hybrid RAG platform powered by **LangGra
 ## Key Capabilities
 
 - **LangGraph state machines**: ingestion, query reasoning, summarization, and mindmap generation all run on LangGraph `StateGraph` with `MemorySaver` checkpointing.
-- **Checkpoint & backtracking**: every node transition is checkpointed; the quality gate backtracks to alternative retrieval paths when results are insufficient (up to 2 retries).
-- **3-way retrieval routing**: hop ≤ 2 → existing Vector RAG (TextSearcher + Reranker), hop 3–5 → Weaviate Cross-Reference GraphQL traversal, hop ≥ 6 → Neo4j Deep Graph Traversal.
-- **SGLang inference**: generator, embedding, reranker, hop classifier, and observer LLM services run on SGLang with GPU-dedicated scheduling via `LazyModelManager`.
+- **Checkpoint & backtracking**: every node transition is checkpointed; the quality gate and GoT snapshotting roll back to alternative retrieval paths or earlier expansions when quality is insufficient (up to 2 retries).
+- **3-way retrieval routing**: hop ≤ 2 → 기존 Vector RAG (TextSearcher + Reranker), hop 3–5 → Weaviate Cross-Reference GraphQL traversal, hop ≥ 6 → Neo4j Deep Graph Traversal.
+- **Observer LLM + GoT expansion**: an observer LLM scores each path result (0–1). Passing results trigger Graph-of-Thought branching/merging for deeper context.
+- **SGLang inference**: generator, embedding, reranker, hop classifier, and the observer LLM all run on SGLang servers with lazy loading (`LazyModelManager` + `SGLangServerManager`).
 - **Automatic graph upsert**: OCR → LLM entity/event/relation extraction → simultaneous Weaviate + Neo4j ingestion.
 - **Async job monitoring**: upload, OCR, and embedding progress tracked through task APIs.
 
@@ -34,22 +35,35 @@ LangGraph-Graph RAG is a vector–graph hybrid RAG platform powered by **LangGra
 │ (PDF/IMG/…)  │    │ (MemorySaver checkpoint)    │
 └──────────────┘    └─────────────────────────────┘
                                   │
-┌──────────────┐    ┌─────────────────────────────┐    ┌────────────────┐
-│ User Query   │ →  │ LangGraph RAG Workflow      │ →  │ LLM Generation │
-└──────────────┘    │ (MemorySaver checkpoint)    │    └────────────────┘
+┌──────────────┐    ┌─────────────────────────────┐
+│ User Query   │ →  │ LangGraph RAG Workflow      │
+└──────────────┘    │ (MemorySaver checkpoint)    │
                     └─────────────────────────────┘
                                   │
                     ┌─────────────┴──────────────┐
-                    │   3-Way Retrieval Router   │
-                    │   + Quality Gate Backtrack │
+                    │   Hop Router (LLM+rule)    │
                     └─────────────┬──────────────┘
                                   │
-       ┌──────────────────────────┼──────────────────────────┐
-       │                          │                          │
-   Path 1                    Path 2                     Path 3
-   Vector RAG                Weaviate Cross-Ref         Neo4j GraphDB
-   TextSearcher+Reranker     GraphQL QueryReference     Deep Traversal
-   (≤ 2 hop, delegated)      (3–5 hop, multi-hop)       (≥ 6 hop)
+     ┌────────────────────────────┼────────────────────────────┐
+     │                            │                            │
+ Path 1                      Path 2                       Path 3
+ Vector RAG                  Weaviate Cross-Ref           Neo4j GraphDB
+ TextSearcher+Reranker       GraphQL QueryReference       Deep Traversal
+ (≤ 2 hop)                   (3–5 hop)                    (≥ 6 hop)
+                                  │
+                                  ▼
+                 ┌──────────────────────────────────────────┐
+                 │ Quality Gate + Observer LLM (0~1 score)  │
+                 └────────────────┬─────────────────────────┘
+                                  │
+                        ┌─────────▼──────────────┐
+                        │ GoT Thought Expander   │
+                        │ Branch merge + pruning │
+                        └─────────┬──────────────┘
+                                  │
+                           ┌──────▼──────┐
+                           │ LLM Answer  │
+                           └─────────────┘
 ```
 
 ### Workflow Graph (Query)
@@ -87,15 +101,15 @@ Handled by `GraphReasoner` (`graph_reasoner.py`) with `MemorySaver` checkpointin
    - **Path 1 – Vector RAG**: delegates to `rag_pipeline`'s existing TextSearcher + Reranker.
    - **Path 2 – Cross-Ref GraphRAG**: BM25 seed entities → Weaviate Cross-Reference `QueryReference` multi-hop traversal (source/target/event refs).
    - **Path 3 – Neo4j GraphDB**: deep traversal via `legacy_graph_client.py` Cypher templates.
-5. **Quality Gate**: Path 2/3 quality is evaluated by an observer LLM (0.0–1.0 relevance score). Path 1 bypasses the gate (quality=1.0). If quality < 0.3, backtracks to an alternative path with state reset (max 2 retries).
-6. **GoT Thought Expander** (optional, `GOT_MODE_ENABLED=true`): graph-shaped thought exploration with branching, scoring, and merging.
+5. **Quality Gate + Observer LLM**: every path result is scored 0.0–1.0 by the observer LLM (Path 1 defaults to 1.0 when delegated). If the score is below 0.3, the workflow rolls back and backtracks to another path (max 2 retries).
+6. **GoT Thought Expander** (`GOT_MODE_ENABLED=true`): graph-shaped thought exploration with branching, scoring, and merging.
    - Each step fans out up to `GOT_BRANCH_FACTOR` candidate queries in parallel.
    - An observer LLM scores each branch (0.0–1.0) for relevance, coverage, and novelty.
    - Branches above `GOT_THOUGHT_SCORE_THRESHOLD` are merged via `GOT_MERGE_STRATEGY` (`top_k` / `weighted_union` / `vote`).
    - Low-quality edges are pruned by `GOT_EDGE_PRUNE_THRESHOLD` keyword-overlap scoring.
    - Consecutive all-branch failures trigger snapshot-based backtracking (state rollback to last successful merge).
 7. **Aggregator**: builds context snippets from entities/events/relations for LLM generation.
-8. **Generation** (`generator.py`): produces the answer from original query + context, optionally refined by `refiner.py` / `evaluator.py`.
+8. **Generation** (`generator.py`): merges thought/path snippets with the original query to produce the answer; `refiner.py` / `evaluator.py` optionally post-process the response.
 
 ---
 
