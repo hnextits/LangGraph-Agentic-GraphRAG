@@ -69,7 +69,7 @@ LangGraph-Graph RAG is a vector–graph hybrid RAG platform powered by **LangGra
 ### Workflow Graph (Query)
 
 ```
-planner → router →┬→ vector_retriever ──→┐
+planner →  router →┬→ vector_retriever  ──→┐
                    ├→ crossref_retriever ─→├→ quality_gate →┬→ thought_expander → aggregator → END
                    └→ graphdb_retriever ──→┘                └→ router (backtrack)
 ```
