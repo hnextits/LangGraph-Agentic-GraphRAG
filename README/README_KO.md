@@ -1,0 +1,355 @@
+# LangGraph-Graph RAG
+
+<div align="center">
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+
+[English](../README.md) | 한국어 | [中文](README_ZH.md)
+</div>
+
+LangGraph-Graph RAG는 **LangGraph + SGLang** 기반의 벡터–그래프 하이브리드 RAG 플랫폼입니다. 수집 파이프라인은 LangGraph 상태 머신과 체크포인트 영속성을 통해 원시 문서를 Markdown 청크 및 그래프 메타데이터로 변환합니다. 쿼리 시점에는 품질 게이트 백트래킹이 적용된 홉 기반 라우터가 Vector, Weaviate GraphRAG, Neo4j GraphDB 세 가지 검색 경로 중 하나를 선택하여 답변을 생성합니다.
+
+<div align="center">
+<img src="https://github.com/user-attachments/assets/2c81abe6-8a42-4d28-a9c8-a3cf6aa0d3c6" width="512" height="768" ></img><br/>
+</div>
+
+---
+
+## 주요 기능
+
+- **LangGraph 상태 머신**: 수집, 쿼리 추론, 요약, 마인드맵 생성이 모두 `MemorySaver` 체크포인팅을 갖춘 LangGraph `StateGraph` 위에서 동작합니다.
+- **체크포인트 & 백트래킹**: 모든 노드 전환이 체크포인팅되며, 품질 게이트와 GoT 스냅샷이 품질 미달 시 대체 검색 경로 또는 이전 확장 단계로 롤백합니다 (최대 2회 재시도).
+- **3-Way 검색 라우팅**: 홉 ≤ 2 → Vector RAG (TextSearcher + Reranker), 홉 3–5 → Weaviate Cross-Reference GraphQL 탐색, 홉 ≥ 6 → Neo4j Deep Graph Traversal.
+- **관찰자 LLM + GoT 확장**: 관찰자 LLM이 각 경로 결과를 0–1 점수로 평가합니다. 통과한 결과는 더 깊은 컨텍스트를 위해 Graph-of-Thought 분기/병합을 트리거합니다.
+- **SGLang 추론**: 생성기, 임베딩, 리랭커, 홉 분류기, 관찰자 LLM 모두 지연 로딩(`LazyModelManager` + `SGLangServerManager`)이 적용된 SGLang 서버에서 동작합니다.
+- **자동 그래프 업서트**: OCR → LLM 엔티티/이벤트/관계 추출 → Weaviate + Neo4j 동시 수집.
+- **비동기 작업 모니터링**: 업로드, OCR, 임베딩 진행 상황을 작업 API를 통해 추적합니다.
+
+---
+
+## 아키텍처
+
+```
+┌──────────────┐    ┌─────────────────────────────┐
+│  입력 레이어  │ →  │  LangGraph 업로드 파이프라인  │ →  Markdown + *.graph.json
+│ (PDF/IMG/…)  │    │   (MemorySaver 체크포인트)   │
+└──────────────┘    └─────────────────────────────┘
+                                  │
+┌──────────────┐    ┌─────────────────────────────┐
+│  사용자 쿼리  │ →  │  LangGraph RAG 워크플로우    │
+└──────────────┘    │   (MemorySaver 체크포인트)   │
+                    └─────────────────────────────┘
+                                  │
+                    ┌─────────────┴──────────────┐
+                    │   홉 라우터 (LLM + 규칙)    │
+                    └─────────────┬──────────────┘
+                                  │
+     ┌────────────────────────────┼────────────────────────────┐
+     │                            │                            │
+  Path 1                       Path 2                       Path 3
+  Vector RAG                   Weaviate Cross-Ref            Neo4j GraphDB
+  TextSearcher+Reranker         GraphQL QueryReference        Deep Traversal
+  (≤ 2 홉)                      (3–5 홉)                      (≥ 6 홉)
+                                  │
+                                  ▼
+                 ┌──────────────────────────────────────────┐
+                 │  품질 게이트 + 관찰자 LLM (0~1 점수)      │
+                 └────────────────┬─────────────────────────┘
+                                  │
+                        ┌─────────▼──────────────┐
+                        │  GoT Thought Expander  │
+                        │  분기 병합 + 가지치기   │
+                        └─────────┬──────────────┘
+                                  │
+                           ┌──────▼──────┐
+                           │  LLM 답변   │
+                           └─────────────┘
+```
+
+### 워크플로우 그래프 (쿼리)
+
+```
+planner →  router →┬→ vector_retriever  ──→┐
+                   ├→ crossref_retriever ─→├→ quality_gate →┬→ thought_expander → aggregator → END
+                   └→ graphdb_retriever ──→┘                └→ router (백트래킹)
+```
+
+---
+
+## 입력 / 전처리 레이어
+
+`LangGraphUploadPipeline` (`langgraph_upload_pipeline.py`)이 모든 노드에 걸쳐 `MemorySaver` 체크포인팅과 함께 처리합니다:
+
+1. **변환 & 레이아웃**: `run_file_processor.py`가 PDF/Office/이미지/오디오 입력을 처리 → `Results/1.Converted_images` + `Results/2.LayoutDetection`.
+2. **OCR & Markdown**: SGLang 기반 OCRFlux를 사용하는 `run_ocr_processing()`이 페이지별 Markdown 생성 → `Results/4.OCR_results`.
+3. **LLM 메타데이터 추출**: `LLMMetadataExtractor`가 Markdown에서 엔티티/이벤트/관계 추출 → `Results/8.graph_metadata/*.graph.json`.
+4. **그래프 업서트**:
+   - `GraphSchemaManager`가 Weaviate Entity/Event/Relation 컬렉션 존재를 확인하고 객체를 업서트합니다.
+   - `LegacyGraphIngestor` / `Neo4jManager`가 결정론적 UUID로 Neo4j에 노드/관계를 MERGE합니다.
+5. **Late Chunking & 임베딩**: `embedding_text.py`가 Markdown을 청크로 분할하고 `SharedEmbeddingModel`을 통해 Weaviate TextDocument 컬렉션에 업로드합니다.
+
+---
+
+## 쿼리 / 추론 레이어
+
+`GraphReasoner` (`graph_reasoner.py`)가 `MemorySaver` 체크포인팅과 품질 게이트 백트래킹으로 처리합니다:
+
+1. **홉 분류기** (`hop_classifier.py`): 쿼리 복잡도(홉 수)를 추정하여 검색 경로를 결정합니다.
+2. **플래너**: 쿼리를 분석하고 `max_hops`를 설정하며 검색 계획을 초기화합니다.
+3. **라우터**: 홉 분류에 따라 Path 1/2/3을 선택합니다.
+4. **검색 노드**:
+   - **Path 1 – Vector RAG**: `rag_pipeline`의 기존 TextSearcher + Reranker에 위임합니다.
+   - **Path 2 – Cross-Ref GraphRAG**: BM25 시드 엔티티 → Weaviate Cross-Reference `QueryReference` 멀티홉 탐색 (source/target/event refs).
+   - **Path 3 – Neo4j GraphDB**: `legacy_graph_client.py` Cypher 템플릿을 통한 심층 탐색.
+5. **품질 게이트 + 관찰자 LLM**: 모든 경로 결과가 관찰자 LLM에 의해 0.0–1.0으로 점수화됩니다 (Path 1은 위임 시 기본값 1.0). 점수가 0.3 미만이면 워크플로우가 롤백되어 다른 경로로 백트래킹합니다 (최대 2회 재시도).
+6. **GoT Thought Expander** (`GOT_MODE_ENABLED=true`): 분기, 점수화, 병합을 통한 그래프 형태의 사고 탐색.
+   - 각 단계에서 최대 `GOT_BRANCH_FACTOR`개의 후보 쿼리를 병렬로 확장합니다.
+   - 관찰자 LLM이 각 분기를 관련성, 커버리지, 신규성 기준으로 0.0–1.0 점수화합니다.
+   - `GOT_THOUGHT_SCORE_THRESHOLD` 이상의 분기는 `GOT_MERGE_STRATEGY` (`top_k` / `weighted_union` / `vote`)로 병합됩니다.
+   - 저품질 엣지는 `GOT_EDGE_PRUNE_THRESHOLD` 키워드 중복 점수로 가지치기됩니다.
+   - 연속적인 전체 분기 실패 시 스냅샷 기반 백트래킹이 트리거됩니다 (마지막 성공 병합 상태로 롤백).
+7. **어그리게이터**: LLM 생성을 위해 엔티티/이벤트/관계에서 컨텍스트 스니펫을 구성합니다.
+8. **생성** (`generator.py`): 사고/경로 스니펫을 원본 쿼리와 병합하여 답변을 생성합니다; `refiner.py` / `evaluator.py`가 선택적으로 응답을 후처리합니다.
+
+---
+
+## 모듈 맵
+
+```
+backend/
+├── main.py                          # FastAPI 서버 진입점
+├── app.py                           # 애플리케이션 설정 & 미들웨어
+├── config.py                        # 서버 수준 설정
+│
+├── api/                             # API 레이어
+│   ├── routes.py                    # 주요 업로드/파일/세션 라우트
+│   ├── chat.py                      # POST /v1/chat 엔드포인트
+│   ├── ocr_routes.py                # OCR 처리 엔드포인트
+│   └── pause_api.py                 # 작업 일시정지/재개 API
+│
+├── notebooklm/                      # RAG 핵심 모듈
+│   ├── config.py                    # 모델/경로/그래프 설정
+│   ├── rag_pipeline.py              # LangGraph RAG 워크플로우 오케스트레이터
+│   ├── graph_reasoner.py            # 3-Way 검색 + 체크포인트 + 백트래킹
+│   ├── graph_schema.py              # Weaviate Entity/Event/Relation 스키마
+│   ├── hop_classifier.py            # 쿼리 복잡도 추정기
+│   ├── legacy_graph_client.py       # Neo4j Cypher 탐색 클라이언트
+│   ├── legacy_graph_ingestor.py     # Neo4j 업서트 헬퍼
+│   ├── embedding_text.py            # Late chunking + Weaviate 텍스트 인덱싱
+│   ├── embedding_image.py           # 이미지 임베딩 + Weaviate 이미지 인덱싱
+│   ├── shared_embedding.py          # SGLang 임베딩/리랭커 클라이언트 (싱글톤)
+│   ├── generator.py                 # LLM 답변 생성
+│   ├── refiner.py                   # 답변 정제
+│   ├── evaluator.py                 # 답변 품질 평가
+│   ├── router.py                    # 쿼리 유형 라우팅
+│   ├── query_rewriter.py            # 쿼리 재작성
+│   ├── parallel_search.py           # 병렬 텍스트+이미지 검색
+│   ├── weaviate_utils.py            # Weaviate 클라이언트 유틸리티
+│   ├── rag_text/                    # 텍스트 검색 + 리랭커
+│   └── rag_image/                   # 이미지 검색 + 리랭커
+│
+├── nextits_data/                    # 데이터 처리 파이프라인
+│   └── pipe/
+│       ├── langgraph_upload_pipeline.py  # LangGraph 업로드 워크플로우 (체크포인팅)
+│       ├── llm_metadata_extractor.py     # 엔티티/이벤트/관계 추출
+│       ├── neo4j_manager.py              # Neo4j 업서트 매니저
+│       ├── run_file_processor.py         # 변환/레이아웃/OCR 오케스트레이터
+│       ├── pipeline_image.py             # 이미지 파이프라인
+│       ├── pipeline_sound.py             # 오디오 파이프라인
+│       └── main_pipe/
+│           ├── ocr_pipe/                 # SGLang 기반 OCRFlux 엔진
+│           ├── udp_pdftopng_300dpi.py    # PDF → PNG 변환
+│           └── udp_layoutdetection.py    # 레이아웃 감지
+│
+├── services/                        # 비즈니스 로직 서비스
+│   ├── model_manager.py             # LazyModelManager (GPU 생명주기)
+│   ├── ocr_vision_manager.py        # OCR 엔진 관리
+│   └── rag_service.py               # RAG 서비스 오케스트레이션
+│
+└── utils/
+    ├── task_queue.py                # GPU 작업 큐 (비동기 작업 관리)
+    └── helpers.py                   # 공유 유틸리티 함수
+```
+
+---
+
+## 데이터 파이프라인
+
+1. **파일 업로드** (`POST /upload/files`)
+   - `api/routes.py`가 파일을 세션별 폴더에 저장하고 `task_queue.py`를 통해 `run_processing_pipeline`을 큐에 추가합니다.
+2. **GPU 작업 큐**
+   - `task_queue.py`가 진행 상황 추적과 함께 순차적 GPU 바운드 작업(변환 → 레이아웃 → OCR)을 관리합니다.
+3. **텍스트 인덱싱** (`run_text_indexing` / `run_text_indexing_v2`)
+   - `SharedEmbeddingModel` 초기화 → Weaviate late-chunking 인덱싱을 위한 `process_markdown_files` 실행.
+4. **그래프 추출 & 수집**
+   - `LLMMetadataExtractor`가 `*.graph.json` 생성 → `GraphSchemaManager`가 Weaviate에 업서트 → `Neo4jManager` / `LegacyGraphIngestor`가 Neo4j에 업서트.
+5. **저장소 상태**
+   - Weaviate: TextDocument + GraphEntity/Event/Relation 컬렉션.
+   - Neo4j: Entity/Event 노드 + 결정론적 UUID와 자동 생성 제약 조건을 가진 관계 엣지.
+
+---
+
+## 쿼리 처리 흐름
+
+1. `POST /v1/chat` → `rag_pipeline.retrieve()` 호출.
+2. `hop_classifier.py`가 쿼리 복잡도를 추정 → `max_hops` 결정.
+3. `graph_reasoner.py`가 LangGraph 워크플로우 실행:
+   - **planner** → **router** → **검색 노드** (Path 1/2/3) → **quality_gate**
+   - 품질 < 0.3이면 → 대체 경로로 라우터에 **백트래킹** (최대 2회 재시도).
+   - GoT 활성화 시 → 스냅샷 기반 백트래킹이 적용된 **thought_expander**.
+   - **aggregator**가 컨텍스트 스니펫을 구성합니다.
+4. `generator.py`가 원본 쿼리 + 컨텍스트 스니펫으로 답변을 생성합니다.
+5. (선택) `refiner.py`가 답변을 다듬고; `evaluator.py`가 품질 노트를 기록합니다.
+6. 응답에는 디버깅을 위한 `plan`, `hops`, `notes`, `context_snippets`, `backtrack_count`, `thought_steps`가 포함됩니다.
+
+---
+
+## 설치 & 실행
+
+```bash
+cd backend
+pip install -r requirements.txt
+
+# 환경 변수 설정 (see .env.example)
+export GRAPH_RAG_ENABLED=true
+export LANGGRAPH_ENABLED=true
+export GOT_MODE_ENABLED=true
+export LEGACY_GRAPH_ENABLED=true
+export LEGACY_GRAPH_URI=bolt://localhost:7687
+export LEGACY_GRAPH_USER=neo4j
+export LEGACY_GRAPH_PASSWORD=your_password
+
+python main.py
+# SGLang 임베딩/리랭커 서버는 첫 요청 시 자동으로 시작됩니다.
+```
+
+Neo4j 로컬 실행:
+
+```bash
+docker run -d --name neo4j-dev \
+  -p7474:7474 -p7687:7687 \
+  -e NEO4J_AUTH=neo4j/your_password \
+  -v neo4j-data:/data \
+  neo4j:5
+```
+
+---
+
+## 주요 설정 (`notebooklm/config.py`)
+
+- **Graph RAG 토글**: `GRAPH_RAG_ENABLED`, `LANGGRAPH_ENABLED`, `GOT_MODE_ENABLED`, `GRAPH_MAX_HOPS`.
+- **GoT 튜닝**: `GOT_BRANCH_FACTOR`, `GOT_MERGE_STRATEGY` (`top_k`/`weighted_union`/`vote`), `GOT_MERGE_TOP_K`, `GOT_THOUGHT_SCORE_THRESHOLD`, `GOT_EDGE_PRUNE_THRESHOLD`, `GOT_MAX_STEPS`, `GOT_MAX_CONSECUTIVE_FAILURES`, `GOT_OBSERVER_ENDPOINT`/`GOT_OBSERVER_MODEL`.
+- **레거시 그래프**: `LEGACY_GRAPH_ENABLED`, `LEGACY_GRAPH_URI`, `LEGACY_GRAPH_LABELS`, `LEGACY_GRAPH_MAX_PATHS`.
+- **Weaviate**: `WEAVIATE_HOST/PORT`, `WEAVIATE_TEXT_CLASS`, `WEAVIATE_VECTORIZER`.
+- **임베딩/리랭커**: `EMBEDDING_DEVICE` (SGLang 서버 URL).
+- **세션 디렉토리**: `DATA_ROOT/Results`, `sessions/<id>` 레이아웃.
+
+---
+
+## API 요약
+
+| 엔드포인트 | 설명 |
+|---|---|
+| `POST /upload/files` | LangGraph 업로드 파이프라인 트리거 |
+| `POST /v1/chat` | 체크포인트/백트래킹이 적용된 3-Way RAG 실행 |
+| `GET /api/v1/tasks/{task_id}` | 큐에 등록된 업로드/OCR 작업 모니터링 |
+| `GET /files` | 세션 아티팩트 목록 조회 |
+| `POST /pause` | 백그라운드 작업 일시정지/재개 |
+
+---
+
+## 로깅 & 운영
+
+- `sglang_embedding_server.log`, `sglang_reranker_server.log` – SGLang 모델 서버 상태.
+- `Results/8.graph_metadata/*.graph.json` – LLM 추출 결과 아카이브.
+- `LegacyGraphIngestor`가 첫 실행 시 제약 조건을 자동 생성합니다; 수동 설정 불필요.
+- `LazyModelManager`가 약 60초 유휴 후 GPU 메모리를 해제합니다.
+- 모든 LangGraph 워크플로우가 추적성을 위해 체크포인트 ID와 백트래킹 횟수를 기록합니다.
+
+---
+
+## 로드맵
+
+1. ~~**GoT (Graph of Thought)**~~ 구현 완료
+   - `thought_expander`가 이제 그래프 형태의 탐색을 수행합니다: 각 단계에서 `GOT_BRANCH_FACTOR`개의 분기를 확장하고, 관찰자 LLM이 각 분기를 점수화하며, 최적 결과가 `GOT_MERGE_STRATEGY`로 병합됩니다. 저품질 엣지는 가지치기되고, 연속 실패 시 스냅샷 기반 백트래킹이 트리거됩니다.
+2. **고급 홉 분류기**
+   - 하이브리드 라우터를 위해 쿼리 메타데이터(토큰 길이, 엔티티 수)로 보강합니다.
+3. **멀티 그래프 검색 최적화**
+   - 3–5 홉 Weaviate 탐색의 컨텍스트 필터링/중복 제거를 개선하고 ≥ 6 홉 Neo4j 탐색을 위한 Cypher 템플릿을 추가합니다.
+4. **LangGraph 워크플로우 관찰 가능성**
+   - 노드별 지연/오류 메트릭을 내보내고 `GraphReasoner` 및 `LegacyGraphClient` 내에 재시도 정책을 통합합니다.
+5. **영속적 체크포인터**
+   - 크로스 세션 상태 복구를 위해 `MemorySaver`에서 `SqliteSaver` / `PostgresSaver`로 마이그레이션합니다.
+
+---
+
+## 기여 & 연락처
+
+이슈와 PR을 환영합니다. 문의 사항은 jeongnext@hnextits.com으로 연락해 주세요.
+
+---
+
+## 라이선스
+
+이 프로젝트는 이중 라이선스로 제공됩니다:
+- **MIT 라이선스** - 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+- **Apache 라이선스 2.0** - 자세한 내용은 [LICENSE-APACHE](LICENSE-APACHE) 파일을 참조하세요.
+
+이 소프트웨어 사용에 적용할 라이선스를 선택할 수 있습니다.
+
+---
+
+## 인용
+
+이 프로젝트를 연구에 사용하는 경우 다음을 인용해 주세요:
+
+### SGLang
+```bibtex
+@misc{zheng2023sglang,
+  title={SGLang: Efficient Execution of Structured Language Model Programs},
+  author={Lianmin Zheng and Liangsheng Yin and Zhiqiang Xie and Jeff Huang and Chuyue Sun and Cody Hao Yu and Shiyi Cao and Christos Kozyrakis and Ion Stoica and Joseph E. Gonzalez and Clark Barrett and Ying Sheng},
+  year={2023},
+  url={https://github.com/sgl-project/sglang}
+}
+```
+
+### LangGraph
+```bibtex
+@software{langgraph2024,
+  title={LangGraph: A Framework for Building Stateful Multi-Actor Applications},
+  author={LangChain AI},
+  year={2024},
+  url={https://github.com/langchain-ai/langgraph}
+}
+```
+
+### Weaviate
+```bibtex
+@software{weaviate2024,
+  title={Weaviate: An Open-Source Vector Database},
+  author={Weaviate B.V.},
+  year={2024},
+  url={https://github.com/weaviate/weaviate}
+}
+```
+
+### Neo4j
+```bibtex
+@software{neo4j2024,
+  title={Neo4j: The Graph Database Platform},
+  author={Neo4j, Inc.},
+  year={2024},
+  url={https://github.com/neo4j/neo4j}
+}
+```
+
+### OCRFlux
+```bibtex
+@software{ocrflux2024,
+  title={OCRFlux: Vision-Language Model for OCR},
+  author={ChatDOC},
+  year={2024},
+  url={https://huggingface.co/ChatDOC/OCRFlux-3B}
+}
+```
