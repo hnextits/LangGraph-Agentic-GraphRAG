@@ -32,12 +32,12 @@ LangGraph-Agentic-Graph RAG는 **LangGraph + SGLang** 기반의 벡터–그래�
 
 ```
 ┌──────────────┐    ┌─────────────────────────────┐
-│  입력 레이어  │ →  │  LangGraph 업로드 파이프라인  │ →  Markdown + *.graph.json
+│  입력 레이어  │ →  │  LangGraph 업로드 파이프라인 │ →  Markdown + *.graph.json
 │ (PDF/IMG/…)  │    │   (MemorySaver 체크포인트)   │
 └──────────────┘    └─────────────────────────────┘
                                   │
 ┌──────────────┐    ┌─────────────────────────────┐
-│  사용자 쿼리  │ →  │  LangGraph RAG 워크플로우    │
+│  사용자 쿼리  │ →  │  LangGraph RAG 워크플로우   │
 └──────────────┘    │   (MemorySaver 체크포인트)   │
                     └─────────────────────────────┘
                                   │
@@ -47,7 +47,7 @@ LangGraph-Agentic-Graph RAG는 **LangGraph + SGLang** 기반의 벡터–그래�
                                   │
      ┌────────────────────────────┼────────────────────────────┐
      │                            │                            │
-  Path 1                       Path 2                       Path 3
+  Path 1                       Path 2                        Path 3
   Vector RAG                   Weaviate Cross-Ref            Neo4j GraphDB
   TextSearcher+Reranker         GraphQL QueryReference        Deep Traversal
   (≤ 2 홉)                      (3–5 홉)                      (≥ 6 홉)
@@ -99,7 +99,7 @@ planner →  router →┬→ vector_retriever  ──→┐
 2. **플래너**: 쿼리를 분석하고 `max_hops`를 설정하며 검색 계획을 초기화합니다.
 3. **라우터**: 홉 분류에 따라 Path 1/2/3을 선택합니다.
 4. **검색 노드**:
-   - **Path 1 – Vector RAG**: `rag_pipeline`의 기존 TextSearcher + Reranker에 위임합니다.
+   - **Path 1 – Vector RAG**: `rag_pipeline`의 TextSearcher + Reranker
    - **Path 2 – Cross-Ref GraphRAG**: BM25 시드 엔티티 → Weaviate Cross-Reference `QueryReference` 멀티홉 탐색 (source/target/event refs)을 수행해 Neo4j로 escalation하기 전에 질의 인접 엔티티/이벤트를 Weaviate 내부에서 추가 확보합니다.
   - **Path 3 – Neo4j GraphDB**: `legacy_graph_client.py` Cypher 템플릿을 통한 6홉 이상 스키마 집중 탐색 또는 Weaviate Cross-Reference가 바닥났을 때의 심층 탐색.
 5. **품질 게이트 + 관찰자 LLM**: 모든 경로 결과가 관찰자 LLM에 의해 0.0–1.0으로 점수화됩니다 (Path 1은 위임 시 기본값 1.0). 점수가 설정된 품질 임계값(threshold)보다 낮으면 워크플로우가 라우터로 되돌아가 폴백 순서(Vector → Cross-Ref → GraphDB)의 다음 경로를 시도하며, 경로 통과 또는 2회 재시도 한도 도달 시까지 반복합니다. 한도 도달 후에는 현재 컨텍스트로 진행하면서 `answer_notes`에 품질 저하를 표시합니다.
@@ -273,7 +273,7 @@ docker run -d --name neo4j-dev \
 
 ## 로드맵
 
-1. ~~**GoT (Graph of Thought)**~~ 구현 완료
+1. ~~**GoT (Graph of Thought)**~~
    - `thought_expander`가 이제 그래프 형태의 탐색을 수행합니다: 각 단계에서 `GOT_BRANCH_FACTOR`개의 분기를 확장하고, 관찰자 LLM이 각 분기를 점수화하며, 최적 결과가 `GOT_MERGE_STRATEGY`로 병합됩니다. 저품질 엣지는 가지치기되고, 연속 실패 시 스냅샷 기반 백트래킹이 트리거됩니다.
 2. **고급 홉 분류기**
    - 하이브리드 라우터를 위해 쿼리 메타데이터(토큰 길이, 엔티티 수)로 보강합니다.

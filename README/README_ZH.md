@@ -274,7 +274,7 @@ docker run -d --name neo4j-dev \
 
 ## 路线图
 
-1. ~~**GoT（Graph of Thought）**~~ 已实现
+1. ~~**GoT（Graph of Thought）**~~
    - `thought_expander` 现在执行图形化探索：每步扩展 `GOT_BRANCH_FACTOR` 个分支，观察者 LLM 对每个分支评分，最佳结果通过 `GOT_MERGE_STRATEGY` 合并。低质量边被剪枝，连续失败触发基于快照的回溯。
 2. **高级跳数分类器**
    - 使用查询元数据（词元长度、实体数量）增强混合路由器。

@@ -100,7 +100,7 @@ Handled by `GraphReasoner` (`graph_reasoner.py`) with `MemorySaver` checkpointin
 2. **Planner**: analyzes the query, sets `max_hops`, and initializes the search plan.
 3. **Router**: selects Path 1/2/3 based on hop classification.
 4. **Retrieval Nodes**:
-   - **Path 1 – Vector RAG**: delegates to `rag_pipeline`'s existing TextSearcher + Reranker.
+   - **Path 1 – Vector RAG**: `rag_pipeline`'s TextSearcher + Reranker.
    - **Path 2 – Cross-Ref GraphRAG**: BM25 seed entities → Weaviate Cross-Reference `QueryReference` multi-hop traversal (source/target/event refs) to collect query-adjacent entities/events within Weaviate before escalating to Neo4j.
    - **Path 3 – Neo4j GraphDB**: deep traversal via `legacy_graph_client.py` Cypher templates for ≥ 6-hop schema-intensive reasoning or when Weaviate cross-references exhaust.
 5. **Quality Gate + Observer LLM**: every path result is scored 0.0–1.0 by the observer LLM (Path 1 defaults to 1.0 when delegated). If the score falls below the configured quality threshold, the workflow re-enters the router with the next retrieval path in the fallback order (Vector → Cross-Ref → GraphDB) and repeats until either a path passes or the 2-retry limit is reached; after the limit it continues with the best-effort context and flags the degradation in `answer_notes`.
@@ -274,7 +274,7 @@ docker run -d --name neo4j-dev \
 
 ## Roadmap
 
-1. ~~**GoT (Graph of Thought)**~~ Implemented
+1. ~~**GoT (Graph of Thought)**~~
    - `thought_expander` now performs graph-shaped exploration: each step fans out `GOT_BRANCH_FACTOR` branches, an observer LLM scores each branch, and the best results are merged via `GOT_MERGE_STRATEGY`. Low-quality edges are pruned, and consecutive failures trigger snapshot-based backtracking.
 2. **Advanced hop classifier**
    - Augment with query metadata (token length, entity counts) for a hybrid router.
