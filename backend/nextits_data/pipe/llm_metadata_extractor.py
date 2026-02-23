@@ -7,6 +7,7 @@ import logging
 import re
 import shutil
 import textwrap
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -134,7 +135,8 @@ def process_document(
     doc_id = md_path.stem
 
     # Chunking
-    chunks = textwrap.wrap(content, 1500, break_long_words=False, replace_whitespace=False)
+    chunk_size = getattr(config, 'GRAPH_EXTRACTOR_CHUNK_SIZE', 800) if config else 800
+    chunks = textwrap.wrap(content, chunk_size, break_long_words=False, replace_whitespace=False)
 
     result = ExtractionResult(document_id=doc_id)
     entity_seen: set[tuple[str, str]] = set()
@@ -149,7 +151,13 @@ def process_document(
     entity_pattern = re.compile(r"(ENT_\d+)\s*\|\s*([^|]+)\|\s*([^|\n]+)")
     relation_pattern = re.compile(r"(ENT_\d+)\s*->\s*(ENT_\d+)\s*\(([^)]+)\)")
 
-    for i, text in enumerate(chunks, 1):
+    from notebooklm.sglang_server_manager import sglang_manager
+    keepalive_interval = getattr(config, 'SGLANG_KEEPALIVE_INTERVAL', 20) if config else 20
+
+    # 전체 청크 루프를 acquire로 감싸서 루프 실행 중 서버가 종료되지 않도록 보호
+    sglang_manager.acquire("generator")
+    try:
+     for i, text in enumerate(chunks, 1):
         prompt = f"""<|im_start|>system
 You are a knowledge graph extraction assistant. Output ONLY structured entity/relation lines. No explanations, no thinking, no JSON. /no_think
 <|im_end|>
@@ -170,22 +178,87 @@ Output rules:
 """
 
         try:
-            # 청크 처리 중 idle timeout 방지
-            from notebooklm.sglang_server_manager import sglang_manager
-            sglang_manager.touch("generator")
-
             temperature = getattr(config, 'GRAPH_EXTRACTOR_TEMPERATURE', 0.1) if config else 0.1
             max_tokens = getattr(config, 'GRAPH_EXTRACTOR_MAX_TOKENS', 1024) if config else 1024
-            
+            api_timeout = getattr(config, 'GRAPH_EXTRACTOR_API_TIMEOUT', 300) if config else 300
+            retry_on_failure = getattr(config, 'GRAPH_EXTRACTOR_RETRY_ON_FAILURE', True) if config else True
             api_url = f"{endpoint}/v1/completions"
-            payload = {
-                "model": model_name,
-                "prompt": prompt,
-                "max_tokens": max_tokens,
-                "temperature": temperature,
-            }
-            resp = _sglang_session.post(api_url, json=payload, timeout=120)
-            resp.raise_for_status()
+
+            def _call_sglang(prompt_text, timeout_sec):
+                """SGLang API 호출 + keepalive 스레드. timeout 시 abort 후 ReadTimeout 발생."""
+                import uuid as _uuid
+                req_id = f"extractor-{_uuid.uuid4().hex}"
+                payload = {
+                    "model": model_name,
+                    "prompt": prompt_text,
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                    "request_id": req_id,
+                }
+                _stop_ka = threading.Event()
+                def _keepalive(chunk_idx=i):
+                    while not _stop_ka.wait(timeout=keepalive_interval):
+                        sglang_manager.touch("generator")
+                        logger.debug("SGLang generator keepalive touch (chunk %d)", chunk_idx)
+                _ka = threading.Thread(target=_keepalive, daemon=True)
+                _ka.start()
+                try:
+                    r = _sglang_session.post(api_url, json=payload, timeout=timeout_sec)
+                    r.raise_for_status()
+                    return r
+                except Exception as exc:
+                    # timeout 발생 시 SGLang에 abort 요청
+                    try:
+                        _sglang_session.post(
+                            f"{endpoint}/abort",
+                            json={"rid": req_id},
+                            timeout=5,
+                        )
+                        logger.warning("Chunk %d: SGLang request aborted (rid=%s)", i, req_id)
+                    except Exception:
+                        pass
+                    raise exc
+                finally:
+                    _stop_ka.set()
+                    _ka.join(timeout=2)
+
+            def _restart_generator(reason: Exception | None = None):
+                msg = f"Chunk {i}: SGLang generator 재시작 (reason={reason})"
+                logger.warning(msg)
+                try:
+                    sglang_manager.release("generator")
+                except Exception as release_exc:
+                    logger.error("Chunk %d: generator release 실패: %s", i, release_exc)
+                try:
+                    sglang_manager.shutdown_server("generator")
+                except Exception as shutdown_exc:
+                    logger.error("Chunk %d: generator shutdown 실패: %s", i, shutdown_exc)
+                finally:
+                    # 재기동 시도 (active_users 균형 유지를 위해 acquire 재호출)
+                    try:
+                        sglang_manager.acquire("generator")
+                    except Exception as acquire_exc:
+                        logger.error("Chunk %d: generator 재기동 실패: %s", i, acquire_exc)
+
+            resp = None
+            attempt = 0
+            while True:
+                attempt += 1
+                try:
+                    resp = _call_sglang(prompt, api_timeout)
+                    break
+                except Exception as exc:
+                    logger.error("Chunk %d: SGLang 호출 실패 (attempt %d) - %s", i, attempt, exc)
+                    _restart_generator(exc)
+                    if not retry_on_failure or attempt >= 2:
+                        logger.error("Chunk %d: 재시도 불가 또는 모두 실패, 다음 청크로 이동", i)
+                        resp = None
+                        break
+                    logger.info("Chunk %d: generator 재시작 후 동일 청크 재시도", i)
+
+            if resp is None:
+                continue
+
             data = resp.json()
             output = data["choices"][0]["text"]
             output = output.strip()
@@ -299,6 +372,9 @@ Output rules:
 
         except Exception as e:
             logger.error(f"Chunk {i} Extraction Error: {e}")
+
+    finally:
+        sglang_manager.release("generator")
 
     logger.info(f"==> 추출 완료: {out_path} (총 {len(result.entities)}개 엔티티)")
     

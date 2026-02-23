@@ -103,6 +103,7 @@ class RAGConfig:
         #    - GPU 배치: generator → cuda:0 / 나머지 → cuda:1
         #############################################
         self.SGLANG_IDLE_TIMEOUT = 60  # 유휴 자동 종료 시간 (초)
+        self.SGLANG_KEEPALIVE_INTERVAL = int(os.getenv("SGLANG_KEEPALIVE_INTERVAL", "20"))
 
         # ── 2-1. 생성기 (Generator) ─────────────────
         self.LLM_MODEL = "Qwen/Qwen3-8B"                          # ~16GB
@@ -153,6 +154,8 @@ class RAGConfig:
         # ── 2-7. 그래프 추출기 (Graph Extractor, 생성기 서버 공유) ──
         self.GRAPH_EXTRACTOR_MODEL = self.LLM_MODEL
         self.GRAPH_EXTRACTOR_ENDPOINT = self.SGLANG_GENERATOR_ENDPOINT
+        self.GRAPH_EXTRACTOR_API_TIMEOUT = int(os.getenv("GRAPH_EXTRACTOR_API_TIMEOUT", "60"))
+        self.GRAPH_EXTRACTOR_CHUNK_SIZE = int(os.getenv("GRAPH_EXTRACTOR_CHUNK_SIZE", "800"))
 
         # ── 2-8. 마인드맵 / 요약 (sgl.Engine in-process, LazyModelManager 관리) ──
         self.MINDMAP_MODEL = "Qwen/Qwen3-8B"

@@ -23,6 +23,9 @@ LangGraph-Agentic-Graph RAG는 **LangGraph + SGLang** 기반의 벡터–그래�
 - **3-Way 검색 라우팅**: 홉 ≤ 2 → Vector RAG (TextSearcher + Reranker), 홉 3–5 → Weaviate Cross-Reference GraphQL 탐색, 홉 ≥ 6 → Neo4j Deep Graph Traversal. 홉 경계는 데이터 모델 특성을 반영합니다: 의미 기반 질의는 TextDocument 임베딩 인덱스에, 엔티티/속성 추론은 Weaviate Cross-Reference에, 6홉 이상 스키마 중심 관계 추론은 Neo4j Cypher 탐색으로 승격됩니다. Path 1과 Path 2 모두 Weaviate에서 동작하며, Path 1은 Late chunking 코퍼스 위에서 빠른 의미 유사성을, Path 2는 Cross-Reference 이웃을 걸으며 Neo4j까지 가지 않고도 질의 연관 엔티티/이벤트를 추가 발굴합니다.
 - **관찰자 LLM + GoT 확장**: 관찰자 LLM이 각 경로 결과를 0–1 점수로 평가합니다. 통과한 결과는 더 깊은 컨텍스트를 위해 Graph-of-Thought 분기/병합을 트리거합니다.
 - **SGLang 추론**: 생성기, 임베딩, 리랭커, 홉 분류기, 관찰자 LLM 모두 지연 로딩(`LazyModelManager` + `SGLangServerManager`)이 적용된 SGLang 서버에서 동작합니다.
+  - **지연 로딩**: 첫 요청 시 서버 자동 시작, 60초 idle timeout으로 GPU 메모리 해제
+  - **GPU 할당**: Generator (cuda:0, 30% VRAM), Embedding/Reranker/Refiner (cuda:1, 공유)
+  - **청크 재시도 로직**: LLM 메타데이터 추출 시 실패한 청크를 서버 재시작 후 자동 재시도 (`GRAPH_EXTRACTOR_RETRY_ON_FAILURE`로 설정 가능)
 - **자동 그래프 업서트**: OCR → LLM 엔티티/이벤트/관계 추출 → Weaviate + Neo4j 동시 수집.
 - **비동기 작업 모니터링**: 업로드, OCR, 임베딩 진행 상황을 작업 API를 통해 추적합니다.
 
@@ -84,9 +87,13 @@ planner →  router →┬→ vector_retriever  ──→┐
 1. **변환 & 레이아웃**: `run_file_processor.py`가 PDF/Office/이미지/오디오 입력을 처리 → `Results/1.Converted_images` + `Results/2.LayoutDetection`.
 2. **OCR & Markdown**: SGLang 기반 OCRFlux를 사용하는 `run_ocr_processing()`이 페이지별 Markdown 생성 → `Results/4.OCR_results`.
 3. **LLM 메타데이터 추출**: `LLMMetadataExtractor`가 Markdown에서 엔티티/이벤트/관계 추출 → `Results/8.graph_metadata/*.graph.json`.
+   - **청크 크기**: configurable via `GRAPH_EXTRACTOR_CHUNK_SIZE
+   - **타임아웃**: configurable via `GRAPH_EXTRACTOR_API_TIMEOUT
+   - **재시도 로직**: 타임아웃 발생 시 SGLang generator 서버 재시작 후 동일 청크 1회 재시도
+   - **Keepalive**: 처리 중 20초마다 서버 touch하는 백그라운드 스레드
 4. **그래프 업서트**:
-   - `GraphSchemaManager`가 Weaviate Entity/Event/Relation 컬렉션 존재를 확인하고 객체를 업서트합니다.
-   - `LegacyGraphIngestor` / `Neo4jManager`가 결정론적 UUID로 Neo4j에 노드/관계를 MERGE합니다.
+   - `GraphSchemaManager`가 Weaviate GraphEntity/GraphEvent/GraphRelation 컬렉션을 Cross-Reference(source/target/event)와 함께 생성
+   - `LegacyGraphIngestor` / `Neo4jManager`가 결정론적 UUID로 Neo4j에 노드/관계를 MERGE
 5. **Late Chunking & 임베딩**: `embedding_text.py`가 Markdown을 청크로 분할하고 `SharedEmbeddingModel`을 통해 Weaviate TextDocument 컬렉션에 업로드합니다.
 
 ---

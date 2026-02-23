@@ -21,9 +21,12 @@ LangGraph-Agentic-Graph RAG is a vector–graph hybrid RAG platform powered by *
 
 - **LangGraph state machines**: ingestion, query reasoning, summarization, and mindmap generation all run on LangGraph `StateGraph` with `MemorySaver` checkpointing.
 - **Checkpoint & backtracking**: every node transition is checkpointed; the quality gate and GoT snapshotting roll back to alternative retrieval paths or earlier expansions when quality is insufficient (up to 2 retries).
-- **3-way retrieval routing**: hop ≤ 2 → Vector RAG (TextSearcher + Reranker), hop 3–5 → Weaviate Cross-Reference GraphQL traversal, hop ≥ 6 → Neo4j Deep Graph Traversal. Hop boundaries mirror the underlying data model: semantic-only questions stay on the TextDocument embedding index, entity/attribute hops leverage Weaviate cross-references, and schema-heavy relationship reasoning (≥ 6 hops) escalates to Neo4j Cypher traversals. Path 1 and Path 2 both live inside Weaviate: Path 1 favors fast semantic similarity on the late-chunked corpus, whereas Path 2 deliberately walks Cross-Reference neighborhoods to surface query-linked entities/events when the prompt demands richer relational context without paying the Neo4j cost yet.
+- **3-way retrieval routing**: hop ≤ 2 → Vector RAG (TextSearcher + Reranker), hop 3–5 → Weaviate Cross-Reference GraphQL traversal, hop ≥ 6 → Neo4j Deep Graph Traversal. Hop boundaries mirror the underlying data model: semantic-only questions stay on the TextDocument embedding index, entity/attribute hops leverage Weaviate cross-references, and schema-heavy relationship reasoning (≥ 6 hops) escalates to Neo4j Cypher traversals. Path 1 and Path 2 both live inside Weaviate: Path 1 favors fast semantic similarity on the late-chunked corpus, whereas Path 2 deliberately walks Cross-Reference neighborhoods to surface query-linked entities/events within Weaviate before escalating to Neo4j.
 - **Observer LLM + GoT expansion**: an observer LLM scores each path result (0–1). Passing results trigger Graph-of-Thought branching/merging for deeper context.
 - **SGLang inference**: generator, embedding, reranker, hop classifier, and the observer LLM all run on SGLang servers with lazy loading (`LazyModelManager` + `SGLangServerManager`).
+  - **Lazy-loading**: servers auto-start on first request, idle timeout 60s with GPU memory release
+  - **GPU allocation**: Generator (cuda:0, 30% VRAM), Embedding/Reranker/Refiner (cuda:1, shared)
+  - **Chunk retry logic**: LLM metadata extraction auto-retries failed chunks with server restart (configurable via `GRAPH_EXTRACTOR_RETRY_ON_FAILURE`)
 - **Automatic graph upsert**: OCR → LLM entity/event/relation extraction → simultaneous Weaviate + Neo4j ingestion.
 - **Async job monitoring**: upload, OCR, and embedding progress tracked through task APIs.
 
@@ -85,10 +88,14 @@ Handled by `LangGraphUploadPipeline` (`langgraph_upload_pipeline.py`) with `Memo
 1. **Conversion & Layout**: `run_file_processor.py` handles PDF/Office/image/audio inputs → `Results/1.Converted_images` + `Results/2.LayoutDetection`.
 2. **OCR & Markdown**: `run_ocr_processing()` with SGLang-powered OCRFlux produces per-page Markdown → `Results/4.OCR_results`.
 3. **LLM Metadata Extraction**: `LLMMetadataExtractor` extracts entities/events/relations from Markdown → `Results/8.graph_metadata/*.graph.json`.
+   - **Chunk size**: configurable via `GRAPH_EXTRACTOR_CHUNK_SIZE
+   - **Timeout**: configurable via `GRAPH_EXTRACTOR_API_TIMEOUT
+   - **Retry logic**: On timeout, SGLang generator server restarts and retries the same chunk once
+   - **Keepalive**: Background thread touches server every 20s during processing
 4. **Graph Upsert**:
-   - `GraphSchemaManager` ensures Weaviate Entity/Event/Relation collections exist, then upserts objects.
-   - `LegacyGraphIngestor` / `Neo4jManager` MERGEs nodes/relationships into Neo4j with deterministic UUIDs.
-5. **Late Chunking & Embedding**: `embedding_text.py` splits Markdown into chunks and uploads into the Weaviate TextDocument collection via `SharedEmbeddingModel`.
+   - `GraphSchemaManager` ensures Weaviate GraphEntity/GraphEvent/GraphRelation collections exist with cross-references (source/target/event)
+   - `LegacyGraphIngestor` / `Neo4jManager` MERGEs nodes/relationships into Neo4j with deterministic UUIDs
+5. **Late Chunking & Embedding**: `embedding_text.py` splits Markdown into chunks and uploads into the Weaviate TextDocument collection via `SharedEmbeddingModel` (Qwen3-Embedding-4B).
 
 ---
 
@@ -217,12 +224,27 @@ export GRAPH_RAG_ENABLED=true
 export LANGGRAPH_ENABLED=true
 export GOT_MODE_ENABLED=true
 export LEGACY_GRAPH_ENABLED=true
-export LEGACY_GRAPH_URI=bolt://localhost:7687
-export LEGACY_GRAPH_USER=neo4j
-export LEGACY_GRAPH_PASSWORD=your_password
+export NEO4J_URI=bolt://localhost:7687
+export NEO4J_USER=neo4j
+export NEO4J_PASSWORD=your_password
+
+# LLM Models (customize based on your hardware)
+export LLM_MODEL
+export EMBEDDING_MODEL
+export RERANKER_MODEL
+
+# SGLang server endpoints
+export SGLANG_GENERATOR_ENDPOINT=http://localhost:30000
+export SGLANG_EMBEDDING_ENDPOINT=http://localhost:30001
+export SGLANG_RERANKER_ENDPOINT=http://localhost:30002
+
+# Graph extractor settings
+export GRAPH_EXTRACTOR_API_TIMEOUT
+export GRAPH_EXTRACTOR_CHUNK_SIZE
+export GRAPH_EXTRACTOR_RETRY_ON_FAILURE=true
 
 python main.py
-# SGLang embedding/reranker servers autostart on first request.
+# SGLang servers (generator/embedding/reranker) autostart on first request with lazy-loading.
 ```
 
 To launch Neo4j locally:
@@ -241,9 +263,12 @@ docker run -d --name neo4j-dev \
 
 - **Graph RAG toggles**: `GRAPH_RAG_ENABLED`, `LANGGRAPH_ENABLED`, `GOT_MODE_ENABLED`, `GRAPH_MAX_HOPS`.
 - **GoT tuning**: `GOT_BRANCH_FACTOR`, `GOT_MERGE_STRATEGY` (`top_k`/`weighted_union`/`vote`), `GOT_MERGE_TOP_K`, `GOT_THOUGHT_SCORE_THRESHOLD`, `GOT_EDGE_PRUNE_THRESHOLD`, `GOT_MAX_STEPS`, `GOT_MAX_CONSECUTIVE_FAILURES`, `GOT_OBSERVER_ENDPOINT`/`GOT_OBSERVER_MODEL`.
-- **Legacy graph**: `LEGACY_GRAPH_ENABLED`, `LEGACY_GRAPH_URI`, `LEGACY_GRAPH_LABELS`, `LEGACY_GRAPH_MAX_PATHS`.
-- **Weaviate**: `WEAVIATE_HOST/PORT`, `WEAVIATE_TEXT_CLASS`, `WEAVIATE_VECTORIZER`.
-- **Embedding/Reranker**: `EMBEDDING_DEVICE` (SGLang server URL).
+- **Neo4j**: `NEO4J_URI`, `NEO4J_USER`, `NEO4J_PASSWORD`, `GRAPH_MAX_HOPS`.
+- **Weaviate**: `WEAVIATE_HOST/PORT`, `WEAVIATE_TEXT_CLASS` (TextDocument), `WEAVIATE_VECTORIZER` (text2vec-model2vec).
+- **SGLang models**: `LLM_MODEL`, `EMBEDDING_MODEL`, `RERANKER_MODEL`, `REFINER_MODEL`, `QUERY_REWRITER_MODEL`.
+- **SGLang servers**: `SGLANG_GENERATOR_ENDPOINT`, `SGLANG_EMBEDDING_ENDPOINT`, `SGLANG_RERANKER_ENDPOINT`, `SGLANG_REFINER_ENDPOINT`, `SGLANG_QUERY_REWRITER_ENDPOINT`.
+- **SGLang lifecycle**: `SGLANG_IDLE_TIMEOUT` (60s), `SGLANG_KEEPALIVE_INTERVAL` (20s).
+- **Graph extractor**: `GRAPH_EXTRACTOR_API_TIMEOUT` (60s), `GRAPH_EXTRACTOR_CHUNK_SIZE` (800), `GRAPH_EXTRACTOR_RETRY_ON_FAILURE` (true).
 - **Session directories**: `DATA_ROOT/Results`, `sessions/<id>` layout.
 
 ---
@@ -265,10 +290,12 @@ docker run -d --name neo4j-dev \
 - `sglang_embedding_server.log`, `sglang_reranker_server.log` – SGLang model server health.
 - `Results/8.graph_metadata/*.graph.json` – archive of LLM extraction results.
 - `LegacyGraphIngestor` auto-creates constraints on first run; no manual setup required.
-- `LazyModelManager` releases GPU memory after ~60 seconds of idling.
+- `SGLangServerManager` releases GPU memory after 60 seconds of idling (configurable via `SGLANG_IDLE_TIMEOUT`).
 - All LangGraph workflows log checkpoint IDs and backtrack counts for traceability.
 - **SGLang cold start**: lazy loading means the first `/v1/chat` (or hop-classifier) request must warm each SGLang server, which can take 20–60s VRAM load time; issue a warm-up request or keep-alive cron to avoid client timeouts.
+- **Chunk retry mechanism**: If LLM metadata extraction times out (default 60s), the generator server is automatically restarted and the same chunk is retried once. This prevents hanging on problematic chunks while maintaining extraction quality.
 - **Volatile checkpoints**: `MemorySaver` stores graph snapshots in-process, so any FastAPI restart drops in-flight state until the planned migration to `SqliteSaver`/`PostgresSaver` lands.
+- **Weaviate v4 API**: Uses `weaviate.connect_to_custom()` with gRPC support (port 50051).
 
 ---
 
@@ -289,7 +316,7 @@ docker run -d --name neo4j-dev \
 
 ## Contribution & Contact
 
-Issues and PRs are welcome. For questions or concerns, please reach out to jeongnext@hnextits.com.
+Issues and PRs are welcome. For questions or concerns, please open an issue on GitHub.
 
 ---
 

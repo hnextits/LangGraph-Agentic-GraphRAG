@@ -24,6 +24,9 @@ LangGraph-Graph RAG 是一个基于 **LangGraph + SGLang** 的向量–图混合
 - **3 路检索路由**：跳数 ≤ 2 → Vector RAG（TextSearcher + Reranker），跳数 3–5 → Weaviate Cross-Reference GraphQL 遍历，跳数 ≥ 6 → Neo4j 深度图遍历。跳数边界映射了底层数据模型：纯语义问题保留在 TextDocument 嵌入索引，实体/属性推理利用 Weaviate 交叉引用，≥ 6 跳的模式化关系推理会升级到 Neo4j Cypher 查询。Path 1 与 Path 2 均运行在 Weaviate 内：Path 1 偏向于在 late-chunk 语料上执行快速语义相似度，Path 2 则显式遍历 Cross-Reference 邻域，在不进入 Neo4j 的情况下先挖掘与查询关联的实体/事件。
 - **观察者 LLM + GoT 扩展**：观察者 LLM 对每条路径结果进行 0–1 评分。通过评分的结果将触发 Graph-of-Thought 分支/合并以获取更深层的上下文。
 - **SGLang 推理**：生成器、嵌入、重排序器、跳数分类器和观察者 LLM 均运行在带有延迟加载（`LazyModelManager` + `SGLangServerManager`）的 SGLang 服务器上。
+  - **延迟加载**：首次请求时服务器自动启动，60秒空闲超时释放 GPU 内存
+  - **GPU 分配**：Generator（cuda:0，30% VRAM），Embedding/Reranker/Refiner（cuda:1，共享）
+  - **分块重试逻辑**：LLM 元数据提取失败时自动重启服务器并重试（可通过 `GRAPH_EXTRACTOR_RETRY_ON_FAILURE` 配置）
 - **自动图更新插入**：OCR → LLM 实体/事件/关系提取 → 同步写入 Weaviate + Neo4j。
 - **异步任务监控**：通过任务 API 跟踪上传、OCR 和嵌入的处理进度。
 
@@ -85,10 +88,14 @@ planner →  router →┬→ vector_retriever  ──→┐
 1. **转换与布局**：`run_file_processor.py` 处理 PDF/Office/图像/音频输入 → `Results/1.Converted_images` + `Results/2.LayoutDetection`。
 2. **OCR 与 Markdown**：使用 SGLang 驱动的 OCRFlux 的 `run_ocr_processing()` 生成逐页 Markdown → `Results/4.OCR_results`。
 3. **LLM 元数据提取**：`LLMMetadataExtractor` 从 Markdown 中提取实体/事件/关系 → `Results/8.graph_metadata/*.graph.json`。
+   - **分块大小**：可通过 `GRAPH_EXTRACTOR_CHUNK_SIZE` 配置
+   - **超时**：可通过 `GRAPH_EXTRACTOR_API_TIMEOUT` 配置
+   - **重试逻辑**：超时时重启 SGLang generator 服务器并重试同一块一次
+   - **保活**：处理期间后台线程每20秒 touch 服务器
 4. **图更新插入**：
-   - `GraphSchemaManager` 确保 Weaviate Entity/Event/Relation 集合存在，然后更新插入对象。
-   - `LegacyGraphIngestor` / `Neo4jManager` 使用确定性 UUID 将节点/关系 MERGE 到 Neo4j。
-5. **延迟分块与嵌入**：`embedding_text.py` 将 Markdown 分割为块，并通过 `SharedEmbeddingModel` 上传到 Weaviate TextDocument 集合。
+   - `GraphSchemaManager` 确保 Weaviate GraphEntity/GraphEvent/GraphRelation 集合存在，带有交叉引用（source/target/event）
+   - `LegacyGraphIngestor` / `Neo4jManager` 使用确定性 UUID 将节点/关系 MERGE 到 Neo4j
+5. **延迟分块与嵌入**：`embedding_text.py` 将 Markdown 分割为块，并通过 `SharedEmbeddingModel`上传到 Weaviate TextDocument 集合。
 
 ---
 

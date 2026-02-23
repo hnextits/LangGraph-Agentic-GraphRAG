@@ -22,7 +22,7 @@ target/
 *.tmp
 .idea/
 .vscode/
-*.toml
+
 Jenkinsfile
 *.lock
 
