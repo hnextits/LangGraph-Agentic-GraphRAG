@@ -9,8 +9,10 @@ import logging
 # 로깅 설정
 logger = logging.getLogger(__name__)
 
-# 이미지 기본 경로 설정 (serch_gui 프로젝트에 맞게 조정)
-IMAGE_BASE_PATHS = [
+# 이미지 기본 경로 설정 - 환경변수에서 로드
+import os
+_env_paths = os.getenv('IMAGE_BASE_PATHS', '')
+IMAGE_BASE_PATHS = [p.strip() for p in _env_paths.split(',')] if _env_paths else [
     './nextits_data/Results/5.Completion_results/image',
     './nextits_data/Results',
     './nextits_data',

@@ -15,14 +15,11 @@ from typing import List, Dict, Any, Optional, Set
 import weaviate
 import torch
 
-# config.py 파일이 있는 디렉토리를 sys.path에 추가
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import RAGConfig
-from weaviate_utils import create_schema
+from notebooklm.config import RAGConfig
+from notebooklm.weaviate_utils import create_schema
 
-# 로깅 설정
+# 로깅 설정 - main.py에서 configure_logging()이 이미 호출됨
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 class TextSearcher:
     def __init__(self, model_name: str = None, device: str = None):

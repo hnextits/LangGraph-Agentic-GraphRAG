@@ -22,8 +22,6 @@ from services.rag_service import run_rag_in_background
 from skill.search.pipeline import search_google as perform_search
 from skill.search.util import sanitize_filename as search_sanitize_filename, crawling_web
 
-# --- 로거 설정 (먼저 설정) ---
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["RAG"])
 
@@ -66,9 +64,6 @@ except ImportError as e:
     logger.error(f"AnswerGenerator 모듈 임포트 실패: {e}")
     AnswerGenerator = None
 
-# 요약 생성기 인스턴스 (싱글톤으로 관리) - LazyModelManager 사용으로 전환 중
-answer_generator = None
-
 def build_answer_generator():
     """LazyModelManager용 AnswerGenerator 빌더."""
     if AnswerGenerator is None:
@@ -102,6 +97,50 @@ tasks: Dict[str, Dict[str, Any]] = {}
 task_status: Dict[str, Dict[str, Any]] = {}
 task_cache: Dict[str, Dict[str, Any]] = {}
 task_cache_timestamps: Dict[str, float] = {}
+
+
+def _get_config():
+    """필요할 때마다 RAGConfig 인스턴스를 생성합니다."""
+    from notebooklm.config import RAGConfig
+
+    return RAGConfig()
+
+
+def _get_session_id(request: Request) -> str:
+    """요청 객체에서 세션 ID를 일관되게 추출합니다."""
+    return getattr(request.state, "session_id", "default_session")
+
+
+def _get_config_and_paths(request: Request):
+    """자주 사용되는 config, session_id, paths를 함께 반환합니다."""
+    config = _get_config()
+    session_id = _get_session_id(request)
+    paths = get_session_paths(request, config)
+    return config, session_id, paths
+
+
+def get_session_paths(request: Request, config=None):
+    """요청의 세션 ID를 바탕으로 동적 경로를 반환합니다."""
+    config = config or _get_config()
+    session_id = _get_session_id(request)
+
+    return {
+        "doc_dir": config.get_session_doc_dir(session_id),
+        "metadata_file": config.get_session_metadata_file(session_id),
+        "ocr_results_dir": config.get_session_results_dir(session_id, "4.OCR_results"),
+        "summarize_dir": config.get_session_results_dir(session_id, "6.summarize"),
+        "stt_text_dir": config.get_session_results_dir(session_id, "7.stt"),
+    }
+
+
+def _get_doc_dir(config, session_id: Optional[str]):
+    return config.get_session_doc_dir(session_id) if session_id else config.DEFAULT_DOC_DIR
+
+
+def _get_results_dir(config, session_id: Optional[str], subdir: str):
+    if session_id:
+        return config.get_session_results_dir(session_id, subdir)
+    return config.DATA_ROOT / "Results" / subdir
 
 def cleanup_task_cache(request: Request):
     """오래된 작업 상태 캐시 정리"""
@@ -172,18 +211,13 @@ class SummarizeResponse(BaseModel):
 @router.get("/files", response_model=FileListResponse)
 async def list_files(request: Request):
     """업로드된 파일 목록 조회 (글로벌 + 세션별 병합, doc 디렉토리 기준)"""
-    from notebooklm.config import RAGConfig
-    config = RAGConfig()
-    paths = get_session_paths(request)
-    
-    # 세션 ID 추출
-    session_id = getattr(request.state, "session_id", "default_session")
+    config, session_id, paths = _get_config_and_paths(request)
     logger.info(f"[/files] Session ID: {session_id}")
     
     # LeftBox에는 원본 문서(doc) 디렉토리의 파일들만 표시
     search_dirs = [
-        config.DEFAULT_DOC_DIR, # 글로벌 doc
-        paths["doc_dir"]        # 세션 doc
+        config.DEFAULT_DOC_DIR,
+        paths["doc_dir"]
     ]
     
     # 1. 파일 목록 수집 (병합 및 중복 제거)
@@ -214,9 +248,7 @@ async def list_files(request: Request):
 @router.get("/summarizes", response_model=FileListResponse)
 async def list_summarizes(request: Request):
     """생성된 요약 파일 목록 조회 (글로벌 + 세션별 병합)"""
-    from notebooklm.config import RAGConfig
-    config = RAGConfig()
-    paths = get_session_paths(request)
+    config, _, paths = _get_config_and_paths(request)
     
     session_summarize_dir = paths["summarize_dir"]
     global_summarize_dir = config.DATA_ROOT / "Results" / "6.summarize"
@@ -233,9 +265,7 @@ async def list_summarizes(request: Request):
 @router.get("/summarizes/{filename}", response_model=FileContentResponse)
 async def get_summarize_content(request: Request, filename: str):
     """특정 요약 파일의 내용 조회 (세션 우선 후 글로벌 검색)"""
-    from notebooklm.config import RAGConfig
-    config = RAGConfig()
-    paths = get_session_paths(request)
+    config, _, paths = _get_config_and_paths(request)
     
     # 1. 세션 디렉토리 확인
     session_file = paths["summarize_dir"] / filename
@@ -294,7 +324,7 @@ async def get_task_status(request: Request, task_id: str):
 @router.delete("/files", response_model=DeleteFilesResponse)
 async def delete_files(request: Request, delete_req: DeleteFilesRequest):
     """파일 삭제 (세션별 격리)"""
-    paths = get_session_paths(request)
+    _, _, paths = _get_config_and_paths(request)
     doc_dir = paths["doc_dir"]
     ocr_dir = paths["ocr_results_dir"]
     
@@ -329,9 +359,8 @@ async def delete_files(request: Request, delete_req: DeleteFilesRequest):
 @router.post("/upload/files", response_model=UploadResponse)
 async def upload_files(request: Request, background_tasks: BackgroundTasks, files: List[UploadFile] = File(...)):
     """파일 업로드 및 처리 시작 (세션별 격리)"""
-    paths = get_session_paths(request)
+    _, session_id, paths = _get_config_and_paths(request)
     doc_dir = paths["doc_dir"]
-    session_id = getattr(request.state, "session_id", "default_session")
     
     # 디렉토리 생성 보장
     doc_dir.mkdir(parents=True, exist_ok=True)
@@ -368,9 +397,7 @@ async def upload_files(request: Request, background_tasks: BackgroundTasks, file
 @router.get("/files/{filename}", response_model=FileContentResponse)
 async def get_file_content(request: Request, filename: str):
     """특정 파일의 내용 조회 (OCR 결과 우선 검색)"""
-    from notebooklm.config import RAGConfig
-    config = RAGConfig()
-    paths = get_session_paths(request)
+    config, _, paths = _get_config_and_paths(request)
     
     import urllib.parse
     decoded_filename = urllib.parse.unquote(filename)
@@ -430,7 +457,7 @@ async def search_endpoint(query: SearchQuery):
 async def add_document_endpoint(request: Request, doc_req: AddDocumentRequest, background_tasks: BackgroundTasks):
     """구글 검색 결과 중 하나를 문서화(크롤링)하고 인덱싱하는 API"""
     task_id = str(uuid.uuid4())
-    session_id = getattr(request.state, "session_id", "default_session")
+    session_id = _get_session_id(request)
     
     tasks_dict = request.app.state.tasks
     tasks_dict[task_id] = {"status": "pending", "message": "문서화 작업 대기 중..."}
@@ -456,15 +483,9 @@ async def cancel_tasks_endpoint(request: Request, body: Dict[str, Any] = Body(..
 
 
 async def run_document_pipeline(task_id: str, title: str, link: str, tasks_dict: Dict[str, Any], session_id: Optional[str] = None):
-    """구글 검색 결과를 문서화하고 인덱싱하는 백그라운드 함수 (crawling_web 인자 및 결과 처리 수정)"""
-    from notebooklm.config import RAGConfig
-    config = RAGConfig()
-    
-    # 1. 경로 설정 (세션 및 글로벌)
-    if session_id:
-        doc_dir = config.get_session_doc_dir(session_id)
-    else:
-        doc_dir = config.DEFAULT_DOC_DIR
+    """구글 검색 결과를 문서화하고 인덱싱하는 백그라운드 함수"""
+    config = _get_config()
+    doc_dir = _get_doc_dir(config, session_id)
 
     # 디렉토리 생성 보장
     doc_dir.mkdir(parents=True, exist_ok=True)
@@ -495,19 +516,6 @@ async def run_document_pipeline(task_id: str, title: str, link: str, tasks_dict:
     except Exception as e:
         logger.error(f"[{task_id}] 문서 파이프라인 실패: {e}")
         tasks_dict[task_id].update({'status': 'failed', 'error': str(e)})
-def get_session_paths(request: Request):
-    """요청의 세션 ID를 바탕으로 동적 경로를 반환합니다."""
-    from notebooklm.config import RAGConfig
-    config = RAGConfig()
-    session_id = getattr(request.state, "session_id", "default_session")
-    
-    return {
-        "doc_dir": config.get_session_doc_dir(session_id),
-        "metadata_file": config.get_session_metadata_file(session_id),
-        "ocr_results_dir": config.get_session_results_dir(session_id, "4.OCR_results"),
-        "summarize_dir": config.get_session_results_dir(session_id, "6.summarize"),
-        "stt_text_dir": config.get_session_results_dir(session_id, "7.stt"),
-    }
 
 # 기존 상수 제거 또는 함수로 대체 (하위 호환성을 위해 유지하되 내부 로직에서는 get_session_paths 사용 권장)
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -525,28 +533,10 @@ def check_and_handle_pause(task_id: str, tasks_dict: Dict[str, Any]) -> bool:
         return True
     return False
 
-def check_and_handle_pause_legacy(task_id: str, tasks_dict: Dict[str, Any]) -> bool:
-    """
-    취소 상태를 확인하고 처리합니다.
-    """
-    if is_cancelled(task_id):
-        if tasks_dict.get(task_id, {}).get('status') != 'cancelled':
-            tasks_dict[task_id]['status'] = 'cancelled'
-            tasks_dict[task_id]['message'] = '작업이 취소되었습니다.'
-            logger.info(f"[Task {task_id}] 작업이 취소되었습니다.")
-        return True
-    
-    return False
-
 async def run_text_indexing(task_id: str, file_names: List[str], tasks_dict: Dict[str, Any], session_id: Optional[str] = None):
     """텍스트 인덱싱 실행 함수 - 세션별 OCR 결과 디렉토리에서 검색"""
-    from notebooklm.config import RAGConfig
-    config = RAGConfig()
-    
-    if session_id:
-        ocr_results_dir = config.get_session_results_dir(session_id, "4.OCR_results")
-    else:
-        ocr_results_dir = config.DATA_ROOT / "Results" / "4.OCR_results"
+    config = _get_config()
+    ocr_results_dir = _get_results_dir(config, session_id, "4.OCR_results")
 
     logger.info(f"[{task_id}] 텍스트 인덱싱 시작 (session: {session_id}): {file_names}")
     tasks_dict[task_id].update({
@@ -643,13 +633,8 @@ async def run_text_indexing(task_id: str, file_names: List[str], tasks_dict: Dic
 
 async def run_text_indexing_v2(task_id: str, file_names: List[str], tasks_dict: Dict[str, Any], session_id: Optional[str] = None):
     """텍스트 인덱싱 파이프라인 (Vector Store 저장)"""
-    from notebooklm.config import RAGConfig
-    config = RAGConfig()
-    
-    if session_id:
-        ocr_results_dir = config.get_session_results_dir(session_id, "4.OCR_results")
-    else:
-        ocr_results_dir = config.DATA_ROOT / "Results" / "4.OCR_results"
+    config = _get_config()
+    ocr_results_dir = _get_results_dir(config, session_id, "4.OCR_results")
 
     logger.info(f"[{task_id}] 텍스트 인덱싱 시작 (session: {session_id}): {file_names}")
     tasks_dict[task_id].update({
@@ -767,14 +752,9 @@ async def run_text_indexing_v2(task_id: str, file_names: List[str], tasks_dict: 
 
 async def run_processing_pipeline(task_id: str, file_names: List[str], tasks_dict: Dict[str, Any], session_id: Optional[str] = None):
     """(업로드된 파일) 처리 및 인덱싱 파이프라인 (GPU 작업 큐 사용)"""
-    from notebooklm.config import RAGConfig
     from utils.task_queue import gpu_task_queue
-    config = RAGConfig()
-    
-    if session_id:
-        doc_dir = config.get_session_doc_dir(session_id)
-    else:
-        doc_dir = config.DEFAULT_DOC_DIR
+    config = _get_config()
+    doc_dir = _get_doc_dir(config, session_id)
 
     logger.info(f"[{task_id}] 파일 처리 파이프라인 큐 등록 (session: {session_id}): {file_names}")
     tasks_dict[task_id].update({'status': 'queued', 'message': '대기열에 등록되었습니다. GPU 리소스 확보 중...', 'progress': 5})
@@ -842,18 +822,11 @@ async def run_processing_pipeline(task_id: str, file_names: List[str], tasks_dic
 
 async def process_summarize_files(task_id: str, filenames: List[str], model_manager: Any, tasks_dict: Dict[str, Any], session_id: Optional[str] = None):
     """지정된 파일들을 찾아 내용을 요약하는 백그라운드 함수 (글로벌 + 세션 검색)"""
-    from notebooklm.config import RAGConfig
-    config = RAGConfig()
-    
-    # 1. 경로 설정 (세션 및 글로벌)
-    session_ocr_dir = None
-    session_summarize_dir = None
-    if session_id:
-        session_ocr_dir = config.get_session_results_dir(session_id, "4.OCR_results")
-        session_summarize_dir = config.get_session_results_dir(session_id, "6.summarize")
-    
-    global_ocr_dir = config.DATA_ROOT / "Results" / "4.OCR_results"
-    global_summarize_dir = config.DATA_ROOT / "Results" / "6.summarize"
+    config = _get_config()
+    session_ocr_dir = _get_results_dir(config, session_id, "4.OCR_results") if session_id else None
+    session_summarize_dir = _get_results_dir(config, session_id, "6.summarize") if session_id else None
+    global_ocr_dir = _get_results_dir(config, None, "4.OCR_results")
+    global_summarize_dir = _get_results_dir(config, None, "6.summarize")
     
     # 결과가 저장될 디렉토리 (세션 우선, 없으면 글로벌)
     summarize_dir = session_summarize_dir or global_summarize_dir
@@ -953,7 +926,7 @@ async def summarize_files(request_data: SummarizeRequest, background_tasks: Back
     tasks_dict[task_id] = {"task_id": task_id, "status": "pending", "message": "요약 작업이 대기 중입니다."}
     
     model_manager = getattr(request.app.state, "model_manager", None)
-    session_id = getattr(request.state, "session_id", "default_session")
+    session_id = _get_session_id(request)
     
     background_tasks.add_task(
         process_summarize_files, 
@@ -975,8 +948,7 @@ async def chat(request: Request, query: ChatQuery, background_tasks: BackgroundT
     logger.info(f"[Task {task_id}] 채팅 작업 시작: '{query.query}'")
     logger.info("[Task %s] 요청으로 전달된 sources(raw): %s", task_id, query.sources)
     
-    # 세션 ID 추출
-    session_id = getattr(request.state, "session_id", "default_session")
+    config, session_id, paths = _get_config_and_paths(request)
     logger.info(f"[Task {task_id}] Session ID: {session_id}")
     
 
@@ -1003,31 +975,21 @@ async def chat(request: Request, query: ChatQuery, background_tasks: BackgroundT
     
     if not source_filter_requested:
         logger.info(f"[Task {task_id}] No specific sources selected, will search within session {session_id} only")
-        # 현재 세션의 모든 파일 UUID들을 자동으로 가져오기
         try:
-            from notebooklm.config import RAGConfig
-            config = RAGConfig()
-            paths = get_session_paths(request)
-            
-            # 세션 파일 목록 수집 (해당 세션에서 업로드한 파일만)
             session_files = set()
-            
-            # 세션 디렉토리 파일들만 추가
-            for d in [paths["doc_dir"]]:
-                if d.exists():
-                    for f in d.iterdir():
-                        if f.is_file() and not f.name.startswith('.'):
-                            session_files.add(f.name)
-            
+            doc_dir = paths["doc_dir"]
+            if doc_dir.exists():
+                for f in doc_dir.iterdir():
+                    if f.is_file() and not f.name.startswith('.'):
+                        session_files.add(f.name)
+
             if session_files:
-                # 세션별 UUID 매핑 가져오기
                 client = config.get_weaviate_client()
                 if client:
                     from notebooklm.weaviate_utils import get_document_uuid_map_with_session
                     session_uuid_map = get_document_uuid_map_with_session(client, list(session_files), session_id)
                     client.close()
-                    
-                    # resolved_sources를 세션 파일 UUID로 교체
+
                     resolved_sources = list(session_uuid_map.values())
                     logger.info(f"[Task {task_id}] Auto-selected {len(resolved_sources)} session files: {resolved_sources}")
         except Exception as e:

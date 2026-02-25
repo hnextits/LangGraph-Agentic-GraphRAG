@@ -11,6 +11,12 @@ import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import sys
+
+from bootstrap import ensure_backend_root, configure_logging
+
+ensure_backend_root()
+configure_logging()
 
 import requests
 
@@ -19,7 +25,6 @@ try:
 except ImportError:
     RAGConfig = None
 
-logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 
 # 엔티티/관계 후처리용 상수

@@ -85,11 +85,6 @@ def run_ocr_processing(
     from pathlib import Path
     
     # inference.py 모듈 임포트
-    import sys
-    backend_path = Path(__file__).resolve().parent.parent
-    if str(backend_path) not in sys.path:
-        sys.path.insert(0, str(backend_path))
-    
     from nextits_data.pipe.main_pipe.ocr_pipe.inference import (
         collect_image_files,
         create_batches,
@@ -98,6 +93,8 @@ def run_ocr_processing(
         cleanup_engine_cache,
         _log
     )
+    
+    backend_path = Path(__file__).resolve().parent.parent
     
     total_t0 = time.time()
     

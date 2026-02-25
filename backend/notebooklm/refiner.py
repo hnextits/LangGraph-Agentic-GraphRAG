@@ -25,9 +25,7 @@ def import_process_markdown_tables():
     rag_service.py에서 process_markdown_tables 함수를 동적으로 임포트
     """
     try:
-        # 현재 디렉토리에서 상대 경로로 임포트 시도
-        sys.path.append(os.path.join(os.path.dirname(__file__), '../services'))
-        from rag_service import process_markdown_tables
+        from services.rag_service import process_markdown_tables
         return process_markdown_tables
     except ImportError:
         # 임포트 실패 시 로깅

@@ -24,9 +24,6 @@ except ImportError:
     logger = logging.getLogger(__name__)
     logger.warning("tiktoken 모듈을 찾을 수 없습니다. 문자 수 기반 추정을 사용합니다.")
 
-# 로깅 설정
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
 # 토큰 카운팅 및 청킹 유틸리티 함수
 def count_tokens(text: str) -> int:
     """텍스트의 토큰 수를 계산합니다."""

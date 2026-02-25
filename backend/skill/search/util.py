@@ -5,30 +5,7 @@ from urllib.parse import urlparse, unquote, quote
 import os
 import re
 
-
-def sanitize_filename(filename: str) -> str:
-    """
-    파일명에서 사용할 수 없는 문자를 제거하고 안전한 파일명으로 변환
-    
-    Args:
-        filename: 원본 파일명
-        
-    Returns:
-        str: 안전한 파일명
-    """
-    # 파일명에 사용할 수 없는 문자 제거
-    filename = re.sub(r'[<>:"/\\|?*]', '', filename)
-    # 연속된 공백을 하나로
-    filename = re.sub(r'\s+', ' ', filename)
-    # 앞뒤 공백 제거
-    filename = filename.strip()
-    # 최대 길이 제한 (255자)
-    if len(filename) > 255:
-        filename = filename[:255]
-    # 빈 문자열이면 기본값
-    if not filename:
-        filename = "untitled"
-    return filename
+from utils.file_utils import sanitize_filename
 
 def remove_think(response):
     '''
@@ -70,8 +47,10 @@ def filter_search_results(results, max_results=10):
     Returns:
         필터링된 검색 결과 리스트
     """
-    # 포함할 사이트 목록 (나무위키와 위키피디아, 네이트 뉴스 포함)
-    included_sites = [
+    # 포함할 사이트 목록 - 환경변수에서 로드
+    import os
+    _env_sites = os.getenv('SEARCH_FILTER_SITES', '')
+    included_sites = [s.strip() for s in _env_sites.split(',')] if _env_sites else [
         'namu.wiki',
         'wikipedia.org',
         'news.nate.com'
@@ -224,6 +203,64 @@ def find_table_and_remove_style(article,soup):
     return tables, article
 
 
+def _setup_output_paths(output_dir: str, safe_filename: str):
+    """출력 경로 설정"""
+    from pathlib import Path
+    
+    base_output_path = Path(output_dir)
+    base_output_path.mkdir(parents=True, exist_ok=True)
+    
+    output_path = base_output_path / f"{safe_filename}.md"
+    
+    if base_output_path.name == 'doc':
+        ocr_results_dir = base_output_path.parent / 'Results' / '4.OCR_results'
+    else:
+        ocr_results_dir = base_output_path.parent / 'Results' / '4.OCR_results'
+        
+    ocr_results_dir.mkdir(parents=True, exist_ok=True)
+    ocr_results_path = ocr_results_dir / f"{safe_filename}.md"
+    
+    return output_path, ocr_results_path
+
+
+def _extract_web_content(link: str) -> str:
+    """웹 페이지에서 본문 추출"""
+    import requests
+    from bs4 import BeautifulSoup
+    
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    response = requests.get(link, headers=headers, timeout=10)
+    response.raise_for_status()
+    
+    soup = BeautifulSoup(response.content, 'html.parser')
+    
+    content = ""
+    for tag in ['article', 'main', 'div[class*="content"]', 'div[id*="content"]']:
+        elements = soup.select(tag)
+        if elements:
+            content = "\n\n".join([elem.get_text(strip=True) for elem in elements])
+            break
+    
+    if not content:
+        body = soup.find('body')
+        if body:
+            content = body.get_text(strip=True)
+    
+    return content
+
+
+def _create_markdown_content(title: str, link: str, snippet: str, content: str = None, error: str = None) -> str:
+    """마크다운 콘텐츠 생성"""
+    markdown = f"# {title}\n\n**출처:** {link}\n\n"
+    if snippet:
+        markdown += f"**요약:** {snippet}\n\n"
+    if error:
+        markdown += f"**오류:** {error}\n"
+    elif content:
+        markdown += f"## 본문\n\n{content}\n"
+    return markdown
+
+
 def crawling_web(result: dict, output_dir: str) -> str:
     """
     웹 페이지를 크롤링하여 파일로 저장 (세션별 Results/4.OCR_results 연동 강화)
@@ -235,12 +272,6 @@ def crawling_web(result: dict, output_dir: str) -> str:
     Returns:
         str: 저장된 파일 경로
     """
-    import requests
-    from bs4 import BeautifulSoup
-    from pathlib import Path
-    import re
-    import shutil
-    
     title = result.get('title', 'untitled')
     link = result.get('link', '')
     snippet = result.get('snippet', '')
@@ -248,63 +279,14 @@ def crawling_web(result: dict, output_dir: str) -> str:
     if not link:
         raise ValueError("링크가 제공되지 않았습니다")
     
-    # 파일명 생성
     safe_filename = sanitize_filename(title)
-    
-    # output_dir가 문자열인 경우 Path 객체로 변환
-    base_output_path = Path(output_dir)
-    base_output_path.mkdir(parents=True, exist_ok=True)
-    
-    # 1. doc 디렉토리에 저장 (list_files 노출용)
-    output_path = base_output_path / f"{safe_filename}.md"
-    
-    # 2. OCR_results 디렉토리 경로 설정 (세션 구조 대응)
-    # output_dir가 .../sessions/[session_id]/doc 형식이면 .parent는 .../sessions/[session_id]
-    if base_output_path.name == 'doc':
-        ocr_results_dir = base_output_path.parent / 'Results' / '4.OCR_results'
-    else:
-        # 일반적인 경우 Results 폴더 생성 시도
-        ocr_results_dir = base_output_path.parent / 'Results' / '4.OCR_results'
-        
-    ocr_results_dir.mkdir(parents=True, exist_ok=True)
-    ocr_results_path = ocr_results_dir / f"{safe_filename}.md"
+    output_path, ocr_results_path = _setup_output_paths(output_dir, safe_filename)
     
     try:
-        # 웹 페이지 가져오기
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-        response = requests.get(link, headers=headers, timeout=10)
-        response.raise_for_status()
+        content = _extract_web_content(link)
+        markdown_content = _create_markdown_content(title, link, snippet, content=content)
         
-        # HTML 파싱
-        soup = BeautifulSoup(response.content, 'html.parser')
-        
-        # 본문 추출 (여러 태그 시도)
-        content = ""
-        for tag in ['article', 'main', 'div[class*="content"]', 'div[id*="content"]']:
-            elements = soup.select(tag)
-            if elements:
-                content = "\n\n".join([elem.get_text(strip=True) for elem in elements])
-                break
-        
-        # 본문을 찾지 못한 경우 body 전체 사용
-        if not content:
-            body = soup.find('body')
-            if body:
-                content = body.get_text(strip=True)
-        
-        # 마크다운 형식으로 저장
-        markdown_content = f"# {title}\n\n"
-        markdown_content += f"**출처:** {link}\n\n"
-        if snippet:
-            markdown_content += f"**요약:** {snippet}\n\n"
-        markdown_content += f"## 본문\n\n{content}\n"
-        
-        # 1. doc 디렉토리에 파일 저장
         output_path.write_text(markdown_content, encoding='utf-8')
-        
-        # 2. 4.OCR_results 디렉토리에도 저장 (상세보기용)
         ocr_results_path.write_text(markdown_content, encoding='utf-8')
         
         print(f"검색 결과 저장 완료: {output_path}")
@@ -313,11 +295,7 @@ def crawling_web(result: dict, output_dir: str) -> str:
         return str(output_path)
         
     except Exception as e:
-        # 오류 발생 시 스니펫만이라도 저장
-        markdown_content = f"# {title}\n\n"
-        markdown_content += f"**출처:** {link}\n\n"
-        markdown_content += f"**요약:** {snippet}\n\n"
-        markdown_content += f"**오류:** 페이지 크롤링 실패 - {str(e)}\n"
+        markdown_content = _create_markdown_content(title, link, snippet, error=f"페이지 크롤링 실패 - {str(e)}")
         
         output_path.write_text(markdown_content, encoding='utf-8')
         ocr_results_path.write_text(markdown_content, encoding='utf-8')

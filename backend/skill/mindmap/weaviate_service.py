@@ -15,8 +15,10 @@ else:
 
 import logging
 
+from logging_config import configure_logging
+
+configure_logging()
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO)
 
 class WeaviateService:
     """A service to interact with Weaviate DB for semantic operations."""

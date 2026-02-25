@@ -11,9 +11,8 @@ logger = logging.getLogger(__name__)
 
 def _load_rag_module():
     """notebooklm 경로를 sys.path에 추가하고 RAGPipeline 클래스를 반환."""
-    current_file_path = os.path.abspath(__file__)
-    backend_dir = os.path.dirname(os.path.dirname(current_file_path))
-    rag_path = os.path.join(backend_dir, "notebooklm")
+    from utils.path_helpers import get_notebooklm_dir
+    rag_path = str(get_notebooklm_dir())
 
     if not os.path.isdir(rag_path):
         raise FileNotFoundError(f"RAG 파이프라인 디렉터리를 찾을 수 없습니다: {rag_path}")
@@ -85,99 +84,66 @@ def cleanup_rag_pipeline(pipeline):
     except Exception:
         logger.exception("RAG 파이프라인 정리 중 오류 발생")
 
+def _process_table_cells(row: str) -> str:
+    """테이블 행의 셀 내용에서 줄바꿈을 <br>로 변환"""
+    cells = row.split('|')
+    processed_cells = [cell.replace('\n', '<br>') for cell in cells]
+    return '|'.join(processed_cells)
+
+
+def _process_table_match(match) -> str:
+    """정규식 매치된 테이블 블록 처리"""
+    header = match.group(1)
+    separator = match.group(2)
+    body = match.group(3)
+    
+    rows = [row for row in body.split('\n') if row.strip()]
+    processed_rows = [_process_table_cells(row) for row in rows]
+    
+    return header + separator + '\n'.join(processed_rows)
+
+
+def _process_tables_fallback(text: str) -> str:
+    """정규식으로 처리되지 않은 테이블을 위한 백업 처리"""
+    table_row_pattern = re.compile(r'^\s*\|(.+?)\|\s*$', re.MULTILINE)
+    lines = text.split('\n')
+    result_lines = []
+    in_table = False
+    table_header = None
+    table_separator = None
+    
+    for line in lines:
+        is_table_row = bool(table_row_pattern.match(line))
+        is_separator = is_table_row and bool(re.search(r'\|\s*[-:]+\s*\|', line))
+        
+        if is_table_row and not in_table:
+            in_table = True
+            table_header = line
+            result_lines.append(line)
+        elif in_table and is_separator and table_header and not table_separator:
+            table_separator = line
+            result_lines.append(line)
+        elif in_table and is_table_row and table_header and table_separator:
+            result_lines.append(_process_table_cells(line))
+        elif in_table and not is_table_row:
+            in_table = False
+            table_header = None
+            table_separator = None
+            result_lines.append(line)
+        else:
+            result_lines.append(line)
+    
+    return '\n'.join(result_lines)
+
+
 def process_markdown_tables(text):
     """
     마크다운 테이블의 줄바꿈 문제를 해결하는 함수입니다.
     테이블 내의 줄바꿈을 HTML <br> 태그로 변환하여 표시합니다.
     """
-    # 마크다운 테이블 패턴 정의
     table_pattern = re.compile(r'(\|[^\n]*\|\n)(\|\s*[-:]+[-\s:]*\|\n)((\|[^\n]*\|\n)+)', re.MULTILINE)
-    
-    def process_table(match):
-        header = match.group(1)  # 테이블 헤더 행
-        separator = match.group(2)  # 구분선
-        body = match.group(3)  # 테이블 본문
-        
-        # 테이블 본문의 각 행 처리
-        rows = body.split('\n')
-        processed_rows = []
-        
-        for row in rows:
-            if not row.strip():  # 빈 행 건너뛰기
-                continue
-                
-            # 행을 셀로 분리
-            cells = row.split('|')
-            processed_cells = []
-            
-            for cell in cells:
-                # 셀 내용의 줄바꿈을 <br>로 변환
-                processed_cell = cell.replace('\n', '<br>')
-                processed_cells.append(processed_cell)
-            
-            processed_rows.append('|'.join(processed_cells))
-        
-        # 처리된 테이블 재구성
-        return header + separator + '\n'.join(processed_rows)
-    
-    # 마크다운 테이블 패턴을 찾아 처리
-    processed_text = table_pattern.sub(process_table, text)
-    
-    # 위 패턴으로 처리되지 않은 테이블을 위한 백업 처리 방법
-    # 테이블 행을 식별하는 정규식
-    table_row_pattern = re.compile(r'^\s*\|(.+?)\|\s*$', re.MULTILINE)
-    
-    # 텍스트를 줄 단위로 분리
-    lines = processed_text.split('\n')
-    result_lines = []
-    in_table = False
-    table_header = None
-    table_separator = None
-    table_rows = []
-    
-    for i, line in enumerate(lines):
-        # 테이블 행인지 확인
-        is_table_row = bool(table_row_pattern.match(line))
-        
-        # 테이블 구분선인지 확인 (|---|---|
-        is_separator = is_table_row and bool(re.search(r'\|\s*[-:]+\s*\|', line))
-        
-        # 테이블 시작 감지
-        if is_table_row and not in_table:
-            in_table = True
-            table_header = line
-            result_lines.append(line)
-            continue
-        
-        # 테이블 구분선 감지
-        if in_table and is_separator and table_header and not table_separator:
-            table_separator = line
-            result_lines.append(line)
-            continue
-        
-        # 테이블 데이터 행 감지
-        if in_table and is_table_row and table_header and table_separator:
-            # 셀 내용의 줄바꿈을 <br>로 변환
-            cells = line.split('|')
-            processed_cells = []
-            
-            for cell in cells:
-                processed_cell = cell.replace('\n', '<br>')
-                processed_cells.append(processed_cell)
-            
-            result_lines.append('|'.join(processed_cells))
-            continue
-        
-        # 테이블 종료 감지
-        if in_table and not is_table_row:
-            in_table = False
-            table_header = None
-            table_separator = None
-        
-        # 테이블이 아닌 경우 그대로 추가
-        result_lines.append(line)
-    
-    return '\n'.join(result_lines)
+    processed_text = table_pattern.sub(_process_table_match, text)
+    return _process_tables_fallback(processed_text)
 
 def run_rag_in_background(
     task_id: str,

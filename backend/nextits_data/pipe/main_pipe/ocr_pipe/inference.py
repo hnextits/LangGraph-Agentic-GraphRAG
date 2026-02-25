@@ -19,12 +19,10 @@ try:
 except ImportError:
     sgl = None
 
-# 프로젝트 루트 디렉토리를 Python 경로에 추가
-project_root = str(Path(__file__).resolve().parent.parent.parent.parent.parent.parent)
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+from backend.nextits_data.pipe.bootstrap import ensure_backend_root
 
-# 절대 경로 임포트 사용
+ensure_backend_root()
+
 import backend.nextits_data.pipe.main_pipe.ocr_pipe.image_utils as image_utils
 import backend.nextits_data.pipe.main_pipe.ocr_pipe.table_format as table_format
 import backend.nextits_data.pipe.main_pipe.ocr_pipe.prompts as prompts

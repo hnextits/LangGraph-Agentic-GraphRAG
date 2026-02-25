@@ -12,8 +12,10 @@ import re
 import json
 import os
 
-# 로깅 설정
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+from backend.nextits_data.pipe.bootstrap import ensure_backend_root, configure_logging
+
+ensure_backend_root()
+configure_logging()
 logger = logging.getLogger(__name__)
 
 class AnswerGenerator:

@@ -10,8 +10,10 @@ import threading
 import requests
 from typing import List, Dict, Any, Optional, Set
 
-# 로깅 설정
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# 공통 로깅 설정 사용
+from logging_config import configure_logging
+
+configure_logging()
 logger = logging.getLogger(__name__)
 
 class SGLangGenerator:

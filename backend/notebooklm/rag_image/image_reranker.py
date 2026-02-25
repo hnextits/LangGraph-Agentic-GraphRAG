@@ -10,18 +10,10 @@ import threading
 import requests
 from typing import List, Dict, Any, Optional, Union
 
-# 상위 디렉토리를 모듈 경로에 추가
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-if parent_dir not in sys.path:
-    sys.path.insert(0, parent_dir)
+from notebooklm.config import RAGConfig
 
-from config import RAGConfig
-
-# 로깅 설정 - 기본 레벨은 INFO로 설정 (디버깅을 위해 WARNING에서 변경)
-# 이미 다른 모듈에서 basicConfig가 호출되었을 수 있으므로 여기서는 설정하지 않음
+# 로깅 설정 - main.py에서 configure_logging()이 이미 호출됨
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)  # 디버깅을 위해 INFO 레벨로 변경
 
 # Qwen3-Reranker 프롬프트 포맷 상수
 _QUERY_PREFIX = '<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".<|im_end|>\n<|im_start|>user\n'

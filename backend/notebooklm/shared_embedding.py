@@ -9,12 +9,8 @@ import logging
 import requests
 import json
 
-# 현재 스크립트의 경로를 sys.path에 추가
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from config import RAGConfig
+from notebooklm.config import RAGConfig
 
-# 로깅 설정
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 from typing import Optional, List

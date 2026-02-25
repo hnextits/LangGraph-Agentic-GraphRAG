@@ -12,8 +12,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 from typing import Union, Optional
 
-# 로깅 설정
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+from bootstrap import ensure_backend_root, configure_logging
+
+ensure_backend_root()
+configure_logging()
+logger = logging.getLogger(__name__)
 class EnvManager:
     """
     환경 변수 관리를 위한 클래스

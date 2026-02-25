@@ -10,24 +10,29 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import fitz  # PyMuPDF
 from pdf2image import convert_from_path
 
-# 로깅 설정
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+from bootstrap import (
+    ensure_backend_root,
+    configure_logging,
+    get_backend_dir,
+    get_nextits_data_dir,
 )
+
+ensure_backend_root()
+configure_logging()
 logger = logging.getLogger(__name__)
 
 # =============================================================================
 # 실행 설정 매개변수 (여기서 모든 설정을 컨트롤)
 # =============================================================================
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+BACKEND_DIR = get_backend_dir()
+NEXTITS_DATA_DIR = get_nextits_data_dir()
 
 # 입력 PDF 파일 경로
-PDF_PATH = BASE_DIR / "nextits_data" / "doc" / "원가회계데이터샘플-250401.pdf"
+PDF_PATH = NEXTITS_DATA_DIR / "doc" / "원가회계데이터샘플-250401.pdf"
 
 # 출력 디렉토리
-OUTPUT_DIR = BASE_DIR / "nextits_data" / "pipe" / "e"
+OUTPUT_DIR = NEXTITS_DATA_DIR / "pipe" / "e"
 
 # 변환 설정
 DPI = 72  # 변환 DPI

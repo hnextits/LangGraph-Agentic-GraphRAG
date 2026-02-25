@@ -1,41 +1,27 @@
 import os
-import logging
-import uvicorn
 import sys
 import shutil
-from pathlib import Path
-import threading
-
 import uuid
+import logging
+import asyncio
+
+import uvicorn
+from pathlib import Path
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request, Depends, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
 
-running_tasks = {} 
+running_tasks = {}
 
 
-# 현재 작업 디렉토리를 sys.path에 추가하여 모듈 검색 경로에 포함
-# 이렇게 하면 'search_test' 같은 로컬 패키지를 찾을 수 있습니다.
+# 설정 로드 및 로깅 구성
+from config import APP_CONFIG
+from logging_config import configure_logging
 
-# 현재 디렉토리를 가장 우선순위로 추가
-if "." not in sys.path:
-    sys.path.insert(0, ".")
+configure_logging()
 
-# skill 경로를 시스템 경로에 추가
-sys.path.append(os.path.join(os.path.dirname(__file__), 'skill'))
-
-# 설정 가져오기 - 절대 경로 사용
-import importlib.util
-spec = importlib.util.spec_from_file_location("backend_config", os.path.join(os.path.dirname(__file__), "config.py"))
-backend_config = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(backend_config)
-
-# 설정에서 필요한 변수 가져오기
-HOST = backend_config.HOST
-PORT = backend_config.PORT
-
-# 로깅 설정
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # API 라우터 가져오기
@@ -50,84 +36,66 @@ from services.rag_service import build_rag_pipeline, cleanup_rag_pipeline
 
 model_manager = LazyModelManager()
 
-from contextlib import asynccontextmanager
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """
-    애플리케이션 시작 및 종료 시의 수명 주기 이벤트를 관리합니다.
-    """
-    # 1. Startup: 세션 데이터 초기화 (휘발성 유지)
-    from notebooklm.config import RAGConfig
-    config = RAGConfig()
-    if config.SESSIONS_ROOT.exists():
-        logger.info("서버 시작 시 이전 세션 데이터를 삭제합니다.")
-        try:
-            # sessions 디렉토리 자체는 남겨두고 내부 세션 폴더들만 삭제
-            for session_dir in config.SESSIONS_ROOT.iterdir():
-                if session_dir.is_dir():
-                    shutil.rmtree(session_dir)
-            logger.info("세션 데이터 초기화 완료")
-        except Exception as e:
-            logger.error(f"세션 데이터 초기화 중 오류: {e}")
+def _cleanup_previous_sessions(config):
+    """세션 디렉토리를 초기화합니다."""
+    if not config.SESSIONS_ROOT.exists():
+        return
 
-    # 2. Startup: 실행 중인 작업을 저장할 딕셔너리 초기화
+    logger.info("서버 시작 시 이전 세션 데이터를 삭제합니다.")
+    try:
+        for session_dir in config.SESSIONS_ROOT.iterdir():
+            if session_dir.is_dir():
+                shutil.rmtree(session_dir)
+        logger.info("세션 데이터 초기화 완료")
+    except Exception as exc:  # pragma: no cover - 로그 남기기 위함
+        logger.error("세션 데이터 초기화 중 오류: %s", exc)
+
+
+def _initialize_task_state(app: FastAPI):
+    """작업 상태 관련 app.state 값을 초기화합니다."""
     app.state.running_tasks = {}
-
-    # 3. Startup: 작업 상태 관리를 위한 전역 변수들을 app.state에 초기화
     app.state.tasks = api_routes.tasks
     app.state.task_status = api_routes.task_status
     app.state.task_cache = api_routes.task_cache
     app.state.task_cache_timestamps = api_routes.task_cache_timestamps
     logger.info("실행 작업 관리자(running_tasks)가 초기화되었습니다.")
 
-    # 4. Startup: GPU 작업 큐 워커 시작
+
+def _start_gpu_worker(app: FastAPI):
+    """GPU 작업 큐 워커를 비동기로 시작합니다."""
     from utils.task_queue import gpu_task_queue
-    import asyncio
+
     asyncio.create_task(gpu_task_queue.start_worker())
     app.state.gpu_task_queue = gpu_task_queue
     logger.info("GPU 작업 큐 워커가 시작되었습니다.")
 
-    # 5. Startup: 모델 등록 (LazyModelManager)
-    def register_models():
-        from api.routes import build_answer_generator
-        from skill.mindmap.mindmap_generator import MindMapGenerator
 
-        if "rag_pipeline" not in model_manager._models:
-            model_manager.register(
-                "rag_pipeline",
-                build_rag_pipeline,
-                cleanup_rag_pipeline,
-                idle_timeout=60,
-            )
-        if "answer_generator" not in model_manager._models:
-            model_manager.register(
-                "answer_generator",
-                build_answer_generator,
-                lambda gen: getattr(gen, "cleanup_model", lambda: None)(),
-                idle_timeout=60,
-            )
-        if "mindmap_generator" not in model_manager._models:
-            model_manager.register(
-                "mindmap_generator",
-                MindMapGenerator,
-                lambda gen: getattr(gen, "shutdown", lambda: None)(),
-                idle_timeout=60,
-            )
+def _register_lazy_models():
+    """LazyModelManager에 필요한 모델을 등록합니다."""
+    from api.routes import build_answer_generator
+    from skill.mindmap.mindmap_generator import MindMapGenerator
 
-    register_models()
-    app.state.model_manager = model_manager
+    registrations = (
+        ("rag_pipeline", build_rag_pipeline, cleanup_rag_pipeline),
+        ("answer_generator", build_answer_generator, lambda gen: getattr(gen, "cleanup_model", lambda: None)()),
+        ("mindmap_generator", MindMapGenerator, lambda gen: getattr(gen, "shutdown", lambda: None)()),
+    )
+
+    for name, builder, cleanup in registrations:
+        if name in model_manager._models:  # 기존 코드 호환을 위해 내부 dict 사용
+            continue
+        model_manager.register(name, builder, cleanup, idle_timeout=60)
+
     logger.info("LazyModelManager에 모델 등록 완료 (모든 모델은 Lazy Loading 지원)")
 
-    # 6. SGLang 서버 등록 (LazyLoading - 필요 시 자동 기동, 유휴 시 자동 종료)
-    from notebooklm.sglang_server_manager import sglang_manager
-    app.state.sglang_manager = sglang_manager
 
+def _register_sglang_servers(config, sglang_manager):
+    """필요한 SGLang 서버를 LazyLoading 모드로 등록합니다."""
     logger.info("=" * 60)
     logger.info("SGLang 서버 등록 (LazyLoading 모드)")
     logger.info("=" * 60)
 
-    # 6-1. 생성기 서버 (cuda:0, 포트 30000)
     sglang_manager.register_server(
         name="generator",
         model_path=config.LLM_MODEL,
@@ -138,7 +106,6 @@ async def lifespan(app: FastAPI):
         mem_fraction=config.SGLANG_GENERATOR_MEM_FRACTION,
     )
 
-    # 6-2. 임베딩 서버 (cuda:1, 포트 30001)
     sglang_manager.register_server(
         name="embedding",
         model_path=config.EMBEDDING_MODEL,
@@ -149,7 +116,6 @@ async def lifespan(app: FastAPI):
         mem_fraction=config.SGLANG_EMBEDDING_MEM_FRACTION,
     )
 
-    # 6-3. 리랭커 서버 (cuda:1, 포트 30002)
     sglang_manager.register_server(
         name="reranker",
         model_path=config.RERANKER_MODEL_NAME,
@@ -164,7 +130,6 @@ async def lifespan(app: FastAPI):
         mem_fraction=config.SGLANG_RERANKER_MEM_FRACTION,
     )
 
-    # 6-4. 리파이너 서버 (cuda:1, 포트 30003)
     sglang_manager.register_server(
         name="refiner",
         model_path=config.REFINER_MODEL,
@@ -175,7 +140,6 @@ async def lifespan(app: FastAPI):
         mem_fraction=config.SGLANG_REFINER_MEM_FRACTION,
     )
 
-    # 6-5. 쿼리 리라이터 서버 (cuda:1, 포트 30004) — config에서 비활성화 가능
     if getattr(config, "use_query_rewriter", False):
         sglang_manager.register_server(
             name="query_rewriter",
@@ -190,15 +154,37 @@ async def lifespan(app: FastAPI):
         logger.info("QueryRewriter 비활성화 — SGLang 서버 등록 건너뜀")
 
     registered_count = len(sglang_manager._servers)
-    logger.info("SGLang 서버 %d개 등록 완료 (요청 시 자동 기동, 유휴 시 자동 종료)", registered_count)
+    logger.info(
+        "SGLang 서버 %d개 등록 완료 (요청 시 자동 기동, 유휴 시 자동 종료)",
+        registered_count,
+    )
     logger.info("=" * 60)
 
-    yield  # 애플리케이션 실행 중
 
-    # 7. Shutdown: SGLang 서버 종료
-    logger.info("서버가 종료됩니다. SGLang 서버를 정리합니다...")
-    sglang_manager.shutdown_all()
-    logger.info("서버 종료 완료.")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """FastAPI lifespan 훅: startup/shutdown 동안 필요한 작업을 수행."""
+    from notebooklm.config import RAGConfig
+    from notebooklm.sglang_server_manager import sglang_manager
+
+    config = RAGConfig()
+
+    _cleanup_previous_sessions(config)
+    _initialize_task_state(app)
+    _start_gpu_worker(app)
+    _register_lazy_models()
+
+    app.state.model_manager = model_manager
+    app.state.sglang_manager = sglang_manager
+
+    _register_sglang_servers(config, sglang_manager)
+
+    try:
+        yield
+    finally:
+        logger.info("서버가 종료됩니다. SGLang 서버를 정리합니다...")
+        sglang_manager.shutdown_all()
+        logger.info("서버 종료 완료.")
 
 # FastAPI 앱 초기화 시 lifespan 설정 적용
 app = FastAPI(lifespan=lifespan)
@@ -279,13 +265,13 @@ app.include_router(mindmap_router, prefix="/api/v1/mindmap")
 
 # 서버 실행 설정
 if __name__ == "__main__":
-    print(f"서버 시작: http://{HOST}:{PORT}")
-    print(f"API 문서: http://{HOST}:{PORT}/docs")
+    print(f"서버 시작: http://{APP_CONFIG.host}:{APP_CONFIG.port}")
+    print(f"API 문서: http://{APP_CONFIG.host}:{APP_CONFIG.port}/docs")
     
     # 서버 실행
     uvicorn.run(
         "main:app",
-        host=HOST,
-        port=PORT,
+        host=APP_CONFIG.host,
+        port=APP_CONFIG.port,
         reload=False
     )

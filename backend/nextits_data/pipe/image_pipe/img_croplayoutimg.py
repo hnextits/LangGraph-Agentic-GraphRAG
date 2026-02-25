@@ -18,12 +18,10 @@ import numpy as np
 import traceback
 from glob import glob
 
-# 로깅 설정
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
+from bootstrap import ensure_backend_root, configure_logging
+
+ensure_backend_root()
+configure_logging()
 logger = logging.getLogger(__name__)
 
 # 대상 레이블 (이 레이블만 크롭)

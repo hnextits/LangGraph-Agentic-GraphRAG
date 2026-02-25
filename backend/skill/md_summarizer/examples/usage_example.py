@@ -3,14 +3,10 @@ MD Summarizer 사용 예시
 기존 nextitslm 시스템과 동일한 방식으로 사용 가능
 """
 
-import sys
-from pathlib import Path
+from backend.nextits_data.pipe.bootstrap import ensure_backend_root
+from skill.md_summarizer.src import SGLangClient, MDParser, MDSummaryIndex
 
-# 프로젝트 루트를 sys.path에 추가
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-from src import SGLangClient, MDParser, MDSummaryIndex
+ensure_backend_root()
 
 
 def example_1_basic_summarization():

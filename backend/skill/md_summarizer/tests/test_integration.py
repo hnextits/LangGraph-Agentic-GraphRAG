@@ -3,14 +3,8 @@
 기존 nextitslm 시스템과의 호환성 테스트
 """
 
-import sys
 from pathlib import Path
-
-# 프로젝트 루트 추가
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
-
-from src import SGLangClient, MDParser, MDSummaryIndex
+from skill.md_summarizer.src import SGLangClient, MDParser, MDSummaryIndex
 
 
 def test_sglang_client():

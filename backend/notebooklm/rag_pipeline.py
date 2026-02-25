@@ -34,8 +34,6 @@ from evaluator import Evaluator
 from refiner import Refiner
 from graph_reasoner import GraphReasoner
 
-# 로깅 설정
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 class RAGPipeline:

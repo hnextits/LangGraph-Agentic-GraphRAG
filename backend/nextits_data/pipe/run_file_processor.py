@@ -9,12 +9,14 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# 파서 모듈 상대 경로 우선 추가
-_PIPE_DIR = Path(__file__).parent
-if str(_PIPE_DIR) not in sys.path:
-    sys.path.insert(0, str(_PIPE_DIR))
+from backend.nextits_data.pipe.bootstrap import ensure_backend_root
+from backend.nextits_data.pipe.parser import (
+    convert_to_pdf,
+    is_office_file,
+    SUPPORTED_OFFICE_EXTENSIONS,
+)
 
-from parser import convert_to_pdf, is_office_file, SUPPORTED_OFFICE_EXTENSIONS
+ensure_backend_root()
 
 load_dotenv()
 

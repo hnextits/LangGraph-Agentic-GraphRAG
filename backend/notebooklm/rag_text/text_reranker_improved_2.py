@@ -8,9 +8,7 @@ import requests
 from typing import List, Dict, Any, Optional
 import time
 
-# config.py 파일이 있는 디렉토리를 sys.path에 추가
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import RAGConfig
+from notebooklm.config import RAGConfig
 
 # 로깅 설정
 logger = logging.getLogger(__name__)

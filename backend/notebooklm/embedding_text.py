@@ -24,8 +24,6 @@ import weaviate
 from weaviate.util import generate_uuid5
 from weaviate.exceptions import UnexpectedStatusCodeException
 
-# 로깅 설정
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # =============================================================================

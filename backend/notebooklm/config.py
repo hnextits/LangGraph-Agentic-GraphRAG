@@ -7,11 +7,8 @@ except Exception:
     torch = None
 from pathlib import Path
 
-
-# 로깅 설정
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-# 특정 모듈의 로그 레벨 조정
+# 특정 모듈의 로그 레벨 조정은 main.py에서 configure_logging 호출 후 수행
+# 여기서는 로깅 설정을 호출하지 않음
 logging.getLogger('transformers').setLevel(logging.WARNING)
 logging.getLogger('PIL').setLevel(logging.WARNING)
 logging.getLogger('httpx').setLevel(logging.WARNING)
@@ -49,9 +46,9 @@ class RAGConfig:
         #############################################
         # 1. 경로 및 파일 설정
         #############################################
-        current_file = Path(__file__).resolve()
-        self.PROJECT_ROOT = current_file.parent.parent.parent
-        self.DATA_ROOT = self.PROJECT_ROOT / "backend" / "nextits_data"
+        from utils.path_helpers import get_project_root, get_nextits_data_dir
+        self.PROJECT_ROOT = get_project_root()
+        self.DATA_ROOT = get_nextits_data_dir()
         self.DATA_PATH = self.DATA_ROOT
         self.SESSIONS_ROOT = self.DATA_ROOT / "sessions"
         self.DEFAULT_DOC_DIR = self.DATA_ROOT / "doc"

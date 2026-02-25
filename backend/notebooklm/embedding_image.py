@@ -22,19 +22,11 @@ from PIL import Image
 from tqdm import tqdm
 from shared_embedding import shared_embedding
 
-# config.py 파일이 있는 디렉토리를 sys.path에 추가
-import sys
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-from config import RAGConfig
-from weaviate_utils import create_schema, batch_import_text_documents
+from notebooklm.config import RAGConfig
+from notebooklm.weaviate_utils import create_schema, batch_import_text_documents
 
-# 로깅 설정
+# 로깅 설정 - main.py에서 configure_logging()이 이미 호출됨
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-stream_handler = logging.StreamHandler()
-stream_handler.setFormatter(formatter)
-logger.addHandler(stream_handler)
 
 class VectorDBService:
     """
