@@ -1,0 +1,5784 @@
+{
+  "document_id": "RAG_PIPELINE_교육자료_langchain",
+  "entities": [
+    {
+      "entity_id": "c1_ENT_1",
+      "name": "LangChain",
+      "type": "Framework",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_2",
+      "name": "LLM",
+      "type": "Model",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_3",
+      "name": "AI",
+      "type": "Application",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_4",
+      "name": "Module",
+      "type": "Design",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_5",
+      "name": "Embedding",
+      "type": "Component",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_6",
+      "name": "Vector",
+      "type": "Storage",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_7",
+      "name": "SQL",
+      "type": "Database",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_8",
+      "name": "RAG",
+      "type": "Pipeline",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_9",
+      "name": "Prompt",
+      "type": "Template",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_10",
+      "name": "Chain",
+      "type": "Composition",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_11",
+      "name": "Medical",
+      "type": "Data",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_12",
+      "name": "Advanced",
+      "type": "Feature",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c2_ENT_1",
+      "name": "대화 컨텍스트",
+      "type": "Concept",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_2",
+      "name": "메모리 타입",
+      "type": "Concept",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_3",
+      "name": "버퍼",
+      "type": "MemoryType",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_4",
+      "name": "요약",
+      "type": "MemoryType",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_5",
+      "name": "엔티티",
+      "type": "MemoryType",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_8",
+      "name": "에이전트 패턴",
+      "type": "Pattern",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_9",
+      "name": "웹 검색",
+      "type": "Task",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_10",
+      "name": "계산",
+      "type": "Task",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_11",
+      "name": "데이터베이스 쿼리",
+      "type": "Task",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_12",
+      "name": "langchain",
+      "type": "Library",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_13",
+      "name": "langchain-community",
+      "type": "Library",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_14",
+      "name": "langchain-core",
+      "type": "Library",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_15",
+      "name": "transformers",
+      "type": "Library",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_16",
+      "name": "torch",
+      "type": "Library",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_17",
+      "name": "sentence-transformers",
+      "type": "Library",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_18",
+      "name": "faiss-cpu",
+      "type": "Library",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_19",
+      "name": "sqlalchemy",
+      "type": "Library",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_20",
+      "name": "huggingface_hub",
+      "type": "Library",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_21",
+      "name": "langchain-huggingface",
+      "type": "Library",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_22",
+      "name": "accelerate",
+      "type": "Library",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c3_ENT_1",
+      "name": "langchain-core",
+      "type": "Package",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_2",
+      "name": "langgraph",
+      "type": "Package",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_3",
+      "name": "pydantic",
+      "type": "Package",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_4",
+      "name": "jsonpatch",
+      "type": "Package",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_5",
+      "name": "langsmith",
+      "type": "Package",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_6",
+      "name": "packaging",
+      "type": "Package",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c4_ENT_2",
+      "name": "pypyaml",
+      "type": "Library",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_3",
+      "name": "tenacity",
+      "type": "Library",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_4",
+      "name": "typing-extensions",
+      "type": "Library",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_5",
+      "name": "jsonpointer",
+      "type": "Library",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_6",
+      "name": "jsonpatch",
+      "type": "Library",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_7",
+      "name": "langgraph",
+      "type": "Library",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c5_ENT_1",
+      "name": "checkpoint",
+      "type": "Package",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_3",
+      "name": "langgraph-prebuilt",
+      "type": "Package",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_4",
+      "name": "langgraph-sdk",
+      "type": "Package",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_5",
+      "name": "xxhash",
+      "type": "Package",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_6",
+      "name": "ormsgpack",
+      "type": "Package",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c6_ENT_1",
+      "name": "packages",
+      "type": "Package",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_2",
+      "name": "langgraph-checkpoint",
+      "type": "Package",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_4",
+      "name": "langchain",
+      "type": "Package",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_5",
+      "name": "httpx",
+      "type": "Package",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_9",
+      "name": "orjson",
+      "type": "Package",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_10",
+      "name": "requests-toolbelt",
+      "type": "Package",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_11",
+      "name": "requests",
+      "type": "Package",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c7_ENT_1",
+      "name": "langsmith",
+      "type": "Library",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_3",
+      "name": "zstandard",
+      "type": "Library",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_4",
+      "name": "anyio",
+      "type": "Library",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_5",
+      "name": "httpx",
+      "type": "Library",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_6",
+      "name": "langgraph-sdk",
+      "type": "Library",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_9",
+      "name": "certifi",
+      "type": "Library",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_10",
+      "name": "httpcore",
+      "type": "Library",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c8_ENT_5",
+      "name": "idna",
+      "type": "Library",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_6",
+      "name": "h11",
+      "type": "Library",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_7",
+      "name": "annotated-types",
+      "type": "Library",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_8",
+      "name": "pydantic",
+      "type": "Library",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_9",
+      "name": "pydantic-core",
+      "type": "Library",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c9_ENT_1",
+      "name": "nchain_edu",
+      "type": "Package",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_4",
+      "name": "typing-inspection",
+      "type": "Package",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_5",
+      "name": "SQLAlchemy",
+      "type": "Package",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_6",
+      "name": "aiohttp",
+      "type": "Package",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_7",
+      "name": "langchain-community",
+      "type": "Package",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c10_ENT_1",
+      "name": "dataclasses-json",
+      "type": "Library",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_3",
+      "name": "pydantic-settings",
+      "type": "Library",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_4",
+      "name": "httpx-sse",
+      "type": "Library",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_5",
+      "name": "numpy",
+      "type": "Library",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_6",
+      "name": "aiohappyeeyeballs",
+      "type": "Library",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c10_ENT_7",
+      "name": "aiohttp",
+      "type": "Library",
+      "chunk_id": 10
+    },
+    {
+      "entity_id": "c11_ENT_1",
+      "name": "aiosignal",
+      "type": "Library",
+      "chunk_id": 11
+    },
+    {
+      "entity_id": "c11_ENT_4",
+      "name": "attrs",
+      "type": "Library",
+      "chunk_id": 11
+    },
+    {
+      "entity_id": "c11_ENT_5",
+      "name": "frozenlist",
+      "type": "Library",
+      "chunk_id": 11
+    },
+    {
+      "entity_id": "c11_ENT_6",
+      "name": "multidict",
+      "type": "Library",
+      "chunk_id": 11
+    },
+    {
+      "entity_id": "c11_ENT_7",
+      "name": "propcache",
+      "type": "Library",
+      "chunk_id": 11
+    },
+    {
+      "entity_id": "c12_ENT_2",
+      "name": "yaml",
+      "type": "Library",
+      "chunk_id": 12
+    },
+    {
+      "entity_id": "c12_ENT_3",
+      "name": "marshmallow",
+      "type": "Library",
+      "chunk_id": 12
+    },
+    {
+      "entity_id": "c12_ENT_5",
+      "name": "typing-inspect",
+      "type": "Library",
+      "chunk_id": 12
+    },
+    {
+      "entity_id": "c12_ENT_6",
+      "name": "langchain-text-splitters",
+      "type": "Library",
+      "chunk_id": 12
+    },
+    {
+      "entity_id": "c13_ENT_1",
+      "name": "langchain-classic",
+      "type": "Package",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_3",
+      "name": "python-dotenv",
+      "type": "Package",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_4",
+      "name": "pydantic-settings",
+      "type": "Package",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_8",
+      "name": "urllib3",
+      "type": "Package",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_9",
+      "name": "greenlet",
+      "type": "Package",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_10",
+      "name": "charset_normalizer",
+      "type": "Package",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c14_ENT_3",
+      "name": "mypy-extensions",
+      "type": "Library",
+      "chunk_id": 14
+    },
+    {
+      "entity_id": "c15_ENT_2",
+      "name": "filelock",
+      "type": "Library",
+      "chunk_id": 15
+    },
+    {
+      "entity_id": "c15_ENT_4",
+      "name": "huggingface-hub",
+      "type": "Library",
+      "chunk_id": 15
+    },
+    {
+      "entity_id": "c15_ENT_6",
+      "name": "packaging",
+      "type": "Library",
+      "chunk_id": 15
+    },
+    {
+      "entity_id": "c15_ENT_7",
+      "name": "pyyaml",
+      "type": "Library",
+      "chunk_id": 15
+    },
+    {
+      "entity_id": "c16_ENT_2",
+      "name": "regex1",
+      "type": "Library",
+      "chunk_id": 16
+    },
+    {
+      "entity_id": "c16_ENT_3",
+      "name": "requests",
+      "type": "Library",
+      "chunk_id": 16
+    },
+    {
+      "entity_id": "c16_ENT_4",
+      "name": "tokenizers",
+      "type": "Library",
+      "chunk_id": 16
+    },
+    {
+      "entity_id": "c16_ENT_5",
+      "name": "safetensors",
+      "type": "Library",
+      "chunk_id": 16
+    },
+    {
+      "entity_id": "c16_ENT_6",
+      "name": "tqdm",
+      "type": "Library",
+      "chunk_id": 16
+    },
+    {
+      "entity_id": "c17_ENT_2",
+      "name": "fsspec",
+      "type": "Library",
+      "chunk_id": 17
+    },
+    {
+      "entity_id": "c17_ENT_5",
+      "name": "hf_xet",
+      "type": "Library",
+      "chunk_id": 17
+    },
+    {
+      "entity_id": "c17_ENT_6",
+      "name": "setuptools",
+      "type": "Library",
+      "chunk_id": 17
+    },
+    {
+      "entity_id": "c17_ENT_8",
+      "name": "sympy",
+      "type": "Library",
+      "chunk_id": 17
+    },
+    {
+      "entity_id": "c18_ENT_2",
+      "name": "networkx",
+      "type": "Library",
+      "chunk_id": 18
+    },
+    {
+      "entity_id": "c18_ENT_3",
+      "name": "jinja2",
+      "type": "Library",
+      "chunk_id": 18
+    },
+    {
+      "entity_id": "c18_ENT_4",
+      "name": "nvidia-cuda-nvrtc-cu12",
+      "type": "Library",
+      "chunk_id": 18
+    },
+    {
+      "entity_id": "c18_ENT_5",
+      "name": "nvidia-cuda-runtime-cu12",
+      "type": "Library",
+      "chunk_id": 18
+    },
+    {
+      "entity_id": "c18_ENT_6",
+      "name": "nvidia-cuda-cupti-cu12",
+      "type": "Library",
+      "chunk_id": 18
+    },
+    {
+      "entity_id": "c19_ENT_1",
+      "name": "/home/yudh/.conda/envs/langchain_edu",
+      "type": "Path",
+      "chunk_id": 19
+    },
+    {
+      "entity_id": "c19_ENT_3",
+      "name": "nvidia-cudnn-cu12",
+      "type": "Library",
+      "chunk_id": 19
+    },
+    {
+      "entity_id": "c19_ENT_4",
+      "name": "nvidia-cublas-cu12",
+      "type": "Library",
+      "chunk_id": 19
+    },
+    {
+      "entity_id": "c19_ENT_5",
+      "name": "nvidia-cufft-cu12",
+      "type": "Library",
+      "chunk_id": 19
+    },
+    {
+      "entity_id": "c19_ENT_6",
+      "name": "nvidia-curand-cu12",
+      "type": "Library",
+      "chunk_id": 19
+    },
+    {
+      "entity_id": "c19_ENT_7",
+      "name": "nvidia-cusolver-cu12",
+      "type": "Library",
+      "chunk_id": 19
+    },
+    {
+      "entity_id": "c20_ENT_1",
+      "name": "/home/yudh/.conda/envs/langchain_edu/lib/python3.12/site-packages",
+      "type": "Path",
+      "chunk_id": 20
+    },
+    {
+      "entity_id": "c20_ENT_3",
+      "name": "nvidia-cusparse-cu12",
+      "type": "Library",
+      "chunk_id": 20
+    },
+    {
+      "entity_id": "c20_ENT_4",
+      "name": "nvidia-cusparselt-cu12",
+      "type": "Library",
+      "chunk_id": 20
+    },
+    {
+      "entity_id": "c20_ENT_5",
+      "name": "nvidia-nccl-cu12",
+      "type": "Library",
+      "chunk_id": 20
+    },
+    {
+      "entity_id": "c20_ENT_6",
+      "name": "nvidia-nvshmem-cu12",
+      "type": "Library",
+      "chunk_id": 20
+    },
+    {
+      "entity_id": "c20_ENT_7",
+      "name": "nvidia-nvtx-cu12",
+      "type": "Library",
+      "chunk_id": 20
+    },
+    {
+      "entity_id": "c21_ENT_3",
+      "name": "nvidia-nvjitlink-cu12",
+      "type": "Library",
+      "chunk_id": 21
+    },
+    {
+      "entity_id": "c21_ENT_4",
+      "name": "nvidia-cufle-cu12",
+      "type": "Library",
+      "chunk_id": 21
+    },
+    {
+      "entity_id": "c21_ENT_5",
+      "name": "triton",
+      "type": "Library",
+      "chunk_id": 21
+    },
+    {
+      "entity_id": "c21_ENT_6",
+      "name": "scikit-learn",
+      "type": "Library",
+      "chunk_id": 21
+    },
+    {
+      "entity_id": "c22_ENT_2",
+      "name": "Pillow",
+      "type": "Library",
+      "chunk_id": 22
+    },
+    {
+      "entity_id": "c22_ENT_3",
+      "name": "mpmath",
+      "type": "Library",
+      "chunk_id": 22
+    },
+    {
+      "entity_id": "c22_ENT_6",
+      "name": "MarkupSafe",
+      "type": "Library",
+      "chunk_id": 22
+    },
+    {
+      "entity_id": "c22_ENT_8",
+      "name": "charset_normalizer",
+      "type": "Library",
+      "chunk_id": 22
+    },
+    {
+      "entity_id": "c22_ENT_11",
+      "name": "langchain_edu",
+      "type": "Environment",
+      "chunk_id": 22
+    },
+    {
+      "entity_id": "c22_ENT_12",
+      "name": "python3.12",
+      "type": "Version",
+      "chunk_id": 22
+    },
+    {
+      "entity_id": "c23_ENT_3",
+      "name": "urllib3",
+      "type": "Library",
+      "chunk_id": 23
+    },
+    {
+      "entity_id": "c23_ENT_5",
+      "name": "joblib",
+      "type": "Library",
+      "chunk_id": 23
+    },
+    {
+      "entity_id": "c23_ENT_8",
+      "name": "threadpoolctl",
+      "type": "Library",
+      "chunk_id": 23
+    },
+    {
+      "entity_id": "c24_ENT_1",
+      "name": "lib/python3.12/site-packages",
+      "type": "Path",
+      "chunk_id": 24
+    },
+    {
+      "entity_id": "c24_ENT_5",
+      "name": "greenlet",
+      "type": "Library",
+      "chunk_id": 24
+    },
+    {
+      "entity_id": "c25_ENT_1",
+      "name": "langchain_edu",
+      "type": "Package",
+      "chunk_id": 25
+    },
+    {
+      "entity_id": "c25_ENT_2",
+      "name": "huggingface_hub",
+      "type": "Package",
+      "chunk_id": 25
+    },
+    {
+      "entity_id": "c25_ENT_3",
+      "name": "filelock",
+      "type": "Package",
+      "chunk_id": 25
+    },
+    {
+      "entity_id": "c25_ENT_4",
+      "name": "fsspec",
+      "type": "Package",
+      "chunk_id": 25
+    },
+    {
+      "entity_id": "c25_ENT_6",
+      "name": "pypyaml",
+      "type": "Package",
+      "chunk_id": 25
+    },
+    {
+      "entity_id": "c26_ENT_4",
+      "name": "hf-xet",
+      "type": "Library",
+      "chunk_id": 26
+    },
+    {
+      "entity_id": "c28_ENT_1",
+      "name": "langchain-huggingface",
+      "type": "Package",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_2",
+      "name": "tokenizers",
+      "type": "Package",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_4",
+      "name": "huggingface-hub",
+      "type": "Package",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_7",
+      "name": "huggingface-hub",
+      "type": "Dependency",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_8",
+      "name": "langchain-huggingface",
+      "type": "Dependency",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_1",
+      "name": "tokenizers",
+      "type": "Dependency",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_1",
+      "name": "filelock",
+      "type": "Dependency",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_1",
+      "name": "fsspec",
+      "type": "Dependency",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_1",
+      "name": "packaging",
+      "type": "Dependency",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_1",
+      "name": "langchain-huggingface",
+      "type": "Requires",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_2",
+      "name": "tokenizers",
+      "type": "Requires",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_3",
+      "name": "filelock",
+      "type": "Requires",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_4",
+      "name": "huggingface-hub",
+      "type": "Requires",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_5",
+      "name": "fsspec",
+      "type": "Requires",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_6",
+      "name": "packaging",
+      "type": "Requires",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_1",
+      "name": "langchain-huggingface",
+      "type": "DependsOn",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_2",
+      "name": "tokenizers",
+      "type": "DependsOn",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_3",
+      "name": "filelock",
+      "type": "DependsOn",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_4",
+      "name": "huggingface-hub",
+      "type": "DependsOn",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_5",
+      "name": "fsspec",
+      "type": "DependsOn",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_6",
+      "name": "packaging",
+      "type": "DependsOn",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_1",
+      "name": "langchain-huggingface",
+      "type": "Version",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_2",
+      "name": "tokenizers",
+      "type": "Version",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_3",
+      "name": "filelock",
+      "type": "Version",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_4",
+      "name": "huggingface-hub",
+      "type": "Version",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_5",
+      "name": "fsspec",
+      "type": "Version",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_6",
+      "name": "packaging",
+      "type": "Version",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_1",
+      "name": "langchain-huggingface",
+      "type": "Installed",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_2",
+      "name": "tokenizers",
+      "type": "Installed",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_3",
+      "name": "filelock",
+      "type": "Installed",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_4",
+      "name": "huggingface-hub",
+      "type": "Installed",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_5",
+      "name": "fsspec",
+      "type": "Installed",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c28_ENT_6",
+      "name": "packaging",
+      "type": "Installed",
+      "chunk_id": 28
+    },
+    {
+      "entity_id": "c29_ENT_1",
+      "name": "ppyaml",
+      "type": "Package",
+      "chunk_id": 29
+    },
+    {
+      "entity_id": "c29_ENT_3",
+      "name": "tqdm",
+      "type": "Package",
+      "chunk_id": 29
+    },
+    {
+      "entity_id": "c29_ENT_4",
+      "name": "typing-extensions",
+      "type": "Package",
+      "chunk_id": 29
+    },
+    {
+      "entity_id": "c29_ENT_5",
+      "name": "hf-xet",
+      "type": "Package",
+      "chunk_id": 29
+    },
+    {
+      "entity_id": "c30_ENT_7",
+      "name": "tenacity",
+      "type": "Package",
+      "chunk_id": 30
+    },
+    {
+      "entity_id": "c31_ENT_4",
+      "name": "jsonpointer",
+      "type": "Package",
+      "chunk_id": 31
+    },
+    {
+      "entity_id": "c32_ENT_3",
+      "name": "zstandard",
+      "type": "Package",
+      "chunk_id": 32
+    },
+    {
+      "entity_id": "c32_ENT_4",
+      "name": "anyio",
+      "type": "Package",
+      "chunk_id": 32
+    },
+    {
+      "entity_id": "c32_ENT_6",
+      "name": "certifi",
+      "type": "Package",
+      "chunk_id": 32
+    },
+    {
+      "entity_id": "c34_ENT_4",
+      "name": "annotated-types",
+      "type": "Package",
+      "chunk_id": 34
+    },
+    {
+      "entity_id": "c34_ENT_5",
+      "name": "pydantic-core",
+      "type": "Package",
+      "chunk_id": 34
+    },
+    {
+      "entity_id": "c35_ENT_1",
+      "name": "huggingface",
+      "type": "Library",
+      "chunk_id": 35
+    },
+    {
+      "entity_id": "c35_ENT_4",
+      "name": "sniffio",
+      "type": "Library",
+      "chunk_id": 35
+    },
+    {
+      "entity_id": "c36_ENT_3",
+      "name": "psutil",
+      "type": "Library",
+      "chunk_id": 36
+    },
+    {
+      "entity_id": "c37_ENT_1",
+      "name": "accelerate",
+      "type": "Package",
+      "chunk_id": 37
+    },
+    {
+      "entity_id": "c37_ENT_2",
+      "name": "safetensors",
+      "type": "Package",
+      "chunk_id": 37
+    },
+    {
+      "entity_id": "c38_ENT_8",
+      "name": "python3.12",
+      "type": "LanguageVersion",
+      "chunk_id": 38
+    },
+    {
+      "entity_id": "c42_ENT_1",
+      "name": "nvs/langchain_edu",
+      "type": "Package",
+      "chunk_id": 42
+    },
+    {
+      "entity_id": "c42_ENT_4",
+      "name": "nvidia-nvtx-cu12",
+      "type": "Package",
+      "chunk_id": 42
+    },
+    {
+      "entity_id": "c42_ENT_5",
+      "name": "nvidia-nvjitlink-cu12",
+      "type": "Package",
+      "chunk_id": 42
+    },
+    {
+      "entity_id": "c42_ENT_6",
+      "name": "nvidia-cufile-cu12",
+      "type": "Package",
+      "chunk_id": 42
+    },
+    {
+      "entity_id": "c44_ENT_6",
+      "name": "Document",
+      "type": "Component",
+      "chunk_id": 44
+    },
+    {
+      "entity_id": "c44_ENT_7",
+      "name": "Embeddings",
+      "type": "Component",
+      "chunk_id": 44
+    },
+    {
+      "entity_id": "c44_ENT_8",
+      "name": "Vector Store",
+      "type": "Component",
+      "chunk_id": 44
+    },
+    {
+      "entity_id": "c44_ENT_9",
+      "name": "Retriever",
+      "type": "Component",
+      "chunk_id": 44
+    },
+    {
+      "entity_id": "c44_ENT_10",
+      "name": "FAISS",
+      "type": "Database",
+      "chunk_id": 44
+    },
+    {
+      "entity_id": "c44_ENT_11",
+      "name": "Chroma",
+      "type": "Database",
+      "chunk_id": 44
+    },
+    {
+      "entity_id": "c44_ENT_12",
+      "name": "Pinecone",
+      "type": "Database",
+      "chunk_id": 44
+    },
+    {
+      "entity_id": "c45_ENT_2",
+      "name": "OpenAI",
+      "type": "Provider",
+      "chunk_id": 45
+    },
+    {
+      "entity_id": "c45_ENT_3",
+      "name": "HuggingFace",
+      "type": "Provider",
+      "chunk_id": 45
+    },
+    {
+      "entity_id": "c45_ENT_4",
+      "name": "Anthropic",
+      "type": "Provider",
+      "chunk_id": 45
+    },
+    {
+      "entity_id": "c45_ENT_5",
+      "name": "PromptTemplate",
+      "type": "Template",
+      "chunk_id": 45
+    },
+    {
+      "entity_id": "c45_ENT_6",
+      "name": "OutputParser",
+      "type": "Parser",
+      "chunk_id": 45
+    },
+    {
+      "entity_id": "c45_ENT_7",
+      "name": "Document",
+      "type": "DataStructure",
+      "chunk_id": 45
+    },
+    {
+      "entity_id": "c45_ENT_8",
+      "name": "RecursiveCharacterTextSplitter",
+      "type": "TextSplitter",
+      "chunk_id": 45
+    },
+    {
+      "entity_id": "c46_ENT_2",
+      "name": "긴 의료 기록",
+      "type": "MedicalRecord",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_3",
+      "name": "작은 단위",
+      "type": "Unit",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_5",
+      "name": "StrOutputParser",
+      "type": "Parser",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_7",
+      "name": "문자열",
+      "type": "String",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_8",
+      "name": "메타데이터",
+      "type": "Metadata",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_9",
+      "name": "출처",
+      "type": "Source",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_10",
+      "name": "특성",
+      "type": "Feature",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_11",
+      "name": "Document",
+      "type": "Class",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_12",
+      "name": "텍스트 데이터",
+      "type": "TextData",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_14",
+      "name": "RunnablePassthrough",
+      "type": "Runnable",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_15",
+      "name": "입력값",
+      "type": "Input",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_16",
+      "name": "RunnableLambda",
+      "type": "Runnable",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_17",
+      "name": "Python 함수",
+      "type": "Function",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_18",
+      "name": "커스텀 로직",
+      "type": "Logic",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_20",
+      "name": "TqdmWarning",
+      "type": "Warning",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_21",
+      "name": "IProgress",
+      "type": "Component",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_22",
+      "name": "jupyter",
+      "type": "Software",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_23",
+      "name": "ipywidgets",
+      "type": "Library",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_24",
+      "name": "https",
+      "type": "Protocol",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_25",
+      "name": "user_install.html",
+      "type": "Document",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_26",
+      "name": "Document 객체",
+      "type": "Class",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_32",
+      "name": "기본 구성 요소",
+      "type": "Component",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_33",
+      "name": "임포트",
+      "type": "Import",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_34",
+      "name": "출력",
+      "type": "Output",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_35",
+      "name": "정리된 형식",
+      "type": "Format",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_36",
+      "name": "모델의 응답",
+      "type": "Response",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c46_ENT_37",
+      "name": "추출",
+      "type": "Extraction",
+      "chunk_id": 46
+    },
+    {
+      "entity_id": "c48_ENT_1",
+      "name": "patient_id",
+      "type": "Identifier",
+      "chunk_id": 48
+    },
+    {
+      "entity_id": "c48_ENT_2",
+      "name": "date",
+      "type": "Date",
+      "chunk_id": 48
+    },
+    {
+      "entity_id": "c48_ENT_3",
+      "name": "diagnosis",
+      "type": "Diagnosis",
+      "chunk_id": 48
+    },
+    {
+      "entity_id": "c48_ENT_4",
+      "name": "stomach_ca_ner",
+      "type": "Disease",
+      "chunk_id": 48
+    },
+    {
+      "entity_id": "c48_ENT_5",
+      "name": "HuggingFace",
+      "type": "Organization",
+      "chunk_id": 48
+    },
+    {
+      "entity_id": "c48_ENT_7",
+      "name": "google/medgemma-4b-it",
+      "type": "Model",
+      "chunk_id": 48
+    },
+    {
+      "entity_id": "c48_ENT_8",
+      "name": "RLHF",
+      "type": "Algorithm",
+      "chunk_id": 48
+    },
+    {
+      "entity_id": "c48_ENT_9",
+      "name": "tokenizer",
+      "type": "Component",
+      "chunk_id": 48
+    },
+    {
+      "entity_id": "c48_ENT_10",
+      "name": "pipeline",
+      "type": "Component",
+      "chunk_id": 48
+    },
+    {
+      "entity_id": "c48_ENT_11",
+      "name": "LLM",
+      "type": "Interface",
+      "chunk_id": 48
+    },
+    {
+      "entity_id": "c48_ENT_12",
+      "name": "medical_terms",
+      "type": "Concept",
+      "chunk_id": 48
+    },
+    {
+      "entity_id": "c48_ENT_13",
+      "name": "memory_efficiency",
+      "type": "Feature",
+      "chunk_id": 48
+    },
+    {
+      "entity_id": "c48_ENT_14",
+      "name": "performance",
+      "type": "Feature",
+      "chunk_id": 48
+    },
+    {
+      "entity_id": "c49_ENT_1",
+      "name": "AutoTokenizer",
+      "type": "Class",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_2",
+      "name": "model_name",
+      "type": "Variable",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_3",
+      "name": "pipeline",
+      "type": "Function",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_4",
+      "name": "text-generation",
+      "type": "Task",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_5",
+      "name": "model",
+      "type": "Variable",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_6",
+      "name": "tokenizer",
+      "type": "Variable",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_7",
+      "name": "max_new_tokens",
+      "type": "Parameter",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_8",
+      "name": "128",
+      "type": "Value",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_9",
+      "name": "temperature",
+      "type": "Parameter",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_10",
+      "name": "0.3",
+      "type": "Value",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_11",
+      "name": "top_p",
+      "type": "Parameter",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_12",
+      "name": "0.9",
+      "type": "Value",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_13",
+      "name": "return_full_text",
+      "type": "Parameter",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_14",
+      "name": "False",
+      "type": "Value",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_15",
+      "name": "do_sample",
+      "type": "Parameter",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_16",
+      "name": "True",
+      "type": "Value",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_17",
+      "name": "pad_token_id",
+      "type": "Parameter",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_18",
+      "name": "tokenizer.eos_token_id",
+      "type": "Value",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c49_ENT_19",
+      "name": "HuggingFacePipeline",
+      "type": "Class",
+      "chunk_id": 49
+    },
+    {
+      "entity_id": "c50_ENT_3",
+      "name": "HuggingFaceEmbeddings",
+      "type": "Class",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_4",
+      "name": "FAISS",
+      "type": "Class",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_5",
+      "name": "HuggingFaceHub",
+      "type": "Class",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_6",
+      "name": "medicalai/ClinicalBERT",
+      "type": "Model",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_8",
+      "name": "cuda:0",
+      "type": "Device",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_9",
+      "name": "llm",
+      "type": "Variable",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_10",
+      "name": "embeddings",
+      "type": "Variable",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_11",
+      "name": "setup_llm",
+      "type": "Function",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_12",
+      "name": "setup_embeddings",
+      "type": "Function",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_13",
+      "name": "pipeline",
+      "type": "Variable",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_14",
+      "name": "pipe",
+      "type": "Variable",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_15",
+      "name": "LLM",
+      "type": "Component",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_16",
+      "name": "임베딩",
+      "type": "Process",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_17",
+      "name": "벡터 저장소",
+      "type": "Component",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_18",
+      "name": "텍스트",
+      "type": "Entity",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_19",
+      "name": "벡터",
+      "type": "Entity",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_20",
+      "name": "의미론적으로 유사한 텍스트",
+      "type": "Entity",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_21",
+      "name": "모델 이름",
+      "type": "Parameter",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_22",
+      "name": "임베딩 모델",
+      "type": "Component",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_24",
+      "name": "임베딩 설정",
+      "type": "Process",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_25",
+      "name": "임베딩 함수",
+      "type": "Function",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_26",
+      "name": "임베딩 파라미터",
+      "type": "Parameter",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_27",
+      "name": "임베딩 반환값",
+      "type": "Output",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_28",
+      "name": "임베딩 모델 설정",
+      "type": "Process",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_29",
+      "name": "임베딩 모델 이름",
+      "type": "Parameter",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_30",
+      "name": "임베딩 모델 설정 함수",
+      "type": "Function",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_31",
+      "name": "임베딩 모델 설정 함수 파라미터",
+      "type": "Parameter",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_32",
+      "name": "임베딩 모델 설정 함수 반환값",
+      "type": "Output",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_33",
+      "name": "임베딩 모델 설정 함수 출력",
+      "type": "Output",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_34",
+      "name": "임베딩 모델 설정 함수 설명",
+      "type": "Description",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_35",
+      "name": "임베딩 모델 설정 함수 설명 내용",
+      "type": "Description",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_36",
+      "name": "임베딩 모델 설정 함수 설명 파라미터",
+      "type": "Parameter",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_37",
+      "name": "임베딩 모델 설정 함수 설명 반환값",
+      "type": "Output",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_38",
+      "name": "임베딩 모델 설정 함수 설명 출력",
+      "type": "Output",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_39",
+      "name": "임베딩 모델 설정 함수 설명 설명",
+      "type": "Description",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_40",
+      "name": "임베딩 모델 설정 함수 설명 설명 내용",
+      "type": "Description",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_41",
+      "name": "임베딩 모델 설정 함수 설명 설명 파라미터",
+      "type": "Parameter",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_42",
+      "name": "임베딩 모델 설정 함수 설명 설명 반환값",
+      "type": "Output",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_43",
+      "name": "임베딩 모델 설정 함수 설명 설명 출력",
+      "type": "Output",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_44",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명",
+      "type": "Description",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_45",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명 내용",
+      "type": "Description",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_46",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명 파라미터",
+      "type": "Parameter",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_47",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명 반환값",
+      "type": "Output",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_48",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명 출력",
+      "type": "Output",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_49",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명 설명",
+      "type": "Description",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_50",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명 설명 내용",
+      "type": "Description",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_51",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명 설명 파라미터",
+      "type": "Parameter",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_52",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명 설명 반환값",
+      "type": "Output",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_53",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명 설명 출력",
+      "type": "Output",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_54",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명 설명 설명",
+      "type": "Description",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_55",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명 설명 설명 내용",
+      "type": "Description",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_56",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명 설명 설명 파라미터",
+      "type": "Parameter",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_57",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명 설명 설명 반환값",
+      "type": "Output",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_58",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명 설명 설명 출력",
+      "type": "Output",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_59",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명 설명 설명 설명",
+      "type": "Description",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_60",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명 설명 설명 설명 내용",
+      "type": "Description",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c50_ENT_61",
+      "name": "임베딩 모델 설정 함수 설명 설명 설명 설명 설명 설명 파라미터",
+      "type": "Parameter",
+      "chunk_id": 50
+    },
+    {
+      "entity_id": "c51_ENT_2",
+      "name": "model_name",
+      "type": "Parameter",
+      "chunk_id": 51
+    },
+    {
+      "entity_id": "c51_ENT_3",
+      "name": "model_kwargs",
+      "type": "Parameter",
+      "chunk_id": 51
+    },
+    {
+      "entity_id": "c51_ENT_4",
+      "name": "device",
+      "type": "Parameter",
+      "chunk_id": 51
+    },
+    {
+      "entity_id": "c51_ENT_5",
+      "name": "encode_kwargs",
+      "type": "Parameter",
+      "chunk_id": 51
+    },
+    {
+      "entity_id": "c51_ENT_6",
+      "name": "normalize_embeddings",
+      "type": "Parameter",
+      "chunk_id": 51
+    },
+    {
+      "entity_id": "c51_ENT_11",
+      "name": "sample_docs",
+      "type": "Variable",
+      "chunk_id": 51
+    },
+    {
+      "entity_id": "c51_ENT_13",
+      "name": "P001",
+      "type": "Entity",
+      "chunk_id": 51
+    },
+    {
+      "entity_id": "c51_ENT_14",
+      "name": "위내시경 검사 기록",
+      "type": "DocumentContent",
+      "chunk_id": 51
+    },
+    {
+      "entity_id": "c51_ENT_16",
+      "name": "cosine similarity",
+      "type": "Metric",
+      "chunk_id": 51
+    },
+    {
+      "entity_id": "c51_ENT_17",
+      "name": "mean pooling",
+      "type": "Technique",
+      "chunk_id": 51
+    },
+    {
+      "entity_id": "c52_ENT_1",
+      "name": "김철수",
+      "type": "Patient",
+      "chunk_id": 52
+    },
+    {
+      "entity_id": "c52_ENT_2",
+      "name": "2023-03-10",
+      "type": "Date",
+      "chunk_id": 52
+    },
+    {
+      "entity_id": "c52_ENT_3",
+      "name": "위내시경 검사",
+      "type": "Procedure",
+      "chunk_id": 52
+    },
+    {
+      "entity_id": "c52_ENT_4",
+      "name": "이영희",
+      "type": "Patient",
+      "chunk_id": 52
+    },
+    {
+      "entity_id": "c52_ENT_5",
+      "name": "2023-04-15",
+      "type": "Date",
+      "chunk_id": 52
+    },
+    {
+      "entity_id": "c52_ENT_6",
+      "name": "CT 스캔",
+      "type": "Procedure",
+      "chunk_id": 52
+    },
+    {
+      "entity_id": "c52_ENT_7",
+      "name": "박지성",
+      "type": "Patient",
+      "chunk_id": 52
+    },
+    {
+      "entity_id": "c52_ENT_8",
+      "name": "2023-05-20",
+      "type": "Date",
+      "chunk_id": 52
+    },
+    {
+      "entity_id": "c52_ENT_9",
+      "name": "수술",
+      "type": "Procedure",
+      "chunk_id": 52
+    },
+    {
+      "entity_id": "c53_ENT_3",
+      "name": "환자 이영희",
+      "type": "Patient",
+      "chunk_id": 53
+    },
+    {
+      "entity_id": "c53_ENT_4",
+      "name": "환자 박지성",
+      "type": "Patient",
+      "chunk_id": 53
+    },
+    {
+      "entity_id": "c53_ENT_7",
+      "name": "P002",
+      "type": "PatientID",
+      "chunk_id": 53
+    },
+    {
+      "entity_id": "c53_ENT_8",
+      "name": "P003",
+      "type": "PatientID",
+      "chunk_id": 53
+    },
+    {
+      "entity_id": "c53_ENT_9",
+      "name": "벡터 저장소",
+      "type": "VectorStore",
+      "chunk_id": 53
+    },
+    {
+      "entity_id": "c53_ENT_10",
+      "name": "Retriever",
+      "type": "Interface",
+      "chunk_id": 53
+    },
+    {
+      "entity_id": "c53_ENT_11",
+      "name": "RAG 파이프라인",
+      "type": "Pipeline",
+      "chunk_id": 53
+    },
+    {
+      "entity_id": "c53_ENT_12",
+      "name": "검색된 컨텍스트",
+      "type": "Context",
+      "chunk_id": 53
+    },
+    {
+      "entity_id": "c53_ENT_13",
+      "name": "사용자 질문",
+      "type": "Query",
+      "chunk_id": 53
+    },
+    {
+      "entity_id": "c53_ENT_15",
+      "name": "프롬프트 템플릿",
+      "type": "Template",
+      "chunk_id": 53
+    },
+    {
+      "entity_id": "c53_ENT_16",
+      "name": "PromptTemplate",
+      "type": "Class",
+      "chunk_id": 53
+    },
+    {
+      "entity_id": "c55_ENT_1",
+      "name": "output_variables",
+      "type": "Variable",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_2",
+      "name": "classification_prompt",
+      "type": "PromptTemplate",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_3",
+      "name": "classification_template",
+      "type": "Template",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_4",
+      "name": "input_variables",
+      "type": "Variable",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_5",
+      "name": "context",
+      "type": "Variable",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_7",
+      "name": "classification",
+      "type": "Variable",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_8",
+      "name": "print",
+      "type": "Function",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_9",
+      "name": "다양한 프롬프트 템플릿 생성 완료!",
+      "type": "String",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_10",
+      "name": "LLMChain",
+      "type": "Chain",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_11",
+      "name": "복합 체인 구성",
+      "type": "Function",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_12",
+      "name": "RunnableLambda",
+      "type": "Lambda",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_13",
+      "name": "lambda x: {\"context\": x, \"question\": x}",
+      "type": "LambdaFunction",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_14",
+      "name": "qa_prompt",
+      "type": "Prompt",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_15",
+      "name": "llm",
+      "type": "LanguageModel",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_17",
+      "name": "complex_chain",
+      "type": "Chain",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_19",
+      "name": "복합 체인 구성 함수 생성 완료!",
+      "type": "String",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_20",
+      "name": "의료 데이터 챗봇",
+      "type": "Chatbot",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_21",
+      "name": "전체 파이프라인 구현",
+      "type": "Function",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_22",
+      "name": "import re",
+      "type": "Import",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_23",
+      "name": "import datetime",
+      "type": "Import",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_24",
+      "name": "from typing import List, Tuple, Dict, Any",
+      "type": "Import",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_25",
+      "name": "LangChain v0.2 최신 문법에 맞춘 Import 구문 추가",
+      "type": "String",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_26",
+      "name": "from langchain_core.documents import Document",
+      "type": "Import",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_27",
+      "name": "from langchain_core.prompts import PromptTemplate",
+      "type": "Import",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_28",
+      "name": "from langchain_core.runnables import",
+      "type": "Import",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_29",
+      "name": "Image",
+      "type": "Image",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_30",
+      "name": "(100,594),(812,1223)",
+      "type": "Coordinates",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_31",
+      "name": "021.png",
+      "type": "ImageFile",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_32",
+      "name": "Document",
+      "type": "DocumentType",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_33",
+      "name": "PromptTemplate",
+      "type": "PromptTemplateType",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c55_ENT_34",
+      "name": "RunnableLambda",
+      "type": "RunnableType",
+      "chunk_id": 55
+    },
+    {
+      "entity_id": "c56_ENT_1",
+      "name": "RunnablePassthrough",
+      "type": "Class",
+      "chunk_id": 56
+    },
+    {
+      "entity_id": "c56_ENT_2",
+      "name": "StrOutputParser",
+      "type": "Class",
+      "chunk_id": 56
+    },
+    {
+      "entity_id": "c56_ENT_4",
+      "name": "MedicalRAGChatbot",
+      "type": "Class",
+      "chunk_id": 56
+    },
+    {
+      "entity_id": "c56_ENT_5",
+      "name": "llm",
+      "type": "Attribute",
+      "chunk_id": 56
+    },
+    {
+      "entity_id": "c56_ENT_6",
+      "name": "embeddings",
+      "type": "Attribute",
+      "chunk_id": 56
+    },
+    {
+      "entity_id": "c56_ENT_7",
+      "name": "vector_db",
+      "type": "Attribute",
+      "chunk_id": 56
+    },
+    {
+      "entity_id": "c56_ENT_8",
+      "name": "retriever",
+      "type": "Attribute",
+      "chunk_id": 56
+    },
+    {
+      "entity_id": "c57_ENT_1",
+      "name": "preprocess_text",
+      "type": "Function",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_2",
+      "name": "text",
+      "type": "Parameter",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_3",
+      "name": "str",
+      "type": "Type",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_4",
+      "name": "return",
+      "type": "Return",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_6",
+      "name": "isinstance",
+      "type": "Function",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_9",
+      "name": "Exception",
+      "type": "ExceptionType",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_10",
+      "name": "e",
+      "type": "Parameter",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_11",
+      "name": "answer",
+      "type": "Variable",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_13",
+      "name": "invoke",
+      "type": "Function",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_14",
+      "name": "question",
+      "type": "Parameter",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_15",
+      "name": "truncate_after_backticks",
+      "type": "Function",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_16",
+      "name": "raw_answer",
+      "type": "Variable",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_18",
+      "name": "query",
+      "type": "Function",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_19",
+      "name": "questions",
+      "type": "Variable",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_23",
+      "name": "answer",
+      "type": "Parameter",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_24",
+      "name": "환자의 진단명은 무엇인가요",
+      "type": "Question",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_25",
+      "name": "수술은 언제 시행되었나요",
+      "type": "Question",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_26",
+      "name": "CT 결과는 어떻게 되나요",
+      "type": "Question",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_27",
+      "name": "백터 저장소 설정 완료",
+      "type": "Message",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_28",
+      "name": "5개 문서 저장됨",
+      "type": "Message",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_29",
+      "name": "환자의 진단명은 선암입니다",
+      "type": "Answer",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c57_ENT_30",
+      "name": "조직검사",
+      "type": "Answer",
+      "chunk_id": 57
+    },
+    {
+      "entity_id": "c58_ENT_1",
+      "name": "선암",
+      "type": "Diagnosis",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_2",
+      "name": "2023-03-10",
+      "type": "DiagnosisDate",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_3",
+      "name": "위절제술",
+      "type": "Surgery",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_4",
+      "name": "2023-04-01",
+      "type": "SurgeryDate",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_5",
+      "name": "3시간 30분",
+      "type": "SurgeryDuration",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_6",
+      "name": "복부 CT",
+      "type": "CTScan",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_7",
+      "name": "2023-03-15",
+      "type": "CTScanDate",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_8",
+      "name": "위부 종괴",
+      "type": "CTResult",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_9",
+      "name": "3.2cm",
+      "type": "TumorSize",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_10",
+      "name": "model_quantization",
+      "type": "OptimizationTip",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_11",
+      "name": "4bit/8bit 양자화로 메모리 사용량 감소",
+      "type": "OptimizationTipDescription",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_12",
+      "name": "batch_processing",
+      "type": "OptimizationTip",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_13",
+      "name": "배치 처리로 여러 문서 동시에 처리",
+      "type": "OptimizationTipDescription",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_14",
+      "name": "caching",
+      "type": "OptimizationTip",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_15",
+      "name": "임베딩 결과 캐싱으로 중복 계산",
+      "type": "OptimizationTipDescription",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_16",
+      "name": "parallel_processing",
+      "type": "OptimizationTip",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_17",
+      "name": "병렬 처리로 속도 향상",
+      "type": "OptimizationTipDescription",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_18",
+      "name": "chunk_size_optimization",
+      "type": "OptimizationTip",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_19",
+      "name": "적절한 청크 크기 설정",
+      "type": "OptimizationTipDescription",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_20",
+      "name": "retriever_tuning",
+      "type": "OptimizationTip",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c58_ENT_21",
+      "name": "검색 파라미터 최적화 (k값，search_type 등)",
+      "type": "OptimizationTipDescription",
+      "chunk_id": 58
+    },
+    {
+      "entity_id": "c59_ENT_1",
+      "name": "parallel_processing",
+      "type": "Technique",
+      "chunk_id": 59
+    },
+    {
+      "entity_id": "c59_ENT_2",
+      "name": "chunk_size_optimization",
+      "type": "Technique",
+      "chunk_id": 59
+    },
+    {
+      "entity_id": "c59_ENT_3",
+      "name": "retriever_tuning",
+      "type": "Technique",
+      "chunk_id": 59
+    },
+    {
+      "entity_id": "c59_ENT_4",
+      "name": "LangChain",
+      "type": "Documentation",
+      "chunk_id": 59
+    },
+    {
+      "entity_id": "c59_ENT_5",
+      "name": "HuggingFace Transformers",
+      "type": "Documentation",
+      "chunk_id": 59
+    },
+    {
+      "entity_id": "c59_ENT_6",
+      "name": "FAISS",
+      "type": "Documentation",
+      "chunk_id": 59
+    },
+    {
+      "entity_id": "c59_ENT_7",
+      "name": "LangChain Quickstart Guide",
+      "type": "Tutorial",
+      "chunk_id": 59
+    },
+    {
+      "entity_id": "c59_ENT_8",
+      "name": "RAG",
+      "type": "Tutorial",
+      "chunk_id": 59
+    },
+    {
+      "entity_id": "c59_ENT_9",
+      "name": "Vector Database",
+      "type": "Tutorial",
+      "chunk_id": 59
+    },
+    {
+      "entity_id": "c59_ENT_10",
+      "name": "문서 요약 시스템",
+      "type": "Project",
+      "chunk_id": 59
+    },
+    {
+      "entity_id": "c59_ENT_11",
+      "name": "고객 지원 챗봇",
+      "type": "Project",
+      "chunk_id": 59
+    },
+    {
+      "entity_id": "c59_ENT_12",
+      "name": "법률 문서 검색 시스템",
+      "type": "Project",
+      "chunk_id": 59
+    },
+    {
+      "entity_id": "c59_ENT_13",
+      "name": "교육 콘텐츠 생성기",
+      "type": "Project",
+      "chunk_id": 59
+    }
+  ],
+  "events": [],
+  "relations": [
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_2",
+      "relation": "utilizes",
+      "chunk_id": 1,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_3",
+      "relation": "develops",
+      "chunk_id": 1,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_4",
+      "relation": "has",
+      "chunk_id": 1,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_5",
+      "relation": "uses",
+      "chunk_id": 1,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_6",
+      "relation": "uses",
+      "chunk_id": 1,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_7",
+      "relation": "integrates",
+      "chunk_id": 1,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_8",
+      "relation": "builds",
+      "chunk_id": 1,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_9",
+      "relation": "uses",
+      "chunk_id": 1,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_10",
+      "relation": "composes",
+      "chunk_id": 1,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_11",
+      "relation": "example",
+      "chunk_id": 1,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_12",
+      "relation": "has",
+      "chunk_id": 1,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c2_ENT_1",
+      "target_id": "c2_ENT_2",
+      "relation": "maintains",
+      "chunk_id": 2,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c2_ENT_2",
+      "target_id": "c2_ENT_3",
+      "relation": "supports",
+      "chunk_id": 2,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c2_ENT_2",
+      "target_id": "c2_ENT_4",
+      "relation": "supports",
+      "chunk_id": 2,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c2_ENT_2",
+      "target_id": "c2_ENT_5",
+      "relation": "supports",
+      "chunk_id": 2,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c2_ENT_8",
+      "target_id": "c2_ENT_9",
+      "relation": "enables",
+      "chunk_id": 2,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c2_ENT_8",
+      "target_id": "c2_ENT_10",
+      "relation": "enables",
+      "chunk_id": 2,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c2_ENT_8",
+      "target_id": "c2_ENT_11",
+      "relation": "enables",
+      "chunk_id": 2,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c3_ENT_1",
+      "target_id": "c3_ENT_2",
+      "relation": "dependency",
+      "chunk_id": 3,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c3_ENT_1",
+      "target_id": "c3_ENT_3",
+      "relation": "dependency",
+      "chunk_id": 3,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c3_ENT_1",
+      "target_id": "c3_ENT_4",
+      "relation": "dependency",
+      "chunk_id": 3,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c3_ENT_1",
+      "target_id": "c3_ENT_5",
+      "relation": "dependency",
+      "chunk_id": 3,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c3_ENT_2",
+      "target_id": "c3_ENT_1",
+      "relation": "dependency",
+      "chunk_id": 3,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c3_ENT_3",
+      "target_id": "c3_ENT_1",
+      "relation": "dependency",
+      "chunk_id": 3,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c3_ENT_4",
+      "target_id": "c3_ENT_1",
+      "relation": "dependency",
+      "chunk_id": 3,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c3_ENT_5",
+      "target_id": "c3_ENT_1",
+      "relation": "dependency",
+      "chunk_id": 3,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c3_ENT_6",
+      "target_id": "c3_ENT_1",
+      "relation": "dependency",
+      "chunk_id": 3,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 4,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 4,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 4,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_5",
+      "relation": "depends_on",
+      "chunk_id": 4,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c4_ENT_6",
+      "target_id": "c4_ENT_1",
+      "relation": "depends_on",
+      "chunk_id": 4,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c4_ENT_7",
+      "target_id": "c4_ENT_1",
+      "relation": "depends_on",
+      "chunk_id": 4,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_2",
+      "relation": "dependency",
+      "chunk_id": 5,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c5_ENT_2",
+      "target_id": "c5_ENT_3",
+      "relation": "dependency",
+      "chunk_id": 5,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c5_ENT_2",
+      "target_id": "c5_ENT_4",
+      "relation": "dependency",
+      "chunk_id": 5,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c5_ENT_2",
+      "target_id": "c5_ENT_5",
+      "relation": "dependency",
+      "chunk_id": 5,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c5_ENT_2",
+      "target_id": "c5_ENT_6",
+      "relation": "dependency",
+      "chunk_id": 5,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_3",
+      "relation": "dependency",
+      "chunk_id": 5,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_4",
+      "relation": "dependency",
+      "chunk_id": 5,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_5",
+      "relation": "dependency",
+      "chunk_id": 5,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_6",
+      "relation": "dependency",
+      "chunk_id": 5,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c6_ENT_1",
+      "target_id": "c6_ENT_2",
+      "relation": "dependency",
+      "chunk_id": 6,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c6_ENT_2",
+      "target_id": "c6_ENT_3",
+      "relation": "dependency",
+      "chunk_id": 6,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c6_ENT_3",
+      "target_id": "c6_ENT_4",
+      "relation": "dependency",
+      "chunk_id": 6,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c6_ENT_5",
+      "target_id": "c6_ENT_6",
+      "relation": "dependency",
+      "chunk_id": 6,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c6_ENT_6",
+      "target_id": "c6_ENT_3",
+      "relation": "dependency",
+      "chunk_id": 6,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c6_ENT_7",
+      "target_id": "c6_ENT_8",
+      "relation": "dependency",
+      "chunk_id": 6,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c6_ENT_9",
+      "target_id": "c6_ENT_6",
+      "relation": "dependency",
+      "chunk_id": 6,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c6_ENT_10",
+      "target_id": "c6_ENT_6",
+      "relation": "dependency",
+      "chunk_id": 6,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c6_ENT_11",
+      "target_id": "c6_ENT_6",
+      "relation": "dependency",
+      "chunk_id": 6,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c6_ENT_11",
+      "target_id": "c6_ENT_8",
+      "relation": "dependency",
+      "chunk_id": 6,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c7_ENT_1",
+      "target_id": "c7_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 7,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c7_ENT_2",
+      "target_id": "c7_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 7,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c7_ENT_2",
+      "target_id": "c7_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 7,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c7_ENT_4",
+      "target_id": "c7_ENT_5",
+      "relation": "depends_on",
+      "chunk_id": 7,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c7_ENT_5",
+      "target_id": "c7_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 7,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c7_ENT_6",
+      "target_id": "c7_ENT_7",
+      "relation": "depends_on",
+      "chunk_id": 7,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c7_ENT_7",
+      "target_id": "c7_ENT_8",
+      "relation": "depends_on",
+      "chunk_id": 7,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c7_ENT_8",
+      "target_id": "c7_ENT_9",
+      "relation": "depends_on",
+      "chunk_id": 7,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c7_ENT_9",
+      "target_id": "c7_ENT_10",
+      "relation": "depends_on",
+      "chunk_id": 7,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_2",
+      "relation": "dependency",
+      "chunk_id": 8,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_3",
+      "relation": "dependency",
+      "chunk_id": 8,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_4",
+      "relation": "dependency",
+      "chunk_id": 8,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c8_ENT_5",
+      "target_id": "c8_ENT_1",
+      "relation": "dependency",
+      "chunk_id": 8,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c8_ENT_6",
+      "target_id": "c8_ENT_1",
+      "relation": "dependency",
+      "chunk_id": 8,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c8_ENT_7",
+      "target_id": "c8_ENT_8",
+      "relation": "dependency",
+      "chunk_id": 8,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c8_ENT_8",
+      "target_id": "c8_ENT_4",
+      "relation": "dependency",
+      "chunk_id": 8,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c8_ENT_9",
+      "target_id": "c8_ENT_8",
+      "relation": "dependency",
+      "chunk_id": 8,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c9_ENT_1",
+      "target_id": "c9_ENT_2",
+      "relation": "dependency",
+      "chunk_id": 9,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c9_ENT_2",
+      "target_id": "c9_ENT_3",
+      "relation": "dependency",
+      "chunk_id": 9,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c9_ENT_4",
+      "target_id": "c9_ENT_2",
+      "relation": "dependency",
+      "chunk_id": 9,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c9_ENT_7",
+      "target_id": "c9_ENT_5",
+      "relation": "dependency",
+      "chunk_id": 9,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c9_ENT_7",
+      "target_id": "c9_ENT_6",
+      "relation": "dependency",
+      "chunk_id": 9,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c9_ENT_7",
+      "target_id": "c9_ENT_3",
+      "relation": "dependency",
+      "chunk_id": 9,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c10_ENT_1",
+      "target_id": "c10_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 10,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c10_ENT_3",
+      "target_id": "c10_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 10,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c10_ENT_4",
+      "target_id": "c10_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 10,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c10_ENT_5",
+      "target_id": "c10_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 10,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c10_ENT_6",
+      "target_id": "c10_ENT_7",
+      "relation": "depends_on",
+      "chunk_id": 10,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c10_ENT_7",
+      "target_id": "c10_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 10,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c11_ENT_1",
+      "target_id": "c11_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 11,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c11_ENT_2",
+      "target_id": "c11_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 11,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c11_ENT_1",
+      "target_id": "c11_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 11,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c11_ENT_4",
+      "target_id": "c11_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 11,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c11_ENT_5",
+      "target_id": "c11_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 11,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c11_ENT_6",
+      "target_id": "c11_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 11,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c11_ENT_7",
+      "target_id": "c11_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 11,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c12_ENT_1",
+      "target_id": "c12_ENT_2",
+      "relation": "dependency",
+      "chunk_id": 12,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c12_ENT_1",
+      "target_id": "c12_ENT_3",
+      "relation": "dependency",
+      "chunk_id": 12,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c12_ENT_1",
+      "target_id": "c12_ENT_4",
+      "relation": "dependency",
+      "chunk_id": 12,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c12_ENT_4",
+      "target_id": "c12_ENT_5",
+      "relation": "dependency",
+      "chunk_id": 12,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c12_ENT_1",
+      "target_id": "c12_ENT_6",
+      "relation": "dependency",
+      "chunk_id": 12,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c13_ENT_1",
+      "target_id": "c13_ENT_2",
+      "relation": "dependency",
+      "chunk_id": 13,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c13_ENT_2",
+      "target_id": "c13_ENT_3",
+      "relation": "dependency",
+      "chunk_id": 13,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c13_ENT_2",
+      "target_id": "c13_ENT_4",
+      "relation": "dependency",
+      "chunk_id": 13,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c13_ENT_5",
+      "target_id": "c13_ENT_6",
+      "relation": "dependency",
+      "chunk_id": 13,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c13_ENT_6",
+      "target_id": "c13_ENT_7",
+      "relation": "dependency",
+      "chunk_id": 13,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c13_ENT_7",
+      "target_id": "c13_ENT_8",
+      "relation": "dependency",
+      "chunk_id": 13,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c13_ENT_7",
+      "target_id": "c13_ENT_10",
+      "relation": "dependency",
+      "chunk_id": 13,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c13_ENT_1",
+      "target_id": "c13_ENT_5",
+      "relation": "dependency",
+      "chunk_id": 13,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c13_ENT_2",
+      "target_id": "c13_ENT_5",
+      "relation": "dependency",
+      "chunk_id": 13,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c13_ENT_3",
+      "target_id": "c13_ENT_2",
+      "relation": "dependency",
+      "chunk_id": 13,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c13_ENT_4",
+      "target_id": "c13_ENT_2",
+      "relation": "dependency",
+      "chunk_id": 13,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c13_ENT_6",
+      "target_id": "c13_ENT_5",
+      "relation": "dependency",
+      "chunk_id": 13,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c13_ENT_8",
+      "target_id": "c13_ENT_7",
+      "relation": "dependency",
+      "chunk_id": 13,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c13_ENT_10",
+      "target_id": "c13_ENT_7",
+      "relation": "dependency",
+      "chunk_id": 13,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c13_ENT_9",
+      "target_id": "c13_ENT_7",
+      "relation": "dependency",
+      "chunk_id": 13,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c15_ENT_1",
+      "target_id": "c15_ENT_3",
+      "relation": "required_by",
+      "chunk_id": 15,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c15_ENT_2",
+      "target_id": "c15_ENT_3",
+      "relation": "required_by",
+      "chunk_id": 15,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c15_ENT_4",
+      "target_id": "c15_ENT_3",
+      "relation": "required_by",
+      "chunk_id": 15,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c15_ENT_5",
+      "target_id": "c15_ENT_3",
+      "relation": "required_by",
+      "chunk_id": 15,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c15_ENT_6",
+      "target_id": "c15_ENT_3",
+      "relation": "required_by",
+      "chunk_id": 15,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c15_ENT_7",
+      "target_id": "c15_ENT_3",
+      "relation": "required_by",
+      "chunk_id": 15,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c16_ENT_1",
+      "target_id": "c16_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 16,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c16_ENT_1",
+      "target_id": "c16_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 16,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c16_ENT_1",
+      "target_id": "c16_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 16,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c16_ENT_1",
+      "target_id": "c16_ENT_5",
+      "relation": "depends_on",
+      "chunk_id": 16,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c16_ENT_1",
+      "target_id": "c16_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 16,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c16_ENT_2",
+      "target_id": "c16_ENT_1",
+      "relation": "required_by",
+      "chunk_id": 16,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c16_ENT_3",
+      "target_id": "c16_ENT_1",
+      "relation": "required_by",
+      "chunk_id": 16,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c16_ENT_4",
+      "target_id": "c16_ENT_1",
+      "relation": "required_by",
+      "chunk_id": 16,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c16_ENT_5",
+      "target_id": "c16_ENT_1",
+      "relation": "required_by",
+      "chunk_id": 16,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c16_ENT_6",
+      "target_id": "c16_ENT_1",
+      "relation": "required_by",
+      "chunk_id": 16,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c17_ENT_1",
+      "target_id": "c17_ENT_2",
+      "relation": "requires",
+      "chunk_id": 17,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c17_ENT_1",
+      "target_id": "c17_ENT_3",
+      "relation": "requires",
+      "chunk_id": 17,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c17_ENT_2",
+      "target_id": "c17_ENT_3",
+      "relation": "required by",
+      "chunk_id": 17,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c17_ENT_4",
+      "target_id": "c17_ENT_3",
+      "relation": "required by",
+      "chunk_id": 17,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c17_ENT_5",
+      "target_id": "c17_ENT_3",
+      "relation": "required by",
+      "chunk_id": 17,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c17_ENT_6",
+      "target_id": "c17_ENT_7",
+      "relation": "required by",
+      "chunk_id": 17,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c17_ENT_7",
+      "target_id": "c17_ENT_8",
+      "relation": "requires",
+      "chunk_id": 17,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c18_ENT_1",
+      "target_id": "c18_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 18,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c18_ENT_1",
+      "target_id": "c18_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 18,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c18_ENT_1",
+      "target_id": "c18_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 18,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c18_ENT_1",
+      "target_id": "c18_ENT_5",
+      "relation": "depends_on",
+      "chunk_id": 18,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c18_ENT_1",
+      "target_id": "c18_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 18,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c19_ENT_1",
+      "target_id": "c19_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 19,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c19_ENT_2",
+      "target_id": "c19_ENT_3",
+      "relation": "requires",
+      "chunk_id": 19,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c19_ENT_2",
+      "target_id": "c19_ENT_4",
+      "relation": "requires",
+      "chunk_id": 19,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c19_ENT_2",
+      "target_id": "c19_ENT_5",
+      "relation": "requires",
+      "chunk_id": 19,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c19_ENT_2",
+      "target_id": "c19_ENT_6",
+      "relation": "requires",
+      "chunk_id": 19,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c19_ENT_2",
+      "target_id": "c19_ENT_7",
+      "relation": "requires",
+      "chunk_id": 19,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c19_ENT_3",
+      "target_id": "c19_ENT_1",
+      "relation": "located_in",
+      "chunk_id": 19,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c19_ENT_4",
+      "target_id": "c19_ENT_1",
+      "relation": "located_in",
+      "chunk_id": 19,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c19_ENT_5",
+      "target_id": "c19_ENT_1",
+      "relation": "located_in",
+      "chunk_id": 19,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c19_ENT_6",
+      "target_id": "c19_ENT_1",
+      "relation": "located_in",
+      "chunk_id": 19,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c19_ENT_7",
+      "target_id": "c19_ENT_1",
+      "relation": "located_in",
+      "chunk_id": 19,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c20_ENT_1",
+      "target_id": "c20_ENT_2",
+      "relation": "located_in",
+      "chunk_id": 20,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c20_ENT_1",
+      "target_id": "c20_ENT_3",
+      "relation": "located_in",
+      "chunk_id": 20,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c20_ENT_1",
+      "target_id": "c20_ENT_4",
+      "relation": "located_in",
+      "chunk_id": 20,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c20_ENT_1",
+      "target_id": "c20_ENT_5",
+      "relation": "located_in",
+      "chunk_id": 20,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c20_ENT_1",
+      "target_id": "c20_ENT_6",
+      "relation": "located_in",
+      "chunk_id": 20,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c20_ENT_1",
+      "target_id": "c20_ENT_7",
+      "relation": "located_in",
+      "chunk_id": 20,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c20_ENT_2",
+      "target_id": "c20_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 20,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c20_ENT_2",
+      "target_id": "c20_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 20,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c20_ENT_2",
+      "target_id": "c20_ENT_5",
+      "relation": "depends_on",
+      "chunk_id": 20,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c20_ENT_2",
+      "target_id": "c20_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 20,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c20_ENT_2",
+      "target_id": "c20_ENT_7",
+      "relation": "depends_on",
+      "chunk_id": 20,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c20_ENT_3",
+      "target_id": "c20_ENT_1",
+      "relation": "installed_in",
+      "chunk_id": 20,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c20_ENT_4",
+      "target_id": "c20_ENT_1",
+      "relation": "installed_in",
+      "chunk_id": 20,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c20_ENT_5",
+      "target_id": "c20_ENT_1",
+      "relation": "installed_in",
+      "chunk_id": 20,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c20_ENT_6",
+      "target_id": "c20_ENT_1",
+      "relation": "installed_in",
+      "chunk_id": 20,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c20_ENT_7",
+      "target_id": "c20_ENT_1",
+      "relation": "installed_in",
+      "chunk_id": 20,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c21_ENT_1",
+      "target_id": "c21_ENT_2",
+      "relation": "located_in",
+      "chunk_id": 21,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c21_ENT_1",
+      "target_id": "c21_ENT_3",
+      "relation": "located_in",
+      "chunk_id": 21,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c21_ENT_1",
+      "target_id": "c21_ENT_4",
+      "relation": "located_in",
+      "chunk_id": 21,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c21_ENT_1",
+      "target_id": "c21_ENT_5",
+      "relation": "located_in",
+      "chunk_id": 21,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c21_ENT_1",
+      "target_id": "c21_ENT_6",
+      "relation": "located_in",
+      "chunk_id": 21,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c21_ENT_1",
+      "target_id": "c21_ENT_7",
+      "relation": "located_in",
+      "chunk_id": 21,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c21_ENT_2",
+      "target_id": "c21_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 21,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c21_ENT_2",
+      "target_id": "c21_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 21,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c21_ENT_2",
+      "target_id": "c21_ENT_5",
+      "relation": "depends_on",
+      "chunk_id": 21,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c21_ENT_7",
+      "target_id": "c21_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 21,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c22_ENT_1",
+      "target_id": "c22_ENT_11",
+      "relation": "installed_in",
+      "chunk_id": 22,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c22_ENT_2",
+      "target_id": "c22_ENT_11",
+      "relation": "installed_in",
+      "chunk_id": 22,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c22_ENT_3",
+      "target_id": "c22_ENT_11",
+      "relation": "installed_in",
+      "chunk_id": 22,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c22_ENT_4",
+      "target_id": "c22_ENT_11",
+      "relation": "installed_in",
+      "chunk_id": 22,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c22_ENT_5",
+      "target_id": "c22_ENT_11",
+      "relation": "depends_on",
+      "chunk_id": 22,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c22_ENT_6",
+      "target_id": "c22_ENT_11",
+      "relation": "installed_in",
+      "chunk_id": 22,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c22_ENT_7",
+      "target_id": "c22_ENT_11",
+      "relation": "installed_in",
+      "chunk_id": 22,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c22_ENT_8",
+      "target_id": "c22_ENT_11",
+      "relation": "installed_in",
+      "chunk_id": 22,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c22_ENT_9",
+      "target_id": "c22_ENT_11",
+      "relation": "depends_on",
+      "chunk_id": 22,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c22_ENT_10",
+      "target_id": "c22_ENT_11",
+      "relation": "depends_on",
+      "chunk_id": 22,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c22_ENT_11",
+      "target_id": "c22_ENT_12",
+      "relation": "uses",
+      "chunk_id": 22,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c23_ENT_1",
+      "target_id": "c23_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 23,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c23_ENT_1",
+      "target_id": "c23_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 23,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c23_ENT_1",
+      "target_id": "c23_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 23,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c23_ENT_5",
+      "target_id": "c23_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 23,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c23_ENT_6",
+      "target_id": "c23_ENT_7",
+      "relation": "depends_on",
+      "chunk_id": 23,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c23_ENT_8",
+      "target_id": "c23_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 23,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c23_ENT_9",
+      "target_id": "c23_ENT_7",
+      "relation": "depends_on",
+      "chunk_id": 23,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c24_ENT_1",
+      "target_id": "c24_ENT_2",
+      "relation": "contains",
+      "chunk_id": 24,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c24_ENT_1",
+      "target_id": "c24_ENT_3",
+      "relation": "contains",
+      "chunk_id": 24,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c24_ENT_1",
+      "target_id": "c24_ENT_4",
+      "relation": "contains",
+      "chunk_id": 24,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c24_ENT_1",
+      "target_id": "c24_ENT_5",
+      "relation": "contains",
+      "chunk_id": 24,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c24_ENT_1",
+      "target_id": "c24_ENT_6",
+      "relation": "contains",
+      "chunk_id": 24,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c24_ENT_1",
+      "target_id": "c24_ENT_7",
+      "relation": "contains",
+      "chunk_id": 24,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c24_ENT_2",
+      "target_id": "c24_ENT_5",
+      "relation": "depends_on",
+      "chunk_id": 24,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c24_ENT_2",
+      "target_id": "c24_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 24,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c24_ENT_3",
+      "target_id": "c24_ENT_2",
+      "relation": "dependency_of",
+      "chunk_id": 24,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c24_ENT_4",
+      "target_id": "c24_ENT_2",
+      "relation": "dependency_of",
+      "chunk_id": 24,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c24_ENT_5",
+      "target_id": "c24_ENT_2",
+      "relation": "dependency_of",
+      "chunk_id": 24,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c24_ENT_6",
+      "target_id": "c24_ENT_2",
+      "relation": "dependency_of",
+      "chunk_id": 24,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c25_ENT_1",
+      "target_id": "c25_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 25,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c25_ENT_2",
+      "target_id": "c25_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 25,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c25_ENT_2",
+      "target_id": "c25_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 25,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c25_ENT_2",
+      "target_id": "c25_ENT_5",
+      "relation": "depends_on",
+      "chunk_id": 25,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c25_ENT_2",
+      "target_id": "c25_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 25,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c25_ENT_2",
+      "target_id": "c25_ENT_7",
+      "relation": "depends_on",
+      "chunk_id": 25,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c26_ENT_1",
+      "target_id": "c26_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 26,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c26_ENT_1",
+      "target_id": "c26_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 26,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c26_ENT_1",
+      "target_id": "c26_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 26,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c26_ENT_1",
+      "target_id": "c26_ENT_5",
+      "relation": "depends_on via requests",
+      "chunk_id": 26,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c26_ENT_1",
+      "target_id": "c26_ENT_6",
+      "relation": "depends_on via requests",
+      "chunk_id": 26,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c27_ENT_1",
+      "target_id": "c27_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 27,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c27_ENT_2",
+      "target_id": "c27_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 27,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c27_ENT_2",
+      "target_id": "c27_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 27,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c27_ENT_5",
+      "target_id": "c27_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 27,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c27_ENT_5",
+      "target_id": "c27_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 27,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c27_ENT_2",
+      "target_id": "c27_ENT_1",
+      "relation": "depends_on",
+      "chunk_id": 27,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c27_ENT_3",
+      "target_id": "c27_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 27,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c27_ENT_4",
+      "target_id": "c27_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 27,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c27_ENT_6",
+      "target_id": "c27_ENT_5",
+      "relation": "depends_on",
+      "chunk_id": 27,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c29_ENT_1",
+      "target_id": "c29_ENT_6",
+      "relation": "required_by",
+      "chunk_id": 29,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c29_ENT_2",
+      "target_id": "c29_ENT_6",
+      "relation": "required_by",
+      "chunk_id": 29,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c29_ENT_3",
+      "target_id": "c29_ENT_6",
+      "relation": "required_by",
+      "chunk_id": 29,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c29_ENT_4",
+      "target_id": "c29_ENT_6",
+      "relation": "required_by",
+      "chunk_id": 29,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c29_ENT_5",
+      "target_id": "c29_ENT_6",
+      "relation": "required_by",
+      "chunk_id": 29,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c29_ENT_6",
+      "target_id": "c29_ENT_7",
+      "relation": "depends_on",
+      "chunk_id": 29,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c29_ENT_1",
+      "target_id": "c29_ENT_1",
+      "relation": "version",
+      "chunk_id": 29,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c29_ENT_2",
+      "target_id": "c29_ENT_2",
+      "relation": "version",
+      "chunk_id": 29,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c29_ENT_3",
+      "target_id": "c29_ENT_3",
+      "relation": "version",
+      "chunk_id": 29,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c29_ENT_4",
+      "target_id": "c29_ENT_4",
+      "relation": "version",
+      "chunk_id": 29,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c29_ENT_5",
+      "target_id": "c29_ENT_5",
+      "relation": "version",
+      "chunk_id": 29,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c29_ENT_6",
+      "target_id": "c29_ENT_6",
+      "relation": "version",
+      "chunk_id": 29,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c29_ENT_7",
+      "target_id": "c29_ENT_7",
+      "relation": "version",
+      "chunk_id": 29,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c30_ENT_1",
+      "target_id": "c30_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 30,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c30_ENT_2",
+      "target_id": "c30_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 30,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c30_ENT_4",
+      "target_id": "c30_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 30,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c30_ENT_4",
+      "target_id": "c30_ENT_5",
+      "relation": "depends_on",
+      "chunk_id": 30,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c30_ENT_2",
+      "target_id": "c30_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 30,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c30_ENT_2",
+      "target_id": "c30_ENT_7",
+      "relation": "depends_on",
+      "chunk_id": 30,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c30_ENT_3",
+      "target_id": "c30_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 30,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c30_ENT_5",
+      "target_id": "c30_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 30,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c30_ENT_6",
+      "target_id": "c30_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 30,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c30_ENT_7",
+      "target_id": "c30_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 30,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c31_ENT_1",
+      "target_id": "c31_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 31,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c31_ENT_2",
+      "target_id": "c31_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 31,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c31_ENT_2",
+      "target_id": "c31_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 31,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c31_ENT_6",
+      "target_id": "c31_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 31,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c31_ENT_6",
+      "target_id": "c31_ENT_7",
+      "relation": "depends_on",
+      "chunk_id": 31,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c31_ENT_3",
+      "target_id": "c31_ENT_1",
+      "relation": "depends_on",
+      "chunk_id": 31,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c31_ENT_4",
+      "target_id": "c31_ENT_1",
+      "relation": "depends_on",
+      "chunk_id": 31,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c31_ENT_5",
+      "target_id": "c31_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 31,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c31_ENT_7",
+      "target_id": "c31_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 31,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c32_ENT_1",
+      "target_id": "c32_ENT_2",
+      "relation": "dependency",
+      "chunk_id": 32,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c32_ENT_2",
+      "target_id": "c32_ENT_6",
+      "relation": "dependency",
+      "chunk_id": 32,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c32_ENT_3",
+      "target_id": "c32_ENT_2",
+      "relation": "dependency",
+      "chunk_id": 32,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c32_ENT_4",
+      "target_id": "c32_ENT_5",
+      "relation": "dependency",
+      "chunk_id": 32,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c32_ENT_5",
+      "target_id": "c32_ENT_2",
+      "relation": "dependency",
+      "chunk_id": 32,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c32_ENT_1",
+      "target_id": "c32_ENT_3",
+      "relation": "dependency",
+      "chunk_id": 32,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c32_ENT_1",
+      "target_id": "c32_ENT_4",
+      "relation": "dependency",
+      "chunk_id": 32,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c32_ENT_2",
+      "target_id": "c32_ENT_1",
+      "relation": "dependency",
+      "chunk_id": 32,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c32_ENT_2",
+      "target_id": "c32_ENT_5",
+      "relation": "dependency",
+      "chunk_id": 32,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c33_ENT_1",
+      "target_id": "c33_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 33,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c33_ENT_2",
+      "target_id": "c33_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 33,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c33_ENT_3",
+      "target_id": "c33_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 33,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c33_ENT_1",
+      "target_id": "c33_ENT_5",
+      "relation": "depends_on",
+      "chunk_id": 33,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c33_ENT_5",
+      "target_id": "c33_ENT_1",
+      "relation": "depends_on",
+      "chunk_id": 33,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c33_ENT_1",
+      "target_id": "c33_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 33,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c33_ENT_6",
+      "target_id": "c33_ENT_1",
+      "relation": "depends_on",
+      "chunk_id": 33,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c33_ENT_1",
+      "target_id": "c33_ENT_7",
+      "relation": "depends_on",
+      "chunk_id": 33,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c33_ENT_7",
+      "target_id": "c33_ENT_1",
+      "relation": "depends_on",
+      "chunk_id": 33,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c34_ENT_1",
+      "target_id": "c34_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 34,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c34_ENT_2",
+      "target_id": "c34_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 34,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c34_ENT_3",
+      "target_id": "c34_ENT_5",
+      "relation": "depends_on",
+      "chunk_id": 34,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c34_ENT_3",
+      "target_id": "c34_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 34,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c34_ENT_3",
+      "target_id": "c34_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 34,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c35_ENT_1",
+      "target_id": "c35_ENT_9",
+      "relation": "depends_on",
+      "chunk_id": 35,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c35_ENT_9",
+      "target_id": "c35_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 35,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c35_ENT_9",
+      "target_id": "c35_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 35,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c35_ENT_9",
+      "target_id": "c35_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 35,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c35_ENT_9",
+      "target_id": "c35_ENT_5",
+      "relation": "depends_on",
+      "chunk_id": 35,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c35_ENT_5",
+      "target_id": "c35_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 35,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c35_ENT_6",
+      "target_id": "c35_ENT_7",
+      "relation": "depends_on",
+      "chunk_id": 35,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c35_ENT_7",
+      "target_id": "c35_ENT_8",
+      "relation": "depends_on",
+      "chunk_id": 35,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c35_ENT_8",
+      "target_id": "c35_ENT_9",
+      "relation": "depends_on",
+      "chunk_id": 35,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c35_ENT_9",
+      "target_id": "c35_ENT_10",
+      "relation": "depends_on",
+      "chunk_id": 35,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c36_ENT_1",
+      "target_id": "c36_ENT_6",
+      "relation": "required_by",
+      "chunk_id": 36,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c36_ENT_2",
+      "target_id": "c36_ENT_6",
+      "relation": "required_by",
+      "chunk_id": 36,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c36_ENT_3",
+      "target_id": "c36_ENT_6",
+      "relation": "required_by",
+      "chunk_id": 36,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c36_ENT_4",
+      "target_id": "c36_ENT_6",
+      "relation": "required_by",
+      "chunk_id": 36,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c36_ENT_5",
+      "target_id": "c36_ENT_6",
+      "relation": "required_by",
+      "chunk_id": 36,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c36_ENT_6",
+      "target_id": "c36_ENT_1",
+      "relation": "requires",
+      "chunk_id": 36,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c36_ENT_6",
+      "target_id": "c36_ENT_2",
+      "relation": "requires",
+      "chunk_id": 36,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c36_ENT_6",
+      "target_id": "c36_ENT_3",
+      "relation": "requires",
+      "chunk_id": 36,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c36_ENT_6",
+      "target_id": "c36_ENT_4",
+      "relation": "requires",
+      "chunk_id": 36,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c36_ENT_6",
+      "target_id": "c36_ENT_5",
+      "relation": "requires",
+      "chunk_id": 36,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c37_ENT_1",
+      "target_id": "c37_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 37,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c37_ENT_1",
+      "target_id": "c37_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 37,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c37_ENT_1",
+      "target_id": "c37_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 37,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c37_ENT_1",
+      "target_id": "c37_ENT_5",
+      "relation": "depends_on",
+      "chunk_id": 37,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c37_ENT_1",
+      "target_id": "c37_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 37,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c38_ENT_1",
+      "target_id": "c38_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 38,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c38_ENT_2",
+      "target_id": "c38_ENT_1",
+      "relation": "depends_on",
+      "chunk_id": 38,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c38_ENT_2",
+      "target_id": "c38_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 38,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c38_ENT_2",
+      "target_id": "c38_ENT_4",
+      "relation": "depends_on",
+      "chunk_id": 38,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c38_ENT_4",
+      "target_id": "c38_ENT_5",
+      "relation": "depends_on",
+      "chunk_id": 38,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c38_ENT_4",
+      "target_id": "c38_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 38,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c38_ENT_7",
+      "target_id": "c38_ENT_1",
+      "relation": "located_in",
+      "chunk_id": 38,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c38_ENT_7",
+      "target_id": "c38_ENT_2",
+      "relation": "located_in",
+      "chunk_id": 38,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c38_ENT_7",
+      "target_id": "c38_ENT_3",
+      "relation": "located_in",
+      "chunk_id": 38,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c38_ENT_7",
+      "target_id": "c38_ENT_4",
+      "relation": "located_in",
+      "chunk_id": 38,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c38_ENT_7",
+      "target_id": "c38_ENT_5",
+      "relation": "located_in",
+      "chunk_id": 38,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c38_ENT_7",
+      "target_id": "c38_ENT_6",
+      "relation": "located_in",
+      "chunk_id": 38,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c38_ENT_7",
+      "target_id": "c38_ENT_8",
+      "relation": "uses",
+      "chunk_id": 38,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c38_ENT_8",
+      "target_id": "c38_ENT_7",
+      "relation": "used_by",
+      "chunk_id": 38,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c38_ENT_9",
+      "target_id": "c38_ENT_1",
+      "relation": "depends_on",
+      "chunk_id": 38,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c38_ENT_1",
+      "target_id": "c38_ENT_9",
+      "relation": "depends_on",
+      "chunk_id": 38,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c39_ENT_1",
+      "target_id": "c39_ENT_2",
+      "relation": "dependency",
+      "chunk_id": 39,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c39_ENT_2",
+      "target_id": "c39_ENT_1",
+      "relation": "requires",
+      "chunk_id": 39,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c39_ENT_2",
+      "target_id": "c39_ENT_3",
+      "relation": "dependency",
+      "chunk_id": 39,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c39_ENT_2",
+      "target_id": "c39_ENT_4",
+      "relation": "dependency",
+      "chunk_id": 39,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c39_ENT_2",
+      "target_id": "c39_ENT_5",
+      "relation": "dependency",
+      "chunk_id": 39,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c39_ENT_2",
+      "target_id": "c39_ENT_6",
+      "relation": "dependency",
+      "chunk_id": 39,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c40_ENT_1",
+      "target_id": "c40_ENT_2",
+      "relation": "requires",
+      "chunk_id": 40,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c40_ENT_2",
+      "target_id": "c40_ENT_1",
+      "relation": "depends_on",
+      "chunk_id": 40,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c40_ENT_1",
+      "target_id": "c40_ENT_3",
+      "relation": "requires",
+      "chunk_id": 40,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c40_ENT_1",
+      "target_id": "c40_ENT_4",
+      "relation": "requires",
+      "chunk_id": 40,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c40_ENT_1",
+      "target_id": "c40_ENT_5",
+      "relation": "requires",
+      "chunk_id": 40,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c40_ENT_1",
+      "target_id": "c40_ENT_6",
+      "relation": "requires",
+      "chunk_id": 40,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c40_ENT_3",
+      "target_id": "c40_ENT_1",
+      "relation": "provides_for",
+      "chunk_id": 40,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c40_ENT_4",
+      "target_id": "c40_ENT_1",
+      "relation": "provides_for",
+      "chunk_id": 40,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c40_ENT_5",
+      "target_id": "c40_ENT_1",
+      "relation": "provides_for",
+      "chunk_id": 40,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c40_ENT_6",
+      "target_id": "c40_ENT_1",
+      "relation": "provides_for",
+      "chunk_id": 40,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c41_ENT_1",
+      "target_id": "c41_ENT_6",
+      "relation": "depends_on",
+      "chunk_id": 41,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c41_ENT_6",
+      "target_id": "c41_ENT_7",
+      "relation": "depends_on",
+      "chunk_id": 41,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c41_ENT_1",
+      "target_id": "c41_ENT_7",
+      "relation": "depends_on",
+      "chunk_id": 41,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c41_ENT_2",
+      "target_id": "c41_ENT_7",
+      "relation": "depends_on",
+      "chunk_id": 41,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c41_ENT_3",
+      "target_id": "c41_ENT_7",
+      "relation": "depends_on",
+      "chunk_id": 41,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c41_ENT_4",
+      "target_id": "c41_ENT_7",
+      "relation": "depends_on",
+      "chunk_id": 41,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c41_ENT_5",
+      "target_id": "c41_ENT_7",
+      "relation": "depends_on",
+      "chunk_id": 41,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c42_ENT_1",
+      "target_id": "c42_ENT_2",
+      "relation": "depends_on",
+      "chunk_id": 42,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c42_ENT_2",
+      "target_id": "c42_ENT_3",
+      "relation": "depends_on",
+      "chunk_id": 42,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c42_ENT_1",
+      "target_id": "c42_ENT_4",
+      "relation": "located_in",
+      "chunk_id": 42,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c42_ENT_1",
+      "target_id": "c42_ENT_5",
+      "relation": "located_in",
+      "chunk_id": 42,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c42_ENT_1",
+      "target_id": "c42_ENT_6",
+      "relation": "located_in",
+      "chunk_id": 42,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c42_ENT_1",
+      "target_id": "c42_ENT_7",
+      "relation": "located_in",
+      "chunk_id": 42,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c42_ENT_4",
+      "target_id": "c42_ENT_2",
+      "relation": "dependency_of",
+      "chunk_id": 42,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c42_ENT_5",
+      "target_id": "c42_ENT_2",
+      "relation": "dependency_of",
+      "chunk_id": 42,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c42_ENT_6",
+      "target_id": "c42_ENT_2",
+      "relation": "dependency_of",
+      "chunk_id": 42,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c42_ENT_7",
+      "target_id": "c42_ENT_2",
+      "relation": "dependency_of",
+      "chunk_id": 42,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c43_ENT_1",
+      "target_id": "c43_ENT_2",
+      "relation": "requires",
+      "chunk_id": 43,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c43_ENT_2",
+      "target_id": "c43_ENT_3",
+      "relation": "requires",
+      "chunk_id": 43,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c43_ENT_3",
+      "target_id": "c43_ENT_4",
+      "relation": "requires",
+      "chunk_id": 43,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c43_ENT_1",
+      "target_id": "c43_ENT_4",
+      "relation": "requires",
+      "chunk_id": 43,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c43_ENT_5",
+      "target_id": "c43_ENT_6",
+      "relation": "requires",
+      "chunk_id": 43,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c43_ENT_6",
+      "target_id": "c43_ENT_3",
+      "relation": "requires",
+      "chunk_id": 43,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c43_ENT_7",
+      "target_id": "c43_ENT_8",
+      "relation": "requires",
+      "chunk_id": 43,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c43_ENT_8",
+      "target_id": "c43_ENT_4",
+      "relation": "requires",
+      "chunk_id": 43,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c43_ENT_9",
+      "target_id": "c43_ENT_7",
+      "relation": "requires",
+      "chunk_id": 43,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c43_ENT_10",
+      "target_id": "c43_ENT_7",
+      "relation": "requires",
+      "chunk_id": 43,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c43_ENT_11",
+      "target_id": "c43_ENT_7",
+      "relation": "requires",
+      "chunk_id": 43,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c44_ENT_1",
+      "target_id": "c44_ENT_2",
+      "relation": "requires",
+      "chunk_id": 44,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c44_ENT_2",
+      "target_id": "c44_ENT_3",
+      "relation": "requires",
+      "chunk_id": 44,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c44_ENT_2",
+      "target_id": "c44_ENT_4",
+      "relation": "requires",
+      "chunk_id": 44,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c44_ENT_5",
+      "target_id": "c44_ENT_6",
+      "relation": "contains",
+      "chunk_id": 44,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c44_ENT_5",
+      "target_id": "c44_ENT_7",
+      "relation": "contains",
+      "chunk_id": 44,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c44_ENT_5",
+      "target_id": "c44_ENT_8",
+      "relation": "contains",
+      "chunk_id": 44,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c44_ENT_5",
+      "target_id": "c44_ENT_9",
+      "relation": "contains",
+      "chunk_id": 44,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c44_ENT_10",
+      "target_id": "c44_ENT_8",
+      "relation": "supports",
+      "chunk_id": 44,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c44_ENT_11",
+      "target_id": "c44_ENT_8",
+      "relation": "supports",
+      "chunk_id": 44,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c44_ENT_12",
+      "target_id": "c44_ENT_8",
+      "relation": "supports",
+      "chunk_id": 44,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c45_ENT_1",
+      "target_id": "c45_ENT_2",
+      "relation": "supports",
+      "chunk_id": 45,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c45_ENT_1",
+      "target_id": "c45_ENT_3",
+      "relation": "supports",
+      "chunk_id": 45,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c45_ENT_1",
+      "target_id": "c45_ENT_4",
+      "relation": "supports",
+      "chunk_id": 45,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c45_ENT_5",
+      "target_id": "c45_ENT_1",
+      "relation": "generates",
+      "chunk_id": 45,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c45_ENT_6",
+      "target_id": "c45_ENT_1",
+      "relation": "parsing",
+      "chunk_id": 45,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c45_ENT_7",
+      "target_id": "c45_ENT_1",
+      "relation": "manages",
+      "chunk_id": 45,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c45_ENT_8",
+      "target_id": "c45_ENT_1",
+      "relation": "splits",
+      "chunk_id": 45,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_1",
+      "target_id": "c49_ENT_2",
+      "relation": "instantiates",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_1",
+      "target_id": "c49_ENT_3",
+      "relation": "uses",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_3",
+      "target_id": "c49_ENT_4",
+      "relation": "specifies",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_3",
+      "target_id": "c49_ENT_5",
+      "relation": "uses",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_3",
+      "target_id": "c49_ENT_6",
+      "relation": "uses",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_3",
+      "target_id": "c49_ENT_7",
+      "relation": "has",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_3",
+      "target_id": "c49_ENT_8",
+      "relation": "assigns",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_3",
+      "target_id": "c49_ENT_9",
+      "relation": "has",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_3",
+      "target_id": "c49_ENT_10",
+      "relation": "assigns",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_3",
+      "target_id": "c49_ENT_11",
+      "relation": "has",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_3",
+      "target_id": "c49_ENT_12",
+      "relation": "assigns",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_3",
+      "target_id": "c49_ENT_13",
+      "relation": "has",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_3",
+      "target_id": "c49_ENT_14",
+      "relation": "assigns",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_3",
+      "target_id": "c49_ENT_15",
+      "relation": "has",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_3",
+      "target_id": "c49_ENT_16",
+      "relation": "assigns",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_3",
+      "target_id": "c49_ENT_17",
+      "relation": "has",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_3",
+      "target_id": "c49_ENT_18",
+      "relation": "assigns",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c49_ENT_19",
+      "target_id": "c49_ENT_20",
+      "relation": "integrates with",
+      "chunk_id": 49,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c51_ENT_1",
+      "target_id": "c51_ENT_2",
+      "relation": "instantiates",
+      "chunk_id": 51,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c51_ENT_1",
+      "target_id": "c51_ENT_3",
+      "relation": "contains",
+      "chunk_id": 51,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c51_ENT_3",
+      "target_id": "c51_ENT_4",
+      "relation": "contains",
+      "chunk_id": 51,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c51_ENT_1",
+      "target_id": "c51_ENT_5",
+      "relation": "contains",
+      "chunk_id": 51,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c51_ENT_5",
+      "target_id": "c51_ENT_6",
+      "relation": "contains",
+      "chunk_id": 51,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c51_ENT_1",
+      "target_id": "c51_ENT_7",
+      "relation": "returns",
+      "chunk_id": 51,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c51_ENT_8",
+      "target_id": "c51_ENT_7",
+      "relation": "calls",
+      "chunk_id": 51,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c51_ENT_9",
+      "target_id": "c51_ENT_1",
+      "relation": "uses",
+      "chunk_id": 51,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c51_ENT_9",
+      "target_id": "c51_ENT_16",
+      "relation": "related to",
+      "chunk_id": 51,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c51_ENT_10",
+      "target_id": "c51_ENT_7",
+      "relation": "uses",
+      "chunk_id": 51,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c51_ENT_11",
+      "target_id": "c51_ENT_12",
+      "relation": "contains",
+      "chunk_id": 51,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c51_ENT_12",
+      "target_id": "c51_ENT_13",
+      "relation": "has",
+      "chunk_id": 51,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c51_ENT_12",
+      "target_id": "c51_ENT_14",
+      "relation": "has",
+      "chunk_id": 51,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c51_ENT_15",
+      "target_id": "c51_ENT_16",
+      "relation": "related to",
+      "chunk_id": 51,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c51_ENT_17",
+      "target_id": "c51_ENT_16",
+      "relation": "related to",
+      "chunk_id": 51,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c52_ENT_1",
+      "target_id": "c52_ENT_2",
+      "relation": "undergoes",
+      "chunk_id": 52,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c52_ENT_1",
+      "target_id": "c52_ENT_3",
+      "relation": "procedure",
+      "chunk_id": 52,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c52_ENT_4",
+      "target_id": "c52_ENT_5",
+      "relation": "undergoes",
+      "chunk_id": 52,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c52_ENT_4",
+      "target_id": "c52_ENT_6",
+      "relation": "procedure",
+      "chunk_id": 52,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c52_ENT_7",
+      "target_id": "c52_ENT_8",
+      "relation": "undergoes",
+      "chunk_id": 52,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c52_ENT_7",
+      "target_id": "c52_ENT_9",
+      "relation": "procedure",
+      "chunk_id": 52,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c56_ENT_1",
+      "target_id": "c56_ENT_4",
+      "relation": "instantiates",
+      "chunk_id": 56,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c56_ENT_2",
+      "target_id": "c56_ENT_4",
+      "relation": "uses",
+      "chunk_id": 56,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c56_ENT_3",
+      "target_id": "c56_ENT_4",
+      "relation": "uses",
+      "chunk_id": 56,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c56_ENT_4",
+      "target_id": "c56_ENT_5",
+      "relation": "has",
+      "chunk_id": 56,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c56_ENT_4",
+      "target_id": "c56_ENT_6",
+      "relation": "has",
+      "chunk_id": 56,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c56_ENT_4",
+      "target_id": "c56_ENT_7",
+      "relation": "has",
+      "chunk_id": 56,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c56_ENT_4",
+      "target_id": "c56_ENT_8",
+      "relation": "has",
+      "chunk_id": 56,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c59_ENT_1",
+      "target_id": "c59_ENT_2",
+      "relation": "enhances",
+      "chunk_id": 59,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c59_ENT_1",
+      "target_id": "c59_ENT_3",
+      "relation": "enhances",
+      "chunk_id": 59,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c59_ENT_2",
+      "target_id": "c59_ENT_3",
+      "relation": "supports",
+      "chunk_id": 59,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c59_ENT_4",
+      "target_id": "c59_ENT_7",
+      "relation": "related to",
+      "chunk_id": 59,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c59_ENT_5",
+      "target_id": "c59_ENT_8",
+      "relation": "related to",
+      "chunk_id": 59,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c59_ENT_6",
+      "target_id": "c59_ENT_9",
+      "relation": "related to",
+      "chunk_id": 59,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c59_ENT_7",
+      "target_id": "c59_ENT_10",
+      "relation": "related to",
+      "chunk_id": 59,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c59_ENT_8",
+      "target_id": "c59_ENT_11",
+      "relation": "related to",
+      "chunk_id": 59,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c59_ENT_9",
+      "target_id": "c59_ENT_12",
+      "relation": "related to",
+      "chunk_id": 59,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    },
+    {
+      "source_id": "c59_ENT_10",
+      "target_id": "c59_ENT_13",
+      "relation": "related to",
+      "chunk_id": 59,
+      "document_id": "RAG_PIPELINE_교육자료_langchain"
+    }
+  ]
+}

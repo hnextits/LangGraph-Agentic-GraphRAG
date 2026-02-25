@@ -18,7 +18,13 @@ import numpy as np
 import traceback
 from glob import glob
 
-from bootstrap import ensure_backend_root, configure_logging
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+import sys
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from backend.nextits_data.pipe.bootstrap import ensure_backend_root, configure_logging
 
 ensure_backend_root()
 configure_logging()

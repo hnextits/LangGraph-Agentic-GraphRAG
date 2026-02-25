@@ -1,0 +1,2237 @@
+{
+  "document_id": "IDE참고자료",
+  "entities": [
+    {
+      "entity_id": "c1_ENT_1",
+      "name": "AI 기반 개념 교육",
+      "type": "Topic",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_2",
+      "name": "라벨링",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_3",
+      "name": "주석달기",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_4",
+      "name": "데이터 전처리",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_5",
+      "name": "벡터화",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_6",
+      "name": "WordEmbedding",
+      "type": "Technique",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_7",
+      "name": "라벨링&주석달기",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_8",
+      "name": "Annotation",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_9",
+      "name": "지도학습",
+      "type": "Technique",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_10",
+      "name": "라벨 데이터",
+      "type": "Data",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_11",
+      "name": "모델 성능",
+      "type": "Metric",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_12",
+      "name": "데이터 클리닝",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_13",
+      "name": "결측치",
+      "type": "DataIssue",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_14",
+      "name": "노이즈",
+      "type": "DataIssue",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_15",
+      "name": "특수문자",
+      "type": "DataIssue",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_16",
+      "name": "텍스트 정규화",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_17",
+      "name": "Normalization",
+      "type": "Technique",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_18",
+      "name": "형태소 분석",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_19",
+      "name": "토큰화",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_20",
+      "name": "Tokenization",
+      "type": "Technique",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_21",
+      "name": "한국어 처리",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_25",
+      "name": "정제",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_26",
+      "name": "표제어 추출",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_27",
+      "name": "활용어",
+      "type": "Data",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_28",
+      "name": "Stopwords",
+      "type": "Data",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_29",
+      "name": "어간 추출",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_30",
+      "name": "Stemming",
+      "type": "Technique",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_32",
+      "name": "Lemmatization",
+      "type": "Technique",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_33",
+      "name": "전처리 파이프라인",
+      "type": "System",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_34",
+      "name": "데이터",
+      "type": "Data",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_35",
+      "name": "ML/DL 모델",
+      "type": "Model",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_36",
+      "name": "정답지",
+      "type": "Data",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_38",
+      "name": "라벨링의 중요성",
+      "type": "Concept",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_39",
+      "name": "데이터 수집",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_40",
+      "name": "RAG 교육",
+      "type": "Education",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_41",
+      "name": "연결",
+      "type": "Relation",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_42",
+      "name": "강의 내용",
+      "type": "Content",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_43",
+      "name": "강사님",
+      "type": "Person",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_44",
+      "name": "유상훈",
+      "type": "Person",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_45",
+      "name": "시간",
+      "type": "Duration",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_46",
+      "name": "4시간",
+      "type": "Duration",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_47",
+      "name": "16시간",
+      "type": "Duration",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_48",
+      "name": "6시간",
+      "type": "Duration",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_49",
+      "name": "8시간",
+      "type": "Duration",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_50",
+      "name": "2시간",
+      "type": "Duration",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_53",
+      "name": "텍스트 데이터",
+      "type": "Data",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_54",
+      "name": "비정형 데이터",
+      "type": "Data",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c2_ENT_1",
+      "name": "라벨링 유형",
+      "type": "Topic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_2",
+      "name": "분류",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_3",
+      "name": "개체명 인식",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_4",
+      "name": "관계 추출",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_5",
+      "name": "가이드라인",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_6",
+      "name": "라벨링 도구",
+      "type": "Topic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_7",
+      "name": "오픈소스 도구",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_8",
+      "name": "벡터화",
+      "type": "Topic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_9",
+      "name": "Vectorization",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_10",
+      "name": "Word Embedding",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_11",
+      "name": "RAG",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_12",
+      "name": "딥러닝",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_13",
+      "name": "벡터화의 필요성",
+      "type": "Topic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_14",
+      "name": "텍스트",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_15",
+      "name": "숫자",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_16",
+      "name": "벡터",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_17",
+      "name": "기초 벡터화",
+      "type": "Topic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_18",
+      "name": "BoW",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_19",
+      "name": "TF-IDF",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_20",
+      "name": "예측 기반 워드 임베딩",
+      "type": "Topic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_21",
+      "name": "Word2Vec",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_22",
+      "name": "GloVe",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_23",
+      "name": "Word2Vec(CBOW)",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_24",
+      "name": "Word2Vec(Skip-gram)",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_25",
+      "name": "문맥 기반 임베딩",
+      "type": "Topic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_26",
+      "name": "Contextual Embeddings",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_27",
+      "name": "동음이의어",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_28",
+      "name": "BERT",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_29",
+      "name": "GPT",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_30",
+      "name": "트랜스포머 모델",
+      "type": "Topic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_31",
+      "name": "Self-Attention",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_32",
+      "name": "Positional Encoding",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_33",
+      "name": "BERT/GPT 구조",
+      "type": "SubTopic",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c3_ENT_1",
+      "name": "딥러닝",
+      "type": "Field",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_3",
+      "name": "텐서",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_4",
+      "name": "신경망",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_5",
+      "name": "손실 함수",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_6",
+      "name": "옵티마이저",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_7",
+      "name": "CNN",
+      "type": "ModelType",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_8",
+      "name": "RNN",
+      "type": "ModelType",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_9",
+      "name": "Transformer",
+      "type": "ModelType",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_10",
+      "name": "선형 회귀",
+      "type": "ModelType",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_11",
+      "name": "MSE",
+      "type": "LossFunction",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_12",
+      "name": "Cross-Entropy",
+      "type": "LossFunction",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_13",
+      "name": "SGD",
+      "type": "Optimizer",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_14",
+      "name": "Adam",
+      "type": "Optimizer",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_15",
+      "name": "Dataset",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_16",
+      "name": "DataLoader",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_17",
+      "name": "Training",
+      "type": "Process",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_18",
+      "name": "Validation",
+      "type": "Process",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_19",
+      "name": "합성곱",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_20",
+      "name": "Pooling",
+      "type": "Concept",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c4_ENT_1",
+      "name": "PyTorch",
+      "type": "Framework",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_3",
+      "name": "LSTM",
+      "type": "ModelType",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_4",
+      "name": "GRU",
+      "type": "ModelType",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_5",
+      "name": "Attention",
+      "type": "Mechanism",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_7",
+      "name": "Encoder",
+      "type": "Component",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_8",
+      "name": "Decoder",
+      "type": "Component",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_9",
+      "name": "Self-Attention",
+      "type": "Mechanism",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_10",
+      "name": "Multi-Head Attention",
+      "type": "Mechanism",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_11",
+      "name": "Positional Encoding",
+      "type": "Mechanism",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_12",
+      "name": "BERT",
+      "type": "ModelType",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_13",
+      "name": "GPT",
+      "type": "ModelType",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_14",
+      "name": "Pre-training",
+      "type": "Process",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_15",
+      "name": "Fine-tuning",
+      "type": "Process",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_16",
+      "name": "Hugging Face",
+      "type": "Library",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c5_ENT_1",
+      "name": "BERT",
+      "type": "Model",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_2",
+      "name": "Transformer",
+      "type": "Model",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_3",
+      "name": "PLM",
+      "type": "Model",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_4",
+      "name": "NER",
+      "type": "Task",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_5",
+      "name": "QA",
+      "type": "Task",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_6",
+      "name": "RAG",
+      "type": "Technique",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_7",
+      "name": "Embedding",
+      "type": "Model",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_8",
+      "name": "monologg/distilkobert",
+      "type": "Model",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_9",
+      "name": "klue/bert-base",
+      "type": "Model",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_10",
+      "name": "Distillation",
+      "type": "Technique",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_11",
+      "name": "GPT",
+      "type": "Model",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_12",
+      "name": "skt/kogpt2-base-v2",
+      "type": "Model",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_13",
+      "name": "Fine-tuning",
+      "type": "Technique",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_14",
+      "name": "LLM",
+      "type": "Model",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_15",
+      "name": "Gemini 1.5 Flash",
+      "type": "Model",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_16",
+      "name": "Llama-3-8b-instruct",
+      "type": "Model",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_17",
+      "name": "Llama 3.1 8b",
+      "type": "Model",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_18",
+      "name": "AI Studio",
+      "type": "Platform",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_19",
+      "name": "Chatbot",
+      "type": "System",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_21",
+      "name": "Optimization",
+      "type": "Process",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_22",
+      "name": "Real-world",
+      "type": "Case",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_23",
+      "name": "Generative AI",
+      "type": "Field",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c6_ENT_1",
+      "name": "LLM",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_2",
+      "name": "쳇봇시스템",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_3",
+      "name": "RAG",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_4",
+      "name": "데이터 저장소",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_5",
+      "name": "백터 DB",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_6",
+      "name": "FAISS",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_7",
+      "name": "도큐먼트로더",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_8",
+      "name": "데이터 수집 변환 시스템",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_9",
+      "name": "데이터 임베딩 도구",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_10",
+      "name": "벡터유사검색기능",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_11",
+      "name": "RAG 작업 스케줄러",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_14",
+      "name": "Meta",
+      "type": "Organization",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_15",
+      "name": "NLLB",
+      "type": "Model",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_16",
+      "name": "다국어 최적화 시스템",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_17",
+      "name": "답변 자료 결합 처리",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_18",
+      "name": "다국어 변환",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_19",
+      "name": "이미지 LLM",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_20",
+      "name": "Llama 3.2 11b",
+      "type": "Model",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_21",
+      "name": "쳇봇 시스템",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_22",
+      "name": "이미지 생성 사례실습",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_23",
+      "name": "스테이블 디퓨전",
+      "type": "Model",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_24",
+      "name": "샘플 이미지 생성 실습",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_25",
+      "name": "Google AI Studio",
+      "type": "Platform",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_27",
+      "name": "지식 데이터 파인 튜닝",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_28",
+      "name": "오픈소스 쳇봇시스템",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_30",
+      "name": "LLM 설치 실습",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_31",
+      "name": "QWEN 3",
+      "type": "Model",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_32",
+      "name": "쳇봇과 LLM 연결 작업",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_33",
+      "name": "LLM 성능",
+      "type": "Metric",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_34",
+      "name": "48시간",
+      "type": "Duration",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_35",
+      "name": "11번 교육과정",
+      "type": "EducationProgram",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_36",
+      "name": "쳇봇",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_37",
+      "name": "Llama 3.1",
+      "type": "Model",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_38",
+      "name": "RAG 시스템",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_39",
+      "name": "데이터 선정작업",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_41",
+      "name": "데이터 변환",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_42",
+      "name": "데이터 저장",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_43",
+      "name": "답변 자료 결합",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_44",
+      "name": "LLM 답변",
+      "type": "Data",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_45",
+      "name": "RAG 시스템 답변자료",
+      "type": "Data",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_46",
+      "name": "다국어 변환 실습",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_47",
+      "name": "이미지 생성",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_48",
+      "name": "쳇봇 시스템 구축",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_49",
+      "name": "LLM 설치",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_50",
+      "name": "RAG 시스템 이해",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_51",
+      "name": "쳇봇과 LLM 이해",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_52",
+      "name": "교육과정",
+      "type": "EducationProgram",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_53",
+      "name": "변경안",
+      "type": "Document",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_54",
+      "name": "연결되는 부분",
+      "type": "Relation",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_55",
+      "name": "쳇봇 시스템 활용",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_56",
+      "name": "설치 결과 테스트",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_57",
+      "name": "테스트",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_58",
+      "name": "답변 자료 결합 처리 실습",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_60",
+      "name": "이미지 LLM 설치",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_61",
+      "name": "LLM 설치 후 쳇봇 시스템 활용",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_62",
+      "name": "질문, 답변 형태",
+      "type": "Format",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_64",
+      "name": "오픈소스 LLM 설치",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_66",
+      "name": "RAG 시스템의 백터 DB",
+      "type": "System",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_68",
+      "name": "데이터 수집, 변환 및 저장",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_70",
+      "name": "LLM 답변 자료",
+      "type": "Data",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_72",
+      "name": "쳇봇에서 볼 수 있도록함",
+      "type": "Function",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_73",
+      "name": "LLM 답변과 RAG 시스템 답변자료 결합",
+      "type": "Process",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c7_ENT_1",
+      "name": "테스트",
+      "type": "Activity",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_2",
+      "name": "질문",
+      "type": "Entity",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_4",
+      "name": "Gemini",
+      "type": "Model",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_6",
+      "name": "이미지",
+      "type": "Entity",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_7",
+      "name": "동영상",
+      "type": "Entity",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_8",
+      "name": "Llama",
+      "type": "Model",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_9",
+      "name": "Stable Diffusion",
+      "type": "Model",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_10",
+      "name": "MNIST",
+      "type": "Dataset",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_12",
+      "name": "데이터 준비",
+      "type": "Activity",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_13",
+      "name": "저장",
+      "type": "Activity",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_14",
+      "name": "백터 DB",
+      "type": "Database",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_15",
+      "name": "PDF",
+      "type": "File",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_16",
+      "name": "웹크롤링",
+      "type": "Activity",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_21",
+      "name": "데이터 전처리",
+      "type": "Activity",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_22",
+      "name": "정규화",
+      "type": "Process",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_23",
+      "name": "청킹",
+      "type": "Process",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_24",
+      "name": "메타데이터",
+      "type": "Entity",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_25",
+      "name": "임베딩모델",
+      "type": "Model",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_26",
+      "name": "백터",
+      "type": "Entity",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_27",
+      "name": "데이터 확정 저장",
+      "type": "Activity",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_28",
+      "name": "백터 데이터베이스",
+      "type": "Database",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_29",
+      "name": "청크",
+      "type": "Entity",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c8_ENT_2",
+      "name": "Query & Answer Generation",
+      "type": "Phase",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_3",
+      "name": "RERANKER",
+      "type": "Component",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_4",
+      "name": "sLLM",
+      "type": "Model",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_6",
+      "name": "Vector Database",
+      "type": "Database",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_7",
+      "name": "Query Embedding",
+      "type": "Process",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_8",
+      "name": "Retrieval",
+      "type": "Process",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_10",
+      "name": "Re-ranking",
+      "type": "Process",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_11",
+      "name": "Generation",
+      "type": "Process",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_12",
+      "name": "Prompt",
+      "type": "Entity",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_14",
+      "name": "Data Embedding",
+      "type": "Process",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_15",
+      "name": "Data Storage & Indexing",
+      "type": "Process",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_16",
+      "name": "Web Crawling",
+      "type": "Process",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_17",
+      "name": "Data Preprocessing",
+      "type": "Process",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_18",
+      "name": "Chunking",
+      "type": "Process",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_19",
+      "name": "Multilingual Translation",
+      "type": "Process",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c9_ENT_1",
+      "name": "질의 임베딩",
+      "type": "Process",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_2",
+      "name": "문서 검색",
+      "type": "Process",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_3",
+      "name": "문서 재순위화",
+      "type": "Process",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_4",
+      "name": "프롬프트 생성 및 답변 생성",
+      "type": "Process",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_5",
+      "name": "다국어 적용",
+      "type": "Process",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_6",
+      "name": "작업 결과 개인별 발표",
+      "type": "Process",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_9",
+      "name": "백터",
+      "type": "Data",
+      "chunk_id": 9
+    },
+    {
+      "entity_id": "c9_ENT_10",
+      "name": "청크",
+      "type": "Data",
+      "chunk_id": 9
+    }
+  ],
+  "events": [],
+  "relations": [
+    {
+      "source_id": "c2_ENT_1",
+      "target_id": "c2_ENT_2",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_1",
+      "target_id": "c2_ENT_3",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_1",
+      "target_id": "c2_ENT_4",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_1",
+      "target_id": "c2_ENT_5",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_6",
+      "target_id": "c2_ENT_7",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_8",
+      "target_id": "c2_ENT_9",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_8",
+      "target_id": "c2_ENT_10",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_8",
+      "target_id": "c2_ENT_11",
+      "relation": "related to",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_8",
+      "target_id": "c2_ENT_12",
+      "relation": "related to",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_13",
+      "target_id": "c2_ENT_14",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_13",
+      "target_id": "c2_ENT_15",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_13",
+      "target_id": "c2_ENT_16",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_17",
+      "target_id": "c2_ENT_18",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_17",
+      "target_id": "c2_ENT_19",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_20",
+      "target_id": "c2_ENT_21",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_20",
+      "target_id": "c2_ENT_22",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_21",
+      "target_id": "c2_ENT_23",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_21",
+      "target_id": "c2_ENT_24",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_25",
+      "target_id": "c2_ENT_26",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_25",
+      "target_id": "c2_ENT_27",
+      "relation": "related to",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_25",
+      "target_id": "c2_ENT_28",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_25",
+      "target_id": "c2_ENT_29",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_30",
+      "target_id": "c2_ENT_31",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_30",
+      "target_id": "c2_ENT_32",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_30",
+      "target_id": "c2_ENT_33",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c2_ENT_30",
+      "target_id": "c2_ENT_34",
+      "relation": "covers",
+      "chunk_id": 2,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c3_ENT_10",
+      "target_id": "c3_ENT_11",
+      "relation": "uses",
+      "chunk_id": 3,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c3_ENT_10",
+      "target_id": "c3_ENT_12",
+      "relation": "uses",
+      "chunk_id": 3,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c3_ENT_6",
+      "target_id": "c3_ENT_13",
+      "relation": "uses",
+      "chunk_id": 3,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c3_ENT_6",
+      "target_id": "c3_ENT_14",
+      "relation": "uses",
+      "chunk_id": 3,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c3_ENT_17",
+      "target_id": "c3_ENT_1",
+      "relation": "related",
+      "chunk_id": 3,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c3_ENT_18",
+      "target_id": "c3_ENT_1",
+      "relation": "related",
+      "chunk_id": 3,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_2",
+      "relation": "used_for",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_3",
+      "relation": "used_for",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_4",
+      "relation": "used_for",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_2",
+      "target_id": "c4_ENT_5",
+      "relation": "related_to",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_5",
+      "target_id": "c4_ENT_6",
+      "relation": "related_to",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_6",
+      "target_id": "c4_ENT_7",
+      "relation": "contains",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_6",
+      "target_id": "c4_ENT_8",
+      "relation": "contains",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_6",
+      "target_id": "c4_ENT_9",
+      "relation": "contains",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_6",
+      "target_id": "c4_ENT_10",
+      "relation": "contains",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_6",
+      "target_id": "c4_ENT_11",
+      "relation": "contains",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_6",
+      "target_id": "c4_ENT_12",
+      "relation": "related_to",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_6",
+      "target_id": "c4_ENT_13",
+      "relation": "related_to",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_12",
+      "target_id": "c4_ENT_14",
+      "relation": "related_to",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_12",
+      "target_id": "c4_ENT_15",
+      "relation": "related_to",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_12",
+      "target_id": "c4_ENT_16",
+      "relation": "related_to",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_13",
+      "target_id": "c4_ENT_14",
+      "relation": "related_to",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_13",
+      "target_id": "c4_ENT_15",
+      "relation": "related_to",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c4_ENT_13",
+      "target_id": "c4_ENT_16",
+      "relation": "related_to",
+      "chunk_id": 4,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_2",
+      "relation": "based_on",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_3",
+      "relation": "utilizes",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_4",
+      "relation": "applies_to",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_5",
+      "relation": "applies_to",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_6",
+      "relation": "used_for",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_7",
+      "relation": "used_as",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_2",
+      "target_id": "c5_ENT_3",
+      "relation": "based_on",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_2",
+      "target_id": "c5_ENT_6",
+      "relation": "used_for",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_2",
+      "target_id": "c5_ENT_7",
+      "relation": "used_as",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_8",
+      "target_id": "c5_ENT_9",
+      "relation": "distilled_from",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_8",
+      "target_id": "c5_ENT_1",
+      "relation": "derived_from",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_11",
+      "target_id": "c5_ENT_12",
+      "relation": "recommended",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_11",
+      "target_id": "c5_ENT_13",
+      "relation": "related_to",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_14",
+      "target_id": "c5_ENT_1",
+      "relation": "related_to",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_15",
+      "target_id": "c5_ENT_1",
+      "relation": "related_to",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_16",
+      "target_id": "c5_ENT_1",
+      "relation": "related_to",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_17",
+      "target_id": "c5_ENT_1",
+      "relation": "related_to",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_18",
+      "target_id": "c5_ENT_15",
+      "relation": "utilizes",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_19",
+      "target_id": "c5_ENT_15",
+      "relation": "related_to",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_20",
+      "target_id": "c5_ENT_1",
+      "relation": "related_to",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_21",
+      "target_id": "c5_ENT_1",
+      "relation": "related_to",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_22",
+      "target_id": "c5_ENT_1",
+      "relation": "related_to",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c5_ENT_23",
+      "target_id": "c5_ENT_1",
+      "relation": "related_to",
+      "chunk_id": 5,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_1",
+      "target_id": "c7_ENT_2",
+      "relation": "작성",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_1",
+      "target_id": "c7_ENT_3",
+      "relation": "비교",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_1",
+      "target_id": "c7_ENT_4",
+      "relation": "비교",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_6",
+      "target_id": "c7_ENT_7",
+      "relation": "변환",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_8",
+      "target_id": "c7_ENT_1",
+      "relation": "설치",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_9",
+      "target_id": "c7_ENT_1",
+      "relation": "설치",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_10",
+      "target_id": "c7_ENT_9",
+      "relation": "기준",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_11",
+      "target_id": "c7_ENT_12",
+      "relation": "데이터 준비",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_11",
+      "target_id": "c7_ENT_13",
+      "relation": "저장",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_14",
+      "target_id": "c7_ENT_11",
+      "relation": "저장",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_15",
+      "target_id": "c7_ENT_11",
+      "relation": "데이터",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_16",
+      "target_id": "c7_ENT_11",
+      "relation": "데이터",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_21",
+      "target_id": "c7_ENT_11",
+      "relation": "과정",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_22",
+      "target_id": "c7_ENT_21",
+      "relation": "과정",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_23",
+      "target_id": "c7_ENT_21",
+      "relation": "과정",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_24",
+      "target_id": "c7_ENT_21",
+      "relation": "추가",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_25",
+      "target_id": "c7_ENT_26",
+      "relation": "변환",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_26",
+      "target_id": "c7_ENT_27",
+      "relation": "저장",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_27",
+      "target_id": "c7_ENT_28",
+      "relation": "저장",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_29",
+      "target_id": "c7_ENT_26",
+      "relation": "변환",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c7_ENT_30",
+      "target_id": "c7_ENT_26",
+      "relation": "추가",
+      "chunk_id": 7,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_2",
+      "relation": "part of",
+      "chunk_id": 8,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c8_ENT_3",
+      "target_id": "c8_ENT_1",
+      "relation": "component of",
+      "chunk_id": 8,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c8_ENT_4",
+      "target_id": "c8_ENT_1",
+      "relation": "component of",
+      "chunk_id": 8,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c8_ENT_5",
+      "target_id": "c8_ENT_1",
+      "relation": "component of",
+      "chunk_id": 8,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c8_ENT_6",
+      "target_id": "c8_ENT_1",
+      "relation": "related to",
+      "chunk_id": 8,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c8_ENT_7",
+      "target_id": "c8_ENT_2",
+      "relation": "part of",
+      "chunk_id": 8,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c8_ENT_8",
+      "target_id": "c8_ENT_2",
+      "relation": "part of",
+      "chunk_id": 8,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c8_ENT_10",
+      "target_id": "c8_ENT_2",
+      "relation": "part of",
+      "chunk_id": 8,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c8_ENT_11",
+      "target_id": "c8_ENT_2",
+      "relation": "part of",
+      "chunk_id": 8,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c8_ENT_12",
+      "target_id": "c8_ENT_13",
+      "relation": "input to",
+      "chunk_id": 8,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c8_ENT_13",
+      "target_id": "c8_ENT_11",
+      "relation": "processes",
+      "chunk_id": 8,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c8_ENT_14",
+      "target_id": "c8_ENT_1",
+      "relation": "part of",
+      "chunk_id": 8,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c8_ENT_15",
+      "target_id": "c8_ENT_1",
+      "relation": "part of",
+      "chunk_id": 8,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c8_ENT_16",
+      "target_id": "c8_ENT_1",
+      "relation": "part of",
+      "chunk_id": 8,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c8_ENT_17",
+      "target_id": "c8_ENT_14",
+      "relation": "part of",
+      "chunk_id": 8,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c8_ENT_18",
+      "target_id": "c8_ENT_17",
+      "relation": "part of",
+      "chunk_id": 8,
+      "document_id": "IDE참고자료"
+    },
+    {
+      "source_id": "c8_ENT_19",
+      "target_id": "c8_ENT_1",
+      "relation": "part of",
+      "chunk_id": 8,
+      "document_id": "IDE참고자료"
+    }
+  ]
+}

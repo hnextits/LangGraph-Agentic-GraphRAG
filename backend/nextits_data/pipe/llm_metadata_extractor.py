@@ -13,7 +13,11 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 import sys
 
-from bootstrap import ensure_backend_root, configure_logging
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from backend.nextits_data.pipe.bootstrap import ensure_backend_root, configure_logging
 
 ensure_backend_root()
 configure_logging()

@@ -19,7 +19,7 @@ import hashlib
 import uuid
 
 # 💡 Sentence Transformers와 Weaviate 클라이언트 임포트
-from shared_embedding import shared_embedding
+from notebooklm.shared_embedding import shared_embedding
 import weaviate
 from weaviate.util import generate_uuid5
 from weaviate.exceptions import UnexpectedStatusCodeException
