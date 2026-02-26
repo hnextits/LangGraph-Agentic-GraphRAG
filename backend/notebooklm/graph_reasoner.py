@@ -106,7 +106,7 @@ class GraphReasoner:
         # --- 노드 함수 정의 ---
 
         def planner(state: GraphReasonerState) -> dict:
-            """질문 분석 및 검색 계획 수립 — 쿼리 복잡도 기반 max_hops 동적 결정"""
+            """질문 분석 및 검색 계획 수립"""
             updates: dict = {}
             plan_items = []
             if not state.get("plan"):
@@ -115,28 +115,6 @@ class GraphReasoner:
                 if reasoner.got_enabled:
                     plan_items.append("GoT: 엣지 품질을 평가하여 필요시 백트래킹")
 
-            # --- LLM + 휴리스틱 하이브리드 홉 분류 ---
-            hop_cap = max(1, getattr(reasoner.config, "GRAPH_MAX_HOPS", 6))
-            query = state["query"]
-
-            # 1차: LLM 판단
-            llm_hops = HopClassifier.classify_hops_llm(reasoner.config, query)
-            # 2차: 휴리스틱 (항상 계산 — fallback 및 로깅용)
-            heuristic_hops = HopClassifier.classify_hops_heuristic(query)
-
-            if llm_hops is not None:
-                estimated = llm_hops
-                method = "LLM"
-            else:
-                estimated = heuristic_hops
-                method = "heuristic"
-
-            max_hops = min(estimated, hop_cap)
-            updates["max_hops"] = max_hops
-            logger.info(
-                "Planner: %s → estimated=%d (llm=%s, heuristic=%d), cap=%d, max_hops=%d",
-                method, estimated, llm_hops, heuristic_hops, hop_cap, max_hops,
-            )
             qh = list(state.get("query_history", []))
             if not qh:
                 qh.append(state["query"])
@@ -144,6 +122,8 @@ class GraphReasoner:
             updates["state_checkpoint_id"] = f"plan_{uuid.uuid4().hex[:8]}"
             if plan_items:
                 updates["plan"] = plan_items
+            
+            logger.info("Planner: 검색 계획 수립 완료")
             return updates
 
         def tool_router(state: GraphReasonerState) -> dict:
@@ -183,13 +163,15 @@ class GraphReasoner:
             }
 
         def rag_router(state: GraphReasonerState) -> dict:
-            """쿼리 복잡도에 따라 3-Way Retrieval 경로 결정 (배타적 선택)."""
+            """쿼리 복잡도 분석 및 3-Way Retrieval 경로 결정 (배타적 선택)."""
             backtrack_count = state.get("backtrack_count", 0)
+            query = state["query"]
 
             # 백트래킹 중이면 quality_gate가 설정한 대체 경로를 사용
             if backtrack_count > 0:
                 path = state.get("retrieval_path", "vector")
-                logger.info("RAG Router(백트래킹 %d회): path=%s", backtrack_count, path)
+                max_hops = state.get("max_hops", 1)
+                logger.info("RAG Router(백트래킹 %d회): path=%s, max_hops=%d", backtrack_count, path, max_hops)
                 # 백트래킹 시 이전 검색 결과 초기화 (배타적 실행)
                 return {
                     "retrieval_path": path,
@@ -199,18 +181,40 @@ class GraphReasoner:
                     "answer_notes": [f"백트래킹 라우팅: {path} (backtrack={backtrack_count})"],
                 }
 
-            # 최초 라우팅: max_hops 기반
-            max_hops = state.get("max_hops", 1)
+            # --- LLM + 휴리스틱 하이브리드 홉 분류 ---
+            hop_cap = max(1, getattr(reasoner.config, "GRAPH_MAX_HOPS", 6))
+
+            # 1차: LLM 판단
+            llm_hops = HopClassifier.classify_hops_llm(reasoner.config, query)
+            # 2차: 휴리스틱 (항상 계산 — fallback 및 로깅용)
+            heuristic_hops = HopClassifier.classify_hops_heuristic(query)
+
+            if llm_hops is not None:
+                estimated = llm_hops
+                method = "LLM"
+            else:
+                estimated = heuristic_hops
+                method = "heuristic"
+
+            max_hops = min(estimated, hop_cap)
+            
+            # 최초 라우팅: max_hops 기반 경로 선택
             if max_hops <= 2:
                 path = "vector"
             elif max_hops <= 5:
                 path = "cross_ref"
             else:
                 path = "graph_db"
-            logger.info("RAG Router: max_hops=%d → path=%s", max_hops, path)
+            
+            logger.info(
+                "RAG Router: %s → estimated=%d (llm=%s, heuristic=%d), cap=%d, max_hops=%d → path=%s",
+                method, estimated, llm_hops, heuristic_hops, hop_cap, max_hops, path
+            )
+            
             return {
+                "max_hops": max_hops,
                 "retrieval_path": path,
-                "answer_notes": [f"라우팅: {path} (max_hops={max_hops})"],
+                "answer_notes": [f"라우팅: {path} (max_hops={max_hops}, method={method})"],
             }
 
         def tool_executor_node(state: GraphReasonerState) -> dict:
