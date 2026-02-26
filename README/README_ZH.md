@@ -20,12 +20,12 @@ LangGraph-Graph RAG 是一个基于 **LangGraph + SGLang** 的向量–图混合
 ## 核心功能
 
 - **LangGraph 状态机**：数据摄取、查询推理、摘要生成和思维导图生成均运行在带有 `MemorySaver` 检查点的 LangGraph `StateGraph` 上。
-- **检查点与回溯**：每次节点转换均被检查点记录；当质量不足时，质量门控和 GoT 快照会回滚到备用检索路径或更早的扩展阶段（最多重试 2 次）。
-- **3 路检索路由**：跳数 ≤ 2 → Vector RAG（TextSearcher + Reranker），跳数 3–5 → Weaviate Cross-Reference GraphQL 遍历，跳数 ≥ 6 → Neo4j 深度图遍历。跳数边界映射了底层数据模型：纯语义问题保留在 TextDocument 嵌入索引，实体/属性推理利用 Weaviate 交叉引用，≥ 6 跳的模式化关系推理会升级到 Neo4j Cypher 查询。Path 1 与 Path 2 均运行在 Weaviate 内：Path 1 偏向于在 late-chunk 语料上执行快速语义相似度，Path 2 则显式遍历 Cross-Reference 邻域，在不进入 Neo4j 的情况下先挖掘与查询关联的实体/事件。
-- **观察者 LLM + GoT 扩展**：观察者 LLM 对每条路径结果进行 0–1 评分。通过评分的结果将触发 Graph-of-Thought 分支/合并以获取更深层的上下文。
+- **检查点与回溯**：每个节点转换都会被检查点；当质量不足时，质量门和 GoT 快照会回滚到替代检索路径或更早的扩展（可通过 `MAX_BACKTRACK_COUNT` 配置）。
+- **3 路检索路由**：根据查询复杂度（hop 数）路由到 Vector RAG、Weaviate Cross-Reference GraphQL 或 Neo4j Deep Graph Traversal（阈值可通过 `GRAPH_MAX_HOPS` 配置）。跳数边界映射了底层数据模型：纯语义问题保留在 TextDocument 嵌入索引，实体/属性推理利用 Weaviate 交叉引用，≥ 6 跳的模式化关系推理会升级到 Neo4j Cypher 查询。Path 1 与 Path 2 均运行在 Weaviate 内：Path 1 偏向于在 late-chunk 语料上执行快速语义相似度，Path 2 则显式遍历 Cross-Reference 邻域，在不进入 Neo4j 的情况下先挖掘与查询关联的实体/事件。
+- **观察者 LLM + GoT 扩展**：观察者 LLM 对每个路径结果评分（0–1）。超过 `QUALITY_GATE_THRESHOLD` 的结果会触发 Graph-of-Thought 分支/合并以获取更深层次的上下文。
 - **SGLang 推理**：生成器、嵌入、重排序器、跳数分类器和观察者 LLM 均运行在带有延迟加载（`LazyModelManager` + `SGLangServerManager`）的 SGLang 服务器上。
-  - **延迟加载**：首次请求时服务器自动启动，60秒空闲超时释放 GPU 内存
-  - **GPU 分配**：Generator（cuda:0，30% VRAM），Embedding/Reranker/Refiner（cuda:1，共享）
+  - **延迟加载**：服务器在首次请求时自动启动，空闲超时可通过 `SGLANG_IDLE_TIMEOUT` 配置，释放 GPU 内存
+  - **GPU 分配**：Generator (device/mem_fraction 可配置)，Embedding/Reranker/Refiner (device/mem_fraction 可配置)）
   - **分块重试逻辑**：LLM 元数据提取失败时自动重启服务器并重试（可通过 `GRAPH_EXTRACTOR_RETRY_ON_FAILURE` 配置）
 - **自动图更新插入**：OCR → LLM 实体/事件/关系提取 → 同步写入 Weaviate + Neo4j。
 - **异步任务监控**：通过任务 API 跟踪上传、OCR 和嵌入的处理进度。
@@ -74,10 +74,20 @@ LangGraph-Graph RAG 是一个基于 **LangGraph + SGLang** 的向量–图混合
 ### 工作流图（查询）
 
 ```
-planner →  router →┬→ vector_retriever  ──→┐
-                   ├→ crossref_retriever ─→├→ quality_gate →┬→ thought_expander → aggregator → END
-                   └→ graphdb_retriever ──→┘                └→ router（回溯）
+planner → tool_router ┬→ rag_router →┬→ vector_retriever  ──→┐
+                      │               ├→ crossref_retriever ─→├→ quality_gate →┬→ thought_expander → aggregator → END
+                      │               └→ graphdb_retriever ──→┘                └→ rag_router (backtrack)
+                      │
+                      └→ tool_executor ────────────────────────────────────────→ aggregator → END
 ```
+
+**Tool Router**：使用 LLM 分类查询意图（knowledge/calculation/database/api_call/code_exec）（可通过 `TOOL_INTENT_CLASSIFIER_ENDPOINT` 配置）。将知识查询路由到 RAG 管道，将计算任务路由到工具执行器。
+
+**Tool Executor**：通过 MCP 服务器（如果 `MCP_SERVER_ENABLED=true`）或本地 fallback 执行工具。当前支持：
+- Calculator（基于 AST 的安全评估）
+- SQL executor（存根）
+- API caller（存根）
+- Code runner（存根）
 
 ---
 
@@ -95,7 +105,7 @@ planner →  router →┬→ vector_retriever  ──→┐
 4. **图更新插入**：
    - `GraphSchemaManager` 确保 Weaviate GraphEntity/GraphEvent/GraphRelation 集合存在，带有交叉引用（source/target/event）
    - `LegacyGraphIngestor` / `Neo4jManager` 使用确定性 UUID 将节点/关系 MERGE 到 Neo4j
-5. **延迟分块与嵌入**：`embedding_text.py` 将 Markdown 分割为块，并通过 `SharedEmbeddingModel`上传到 Weaviate TextDocument 集合。
+5. **延迟分块与嵌入**：`embedding_text.py` 将 Markdown 分割成块，并通过 `SharedEmbeddingModel` 上传到 Weaviate TextDocument 集合（模型可通过 `EMBEDDING_MODEL` 配置）。
 
 ---
 
@@ -103,29 +113,29 @@ planner →  router →┬→ vector_retriever  ──→┐
 
 由 `GraphReasoner`（`graph_reasoner.py`）配合 `MemorySaver` 检查点和智能回溯处理：
 
-1. **跳数分类器（LLM + 启发式混合）**：
-   - **主要方式**：基于 LLM 的分类器通过 SGLang 服务器估计查询复杂度（1–6 跳）。
-   - **备用方式**：基于关键词、箭头数量和概念分隔符的启发式评分。
+1. **跳数分类器（LLM + 启发式混合）** (`HopClassifier`)：
+   - **主要**：基于 LLM 的分类器通过 SGLang 服务器估计查询复杂度（1–`GRAPH_MAX_HOPS`）。
+   - **备用**：基于关键词、箭头数量和概念分隔符的启发式评分。
    - 估计的跳数决定初始检索路径。
-2. **规划器**：分析查询，基于 LLM+启发式分类动态设置 `max_hops`，并初始化搜索计划。
-3. **路由器**：根据跳数分类和查询特征选择路径 1/2/3。
-   - **初始路由**：跳数 ≤ 2 → 路径 1（Vector），3–5 → 路径 2（Cross-Ref），≥ 6 → 路径 3（GraphDB）。
-   - **回溯路由**：使用 `_select_best_path()` 评估剩余未尝试的路径，根据查询关键词和跳数对每条路径评分，选择最合适的替代方案。
+2. **规划器**：分析查询，根据 LLM+启发式分类动态设置 `max_hops`（由 `GRAPH_MAX_HOPS` 限制），并初始化搜索计划。
+3. **路由器**：根据跳数分类和查询特征选择 Path 1/2/3。
+   - **初始路由**：跳数 ≤ 2 → Path 1（VectorRetriever），3–5 → Path 2（CrossRefRetriever），≥ 6 → Path 3（GraphDBRetriever）。
+   - **回溯路由**：使用 `PathSelector.select_best_path()` 评估剩余未尝试路径，根据查询关键词和跳数对每条路径评分以选择最合适的替代方案。
 4. **检索节点**：
    - **路径 1 – Vector RAG**：委托给 `rag_pipeline` 现有的 TextSearcher + Reranker（quality=1.0）。
    - **路径 2 – Cross-Ref GraphRAG**：BM25 种子实体 → Weaviate Cross-Reference `QueryReference` 多跳遍历（source/target/event refs），在升级到 Neo4j 之前先在 Weaviate 内收集与查询相邻的实体/事件。
    - **路径 3 – Neo4j GraphDB**：通过 `legacy_graph_client.py` Cypher 模板执行 ≥ 6 跳的模式化深度推理，或在 Weaviate cross-reference 结果枯竭后继续深化。
-5. **质量门控 + 观察者 LLM**：每条路径结果由观察者 LLM 评分为 0.0–1.0（路径 1 委托时默认为 1.0）。
-   - **通过条件**：quality ≥ threshold → 进入下一阶段。
-   - **回溯**：quality < threshold → `_select_best_path()` 基于查询特征（关键词、跳数）评估剩余路径，选择最合适的替代路径。
-   - **终止**：所有路径耗尽或达到 MAX_BACKTRACK 上限后，携带当前上下文继续，并在 `answer_notes` 中标记退化。
-   - **路径跟踪**：`tried_paths` 状态字段防止重复尝试同一路径。
+5. **质量门 + 观察者 LLM** (`QualityEvaluator`)：每个路径结果由观察者 LLM 评分 0.0–1.0（Path 1 委托时默认为 1.0）。
+   - **通过条件**：质量 ≥ `QUALITY_GATE_THRESHOLD` → 进入下一阶段。
+   - **回溯**：质量 < `QUALITY_GATE_THRESHOLD` → `PathSelector.select_best_path()` 根据查询特征（关键词、跳数）评估剩余路径并选择最合适的替代路径。
+   - **终止**：所有路径耗尽或达到 `MAX_BACKTRACK_COUNT` 限制后，继续使用最佳上下文并在 `answer_notes` 中标记降级。
+   - **路径跟踪**：`tried_paths` 状态字段防止重试相同路径。
 6. **GoT 思维扩展器**（`GOT_MODE_ENABLED=true`）：通过分支、评分和合并进行图形化思维探索。
-   - 每步并行扩展最多 `GOT_BRANCH_FACTOR` 个候选查询。
-   - 观察者 LLM 从相关性、覆盖率和新颖性维度对每个分支评分（0.0–1.0）。
+   - 每步最多并行扩展 `GOT_BRANCH_FACTOR` 个候选查询。
+   - 观察者 LLM 对每个分支的相关性、覆盖度和新颖性评分（0.0–1.0）。
    - 高于 `GOT_THOUGHT_SCORE_THRESHOLD` 的分支通过 `GOT_MERGE_STRATEGY`（`top_k` / `weighted_union` / `vote`）合并。
-   - 低质量边通过 `GOT_EDGE_PRUNE_THRESHOLD` 关键词重叠评分进行剪枝。
-   - 连续全分支失败触发基于快照的回溯（状态回滚到最后一次成功合并）。
+   - 低质量边缘通过 `GOT_EDGE_PRUNE_THRESHOLD` 关键词重叠评分修剪。
+   - 连续全分支失败（由 `GOT_MAX_CONSECUTIVE_FAILURES` 跟踪）触发基于快照的回溯（状态回滚到上次成功合并）。
 7. **聚合器**：从实体/事件/关系构建用于 LLM 生成的上下文片段。
 8. **生成**（`generator.py`）：将思维/路径片段与原始查询合并以生成答案；`refiner.py` / `evaluator.py` 可选地对响应进行后处理。
 
@@ -148,9 +158,15 @@ backend/
 ├── notebooklm/                      # RAG 核心模块
 │   ├── config.py                    # 模型/路径/图配置
 │   ├── rag_pipeline.py              # LangGraph RAG 工作流编排器
-│   ├── graph_reasoner.py            # 3 路检索 + 检查点 + 回溯
+│   ├── graph_reasoner.py            # LangGraph 工作流编排
 │   ├── graph_schema.py              # Weaviate Entity/Event/Relation 模式
 │   ├── hop_classifier.py            # 查询复杂度估计器
+│   ├── reasoner/                    # 重构的 GraphReasoner 模块
+│   │   ├── state.py                 # GraphReasonerState 定义
+│   │   ├── routing.py               # PathSelector, HopClassifier
+│   │   ├── quality.py               # QualityEvaluator
+│   │   ├── retrievers.py            # VectorRetriever, CrossRefRetriever, GraphDBRetriever
+│   │   └── __init__.py
 │   ├── legacy_graph_client.py       # Neo4j Cypher 遍历客户端
 │   ├── legacy_graph_ingestor.py     # Neo4j 更新插入助手
 │   ├── embedding_text.py            # 延迟分块 + Weaviate 文本索引
@@ -165,6 +181,10 @@ backend/
 │   ├── query_rewriter.py            # 查询重写
 │   ├── parallel_search.py           # 并行文本+图像搜索
 │   ├── weaviate_utils.py            # Weaviate 客户端工具
+│   ├── tools/                       # 工具调用 & MCP 集成
+│   │   ├── mcp_client.py            # MCP 服务器 REST 客户端
+│   │   ├── tool_executor.py         # 工具执行（MCP/本地 fallback）
+│   │   └── __init__.py
 │   ├── rag_text/                    # 文本搜索 + 重排序器
 │   └── rag_image/                   # 图像搜索 + 重排序器
 │

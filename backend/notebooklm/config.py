@@ -237,8 +237,25 @@ class RAGConfig:
         self.GOT_OBSERVER_ENDPOINT = os.getenv("GOT_OBSERVER_ENDPOINT", "")      # GoT 전용 관찰자 LLM 엔드포인트 (빈 문자열이면 HOP_CLASSIFIER 공유)
         self.GOT_OBSERVER_MODEL = os.getenv("GOT_OBSERVER_MODEL", "")            # GoT 전용 관찰자 모델명
         
+        # Quality Gate & Backtracking 설정
+        self.QUALITY_GATE_THRESHOLD = float(os.getenv("QUALITY_GATE_THRESHOLD", "0.3"))  # 품질 게이트 통과 임계값
+        self.MAX_BACKTRACK_COUNT = int(os.getenv("MAX_BACKTRACK_COUNT", "2"))            # 최대 백트래킹 횟수
+        
         #############################################
-        # 6. API 엔드포인트 설정
+        # 6-1. Tool Calling & MCP 서버 설정
+        #############################################
+        self.TOOL_CALLING_ENABLED = os.getenv("TOOL_CALLING_ENABLED", "true").lower() == "true"
+        self.MCP_SERVER_ENABLED = os.getenv("MCP_SERVER_ENABLED", "false").lower() == "true"
+        self.MCP_SERVER_URL = os.getenv("MCP_SERVER_URL", "http://localhost:8001")
+        self.MCP_TIMEOUT = int(os.getenv("MCP_TIMEOUT", "30"))
+        
+        # Tool Router 의도 분류 설정
+        self.TOOL_INTENT_CLASSIFIER_ENDPOINT = self.SGLANG_GENERATOR_ENDPOINT  # hop classifier와 동일한 LLM 사용
+        self.TOOL_INTENT_CLASSIFIER_MODEL = self.LLM_MODEL
+        self.TOOL_INTENT_CLASSIFIER_TIMEOUT = 10
+        
+        #############################################
+        # 7. API 엔드포인트 설정
         #############################################
         self.API_BASE_URL = "/api"
         

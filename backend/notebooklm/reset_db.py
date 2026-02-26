@@ -13,10 +13,10 @@ WEAVIATE_HOST = "127.0.0.1"
 client = weaviate.connect_to_custom(
     http_host=WEAVIATE_HOST,
     http_port=8080,
-    http_secure=False,      # 👈 추가
+    http_secure=False,      # 추가
     grpc_host=WEAVIATE_HOST,
     grpc_port=50051,
-    grpc_secure=False       # 👈 추가
+    grpc_secure=False       # 추가
 )
 
 try:
