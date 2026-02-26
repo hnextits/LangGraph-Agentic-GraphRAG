@@ -95,7 +95,7 @@ Handled by `LangGraphUploadPipeline` (`langgraph_upload_pipeline.py`) with `Memo
 4. **Graph Upsert**:
    - `GraphSchemaManager` ensures Weaviate GraphEntity/GraphEvent/GraphRelation collections exist with cross-references (source/target/event)
    - `LegacyGraphIngestor` / `Neo4jManager` MERGEs nodes/relationships into Neo4j with deterministic UUIDs
-5. **Late Chunking & Embedding**: `embedding_text.py` splits Markdown into chunks and uploads into the Weaviate TextDocument collection via `SharedEmbeddingModel` (Qwen3-Embedding-4B).
+5. **Late Chunking & Embedding**: `embedding_text.py` splits Markdown into chunks and uploads into the Weaviate TextDocument collection via `SharedEmbeddingModel`.
 
 ---
 
@@ -136,8 +136,8 @@ Handled by `GraphReasoner` (`graph_reasoner.py`) with `MemorySaver` checkpointin
 ```
 backend/
 ├── main.py                          # FastAPI server entry point
-├── app.py                           # Application setup & middleware
 ├── config.py                        # Server-level configuration
+├── logging_config.py                # Logging configuration
 │
 ├── api/                             # API layer
 │   ├── routes.py                    # Main upload/file/session routes
@@ -155,7 +155,9 @@ backend/
 │   ├── legacy_graph_ingestor.py     # Neo4j upsert helper
 │   ├── embedding_text.py            # Late chunking + Weaviate text indexing
 │   ├── embedding_image.py           # Image embedding + Weaviate image indexing
+│   ├── image_processor.py           # Image processing utilities
 │   ├── shared_embedding.py          # SGLang embedding/reranker client (singleton)
+│   ├── sglang_server_manager.py     # SGLang server lifecycle manager
 │   ├── generator.py                 # LLM answer generation
 │   ├── refiner.py                   # Answer refinement
 │   ├── evaluator.py                 # Answer quality evaluation
@@ -186,7 +188,9 @@ backend/
 │
 └── utils/
     ├── task_queue.py                # GPU task queue (async job management)
-    └── helpers.py                   # Shared utility functions
+    ├── helpers.py                   # Shared utility functions
+    ├── path_helpers.py              # Path calculation helpers
+    └── file_utils.py                # File operation utilities
 ```
 
 ---

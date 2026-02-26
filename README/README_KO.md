@@ -135,8 +135,8 @@ planner →  router →┬→ vector_retriever  ──→┐
 ```
 backend/
 ├── main.py                          # FastAPI 서버 진입점
-├── app.py                           # 애플리케이션 설정 & 미들웨어
 ├── config.py                        # 서버 수준 설정
+├── logging_config.py                # 로깅 설정
 │
 ├── api/                             # API 레이어
 │   ├── routes.py                    # 주요 업로드/파일/세션 라우트
@@ -154,7 +154,9 @@ backend/
 │   ├── legacy_graph_ingestor.py     # Neo4j 업서트 헬퍼
 │   ├── embedding_text.py            # Late chunking + Weaviate 텍스트 인덱싱
 │   ├── embedding_image.py           # 이미지 임베딩 + Weaviate 이미지 인덱싱
+│   ├── image_processor.py           # 이미지 처리 유틸리티
 │   ├── shared_embedding.py          # SGLang 임베딩/리랭커 클라이언트 (싱글톤)
+│   ├── sglang_server_manager.py     # SGLang 서버 생명주기 관리자
 │   ├── generator.py                 # LLM 답변 생성
 │   ├── refiner.py                   # 답변 정제
 │   ├── evaluator.py                 # 답변 품질 평가
@@ -185,7 +187,9 @@ backend/
 │
 └── utils/
     ├── task_queue.py                # GPU 작업 큐 (비동기 작업 관리)
-    └── helpers.py                   # 공유 유틸리티 함수
+    ├── helpers.py                   # 공유 유틸리티 함수
+    ├── path_helpers.py              # 경로 계산 헬퍼
+    └── file_utils.py                # 파일 작업 유틸리티
 ```
 
 ---

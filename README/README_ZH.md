@@ -136,8 +136,8 @@ planner →  router →┬→ vector_retriever  ──→┐
 ```
 backend/
 ├── main.py                          # FastAPI 服务器入口点
-├── app.py                           # 应用设置与中间件
 ├── config.py                        # 服务器级配置
+├── logging_config.py                # 日志配置
 │
 ├── api/                             # API 层
 │   ├── routes.py                    # 主要上传/文件/会话路由
@@ -155,7 +155,9 @@ backend/
 │   ├── legacy_graph_ingestor.py     # Neo4j 更新插入助手
 │   ├── embedding_text.py            # 延迟分块 + Weaviate 文本索引
 │   ├── embedding_image.py           # 图像嵌入 + Weaviate 图像索引
+│   ├── image_processor.py           # 图像处理工具
 │   ├── shared_embedding.py          # SGLang 嵌入/重排序客户端（单例）
+│   ├── sglang_server_manager.py     # SGLang 服务器生命周期管理器
 │   ├── generator.py                 # LLM 答案生成
 │   ├── refiner.py                   # 答案精炼
 │   ├── evaluator.py                 # 答案质量评估
@@ -186,7 +188,9 @@ backend/
 │
 └── utils/
     ├── task_queue.py                # GPU 任务队列（异步任务管理）
-    └── helpers.py                   # 共享工具函数
+    ├── helpers.py                   # 共享工具函数
+    ├── path_helpers.py              # 路径计算助手
+    └── file_utils.py                # 文件操作工具
 ```
 
 ---
