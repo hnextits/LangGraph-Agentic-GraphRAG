@@ -55,6 +55,7 @@ class GraphReasonerState(TypedDict, total=False):
     retrieval_path: str          # "vector" | "cross_ref" | "graph_db"
     retrieval_quality: float     # 0.0 ~ 1.0
     backtrack_count: int
+    tried_paths: list            # 이미 시도한 경로 목록
     state_checkpoint_id: str     # 현재 체크포인트 식별용
     allowed_doc_ids: list        # 허용된 문서 ID 목록 (프론트 필터링용)
 
@@ -81,6 +82,7 @@ def _make_initial_state(query: str, allowed_doc_ids: Optional[List[str]] = None)
         retrieval_path="",
         retrieval_quality=0.0,
         backtrack_count=0,
+        tried_paths=[],
         state_checkpoint_id="",
         allowed_doc_ids=allowed_doc_ids or [],
     )
@@ -221,6 +223,65 @@ class GraphReasoner:
         score += concept_seps
 
         return max(1, min(6, score))
+
+    # ------------------------------------------------------------------
+    # 백트래킹 시 최적 경로 선택
+    # ------------------------------------------------------------------
+    def _select_best_path(self, query: str, max_hops: int, remaining_paths: List[str]) -> str:
+        """쿼리 특성과 hop 수를 기반으로 남은 경로 중 최적의 경로를 선택.
+        
+        Args:
+            query: 사용자 질문
+            max_hops: 추정된 hop 수
+            remaining_paths: 아직 시도하지 않은 경로 목록
+            
+        Returns:
+            선택된 경로 ("vector" | "cross_ref" | "graph_db")
+        """
+        if not remaining_paths:
+            return "vector"  # fallback
+        
+        # 각 경로에 대한 적합도 점수 계산
+        scores = {}
+        q_lower = query.lower()
+        
+        for path in remaining_paths:
+            score = 0.0
+            
+            if path == "vector":
+                # 단순 사실 질문, 정의 질문에 적합
+                if max_hops <= 2:
+                    score += 3.0
+                # 키워드 기반 추가 점수
+                simple_keywords = ["무엇", "what", "정의", "definition", "설명", "explain"]
+                if any(kw in q_lower for kw in simple_keywords):
+                    score += 1.0
+                    
+            elif path == "cross_ref":
+                # 중간 복잡도, 관계/비교 질문에 적합
+                if 3 <= max_hops <= 5:
+                    score += 3.0
+                # 관계 키워드
+                relation_keywords = ["관계", "비교", "차이", "연관", "영향", "relate", "compare", "difference"]
+                if any(kw in q_lower for kw in relation_keywords):
+                    score += 2.0
+                    
+            elif path == "graph_db":
+                # 복잡한 다단계 추론, 체인 질문에 적합
+                if max_hops >= 6:
+                    score += 3.0
+                # 체인/경로 키워드
+                chain_keywords = ["경로", "흐름", "단계", "체인", "파이프라인", "path", "flow", "chain", "pipeline"]
+                if any(kw in q_lower for kw in chain_keywords):
+                    score += 2.0
+            
+            scores[path] = score
+        
+        # 가장 높은 점수의 경로 선택
+        best_path = max(remaining_paths, key=lambda p: scores.get(p, 0.0))
+        logger.info("경로 선택: query='%s', max_hops=%d, 점수=%s → 선택=%s",
+                    query[:50], max_hops, scores, best_path)
+        return best_path
 
     # ------------------------------------------------------------------
     # 워크플로우 빌드 (체크포인터 + 3-Way 라우팅 + 백트래킹)
@@ -483,7 +544,7 @@ class GraphReasoner:
 
             관찰자 LLM이 평가한 quality 기반으로:
             - quality >= 0.3: 통과 → aggregator로 진행
-            - quality < 0.3 & 백트래킹 한도 미도달: 다른 Path로 전환
+            - quality < 0.3 & 백트래킹 한도 미도달: 남은 경로 중 최적 경로 선택
             - quality < 0.3 & 백트래킹 한도 도달: 현재 결과로 진행
             """
             quality = state.get("retrieval_quality", 0.0)
@@ -497,18 +558,31 @@ class GraphReasoner:
                 logger.info("품질 게이트 [%s]: 통과 (quality=%.2f)", path, quality)
                 return {"answer_notes": [f"품질 게이트 [{path}]: 통과 (quality={quality:.2f})"]}
 
-            # 백트래킹: 다른 Path로 전환
-            fallback_order = ["vector", "cross_ref", "graph_db"]
-            current_idx = fallback_order.index(path) if path in fallback_order else 0
-            next_idx = (current_idx + 1) % len(fallback_order)
-            next_path = fallback_order[next_idx]
+            # 백트래킹: 남은 경로 중 최적 경로 선택
+            all_paths = ["vector", "cross_ref", "graph_db"]
+            tried_paths = state.get("tried_paths", [])
+            remaining_paths = [p for p in all_paths if p not in tried_paths]
+            
+            if not remaining_paths:
+                # 모든 경로 시도 완료 → 현재 결과로 진행
+                logger.info("백트래킹: 모든 경로 시도 완료, 현재 결과로 진행 (quality=%.2f)", quality)
+                return {"answer_notes": [f"백트래킹: 모든 경로 시도 완료 (quality={quality:.2f})"]}
+            
+            # 쿼리 특성 기반 경로 선택
+            query = state["query"]
+            max_hops = state.get("max_hops", 1)
+            next_path = reasoner._select_best_path(query, max_hops, remaining_paths)
+            
+            # 시도한 경로 기록
+            new_tried_paths = list(tried_paths) + [path]
 
-            logger.info("백트래킹: %s → %s (quality=%.2f, backtrack=%d)",
-                        path, next_path, quality, backtrack_count + 1)
+            logger.info("백트래킹: %s → %s (quality=%.2f, backtrack=%d, 남은 경로=%s)",
+                        path, next_path, quality, backtrack_count + 1, remaining_paths)
             return {
                 "retrieval_path": next_path,
                 "backtrack_count": backtrack_count + 1,
-                "answer_notes": [f"백트래킹: {path} → {next_path} (quality={quality:.2f})"],
+                "tried_paths": new_tried_paths,
+                "answer_notes": [f"백트래킹: {path} → {next_path} (quality={quality:.2f}, 남은={len(remaining_paths)})"],
             }
 
         def thought_expander(state: GraphReasonerState) -> dict:

@@ -101,16 +101,25 @@ Handled by `LangGraphUploadPipeline` (`langgraph_upload_pipeline.py`) with `Memo
 
 ## Query / Reasoning Layer
 
-Handled by `GraphReasoner` (`graph_reasoner.py`) with `MemorySaver` checkpointing and quality-gate backtracking:
+Handled by `GraphReasoner` (`graph_reasoner.py`) with `MemorySaver` checkpointing and intelligent backtracking:
 
-1. **Hop Classifier** (`hop_classifier.py`): estimates query complexity (hop count) to determine retrieval path.
-2. **Planner**: analyzes the query, sets `max_hops`, and initializes the search plan.
-3. **Router**: selects Path 1/2/3 based on hop classification.
+1. **Hop Classifier (LLM + Heuristic Hybrid)**: 
+   - **Primary**: LLM-based classifier estimates query complexity (1–6 hops) via SGLang server.
+   - **Fallback**: Heuristic scoring based on keywords, arrow count, and concept separators.
+   - The estimated hop count determines the initial retrieval path.
+2. **Planner**: analyzes the query, sets `max_hops` dynamically based on LLM+Heuristic classification, and initializes the search plan.
+3. **Router**: selects Path 1/2/3 based on hop classification and query characteristics.
+   - **Initial routing**: hop ≤ 2 → Path 1 (Vector), 3–5 → Path 2 (Cross-Ref), ≥ 6 → Path 3 (GraphDB).
+   - **Backtracking routing**: evaluates remaining untried paths using `_select_best_path()`, which scores each path based on query keywords and hop count to select the most suitable alternative.
 4. **Retrieval Nodes**:
    - **Path 1 – Vector RAG**: `rag_pipeline`'s TextSearcher + Reranker.
    - **Path 2 – Cross-Ref GraphRAG**: BM25 seed entities → Weaviate Cross-Reference `QueryReference` multi-hop traversal (source/target/event refs) to collect query-adjacent entities/events within Weaviate before escalating to Neo4j.
    - **Path 3 – Neo4j GraphDB**: deep traversal via `legacy_graph_client.py` Cypher templates for ≥ 6-hop schema-intensive reasoning or when Weaviate cross-references exhaust.
-5. **Quality Gate + Observer LLM**: every path result is scored 0.0–1.0 by the observer LLM (Path 1 defaults to 1.0 when delegated). If the score falls below the configured quality threshold, the workflow re-enters the router with the next retrieval path in the fallback order (Vector → Cross-Ref → GraphDB) and repeats until either a path passes or the 2-retry limit is reached; after the limit it continues with the best-effort context and flags the degradation in `answer_notes`.
+5. **Quality Gate + Observer LLM**: every path result is scored 0.0–1.0 by the observer LLM (Path 1 defaults to 1.0 when delegated). 
+   - **Pass condition**: quality ≥ threshold → proceeds to next stage.
+   - **Backtracking**: quality < threshold → `_select_best_path()` evaluates remaining paths based on query characteristics (keywords, hop count) and selects the most suitable alternative path.
+   - **Termination**: after all paths are exhausted or MAX_BACKTRACK limit is reached, continues with best-effort context and flags degradation in `answer_notes`.
+   - **Path tracking**: `tried_paths` state field prevents re-trying the same path.
 6. **GoT Thought Expander** (`GOT_MODE_ENABLED=true`): graph-shaped thought exploration with branching, scoring, and merging.
    - Each step fans out up to `GOT_BRANCH_FACTOR` candidate queries in parallel.
    - An observer LLM scores each branch (0.0–1.0) for relevance, coverage, and novelty.
@@ -201,15 +210,21 @@ backend/
 ## Query Processing Flow
 
 1. `POST /v1/chat` → `rag_pipeline.retrieve()` is invoked.
-2. `hop_classifier.py` estimates query complexity → determines `max_hops`.
+2. **Hop Classification (LLM + Heuristic)**:
+   - LLM-based classifier (via SGLang) estimates query complexity (1–6 hops).
+   - Heuristic fallback uses keyword patterns and query structure analysis.
+   - Result determines initial retrieval path selection.
 3. `graph_reasoner.py` runs the LangGraph workflow:
-   - **planner** → **router** → **retrieval node** (Path 1/2/3) → **quality_gate**
-   - If quality < threshold → **backtrack** to router with alternative path (max 2 retries).
+   - **planner** → analyzes query, sets `max_hops` based on LLM+Heuristic classification.
+   - **router** → selects initial path (Vector/Cross-Ref/GraphDB) based on hop count.
+   - **retrieval node** (Path 1/2/3) → executes selected retrieval strategy.
+   - **quality_gate** → Observer LLM scores result (0.0–1.0).
+   - If quality < threshold → **intelligent backtracking**: `_select_best_path()` evaluates remaining paths based on query keywords and hop count, selects the most suitable alternative (max MAX_BACKTRACK retries).
    - If GoT enabled → **thought_expander** with snapshot-based backtracking.
    - **aggregator** builds context snippets.
 4. `generator.py` produces the answer from original query + context snippets.
 5. (Optional) `refiner.py` polishes the answer; `evaluator.py` logs quality notes.
-6. Response includes `plan`, `hops`, `notes`, `context_snippets`, `backtrack_count`, and `thought_steps` for debugging.
+6. Response includes `plan`, `hops`, `notes`, `context_snippets`, `backtrack_count`, `tried_paths`, and `thought_steps` for debugging.
 
 ---
 

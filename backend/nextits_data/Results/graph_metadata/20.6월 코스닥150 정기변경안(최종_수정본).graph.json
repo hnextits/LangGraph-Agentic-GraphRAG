@@ -177,8 +177,8 @@
     },
     {
       "entity_id": "c1_ENT_30",
-      "name": "위원회",
-      "type": "Entity",
+      "name": "위원회_심의",
+      "type": "Process",
       "chunk_id": 1
     },
     {
@@ -189,194 +189,212 @@
     },
     {
       "entity_id": "c1_ENT_32",
-      "name": "지수 관리",
-      "type": "Process",
+      "name": "지수_동향",
+      "type": "Report",
       "chunk_id": 1
     },
     {
       "entity_id": "c1_ENT_33",
-      "name": "지수 동향",
-      "type": "Process",
+      "name": "지수_추이",
+      "type": "Report",
       "chunk_id": 1
     },
     {
       "entity_id": "c1_ENT_34",
-      "name": "지수 추이",
-      "type": "Process",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_35",
       "name": "바이오주",
       "type": "Entity",
       "chunk_id": 1
     },
     {
-      "entity_id": "c1_ENT_36",
+      "entity_id": "c1_ENT_35",
       "name": "수익률",
       "type": "Metric",
       "chunk_id": 1
     },
     {
-      "entity_id": "c1_ENT_37",
+      "entity_id": "c1_ENT_36",
       "name": "코스닥",
       "type": "Index",
       "chunk_id": 1
     },
     {
-      "entity_id": "c1_ENT_38",
+      "entity_id": "c1_ENT_37",
       "name": "코스닥_150",
       "type": "Index",
       "chunk_id": 1
     },
     {
-      "entity_id": "c1_ENT_39",
-      "name": "코스닥시장",
-      "type": "Market",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_40",
-      "name": "대표종목",
-      "type": "Entity",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_41",
-      "name": "선정",
-      "type": "Action",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_42",
-      "name": "버퍼",
-      "type": "Entity",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_43",
-      "name": "유동비율",
-      "type": "Metric",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_46",
-      "name": "지분",
-      "type": "Metric",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_47",
-      "name": "지수",
-      "type": "Index",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_48",
-      "name": "기준일",
+      "entity_id": "c1_ENT_38",
+      "name": "2020_3월",
       "type": "Date",
       "chunk_id": 1
     },
     {
-      "entity_id": "c1_ENT_49",
-      "name": "4월",
-      "type": "Month",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_50",
-      "name": "10월",
-      "type": "Month",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_51",
-      "name": "5월",
-      "type": "Month",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_52",
-      "name": "11월",
-      "type": "Month",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_53",
-      "name": "6월",
-      "type": "Month",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_54",
-      "name": "12월",
-      "type": "Month",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_55",
-      "name": "2015년",
-      "type": "Year",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_56",
-      "name": "2018년",
-      "type": "Year",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_57",
-      "name": "2020년",
-      "type": "Year",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_58",
-      "name": "3월",
-      "type": "Month",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_59",
-      "name": "19일",
-      "type": "Day",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_60",
+      "entity_id": "c1_ENT_39",
       "name": "697.38p",
       "type": "Value",
       "chunk_id": 1
     },
     {
-      "entity_id": "c1_ENT_64",
+      "entity_id": "c1_ENT_40",
+      "name": "2020_3_19",
+      "type": "Date",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_41",
+      "name": "2018년",
+      "type": "Date",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_42",
+      "name": "2020년",
+      "type": "Date",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_43",
+      "name": "2019_11월",
+      "type": "Date",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_44",
+      "name": "2020_4월",
+      "type": "Date",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_45",
+      "name": "90,711계약",
+      "type": "Value",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_46",
+      "name": "9종목",
+      "type": "Quantity",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_47",
+      "name": "순자산",
+      "type": "Metric",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_48",
+      "name": "2.3조원",
+      "type": "Value",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_49",
+      "name": "1,000p",
+      "type": "Value",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_50",
+      "name": "2015_7_13",
+      "type": "Date",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_51",
+      "name": "2010_1_4",
+      "type": "Date",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_52",
+      "name": "4월",
+      "type": "Month",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_53",
+      "name": "10월",
+      "type": "Month",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_54",
+      "name": "5월",
+      "type": "Month",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_55",
+      "name": "11월",
+      "type": "Month",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_56",
+      "name": "6월",
+      "type": "Month",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_57",
+      "name": "12월",
+      "type": "Month",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_58",
+      "name": "유동비율",
+      "type": "Metric",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_59",
+      "name": "지수_관리",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_60",
+      "name": "수시변경",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_61",
+      "name": "지수_산출",
+      "type": "Process",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_68",
       "name": "2년",
       "type": "TimePeriod",
       "chunk_id": 1
     },
     {
-      "entity_id": "c1_ENT_65",
+      "entity_id": "c1_ENT_69",
       "name": "연속",
-      "type": "Duration",
+      "type": "Quantity",
       "chunk_id": 1
     },
     {
-      "entity_id": "c1_ENT_66",
-      "name": "상승 반전",
+      "entity_id": "c1_ENT_77",
+      "name": "강세",
+      "type": "Trend",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_78",
+      "name": "상승_반전",
       "type": "Event",
       "chunk_id": 1
     },
     {
-      "entity_id": "c1_ENT_70",
-      "name": "가중",
-      "type": "Action",
-      "chunk_id": 1
-    },
-    {
-      "entity_id": "c1_ENT_82",
-      "name": "수시변경",
-      "type": "Process",
+      "entity_id": "c1_ENT_79",
+      "name": "상승",
+      "type": "Trend",
       "chunk_id": 1
     },
     {
@@ -1352,6 +1370,72 @@
       "chunk_id": 8
     },
     {
+      "entity_id": "c8_ENT_18",
+      "name": "기존 구성종목수",
+      "type": "Count",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_19",
+      "name": "120%",
+      "type": "Ratio",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_20",
+      "name": "80%",
+      "type": "Ratio",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_21",
+      "name": "생명기술 산업군",
+      "type": "IndustryGroup",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_22",
+      "name": "15종목",
+      "type": "Quantity",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_23",
+      "name": "16종목",
+      "type": "Quantity",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_24",
+      "name": "0",
+      "type": "Quantity",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_25",
+      "name": "1",
+      "type": "Quantity",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_26",
+      "name": "-",
+      "type": "Quantity",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_27",
+      "name": "최초로 심사대상 산업군에 포함되므로",
+      "type": "Rule",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_28",
+      "name": "기존 구성종목 관련 버퍼 미적용",
+      "type": "Rule",
+      "chunk_id": 8
+    },
+    {
       "entity_id": "c9_ENT_1",
       "name": "정보기술",
       "type": "IndustryGroup",
@@ -1418,7 +1502,7 @@
       "chunk_id": 9
     },
     {
-      "entity_id": "c9_ENT_15",
+      "entity_id": "c9_ENT_14",
       "name": "선정결과",
       "type": "Entity",
       "chunk_id": 9
@@ -1634,51 +1718,45 @@
       "chunk_id": 13
     },
     {
-      "entity_id": "c13_ENT_2",
+      "entity_id": "c13_ENT_3",
       "name": "거래대금기준",
       "type": "Rule",
       "chunk_id": 13
     },
     {
-      "entity_id": "c13_ENT_3",
+      "entity_id": "c13_ENT_4",
       "name": "시총",
       "type": "Metric",
       "chunk_id": 13
     },
     {
-      "entity_id": "c13_ENT_13",
+      "entity_id": "c13_ENT_6",
+      "name": "5종목",
+      "type": "Quantity",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_7",
+      "name": "선정결과",
+      "type": "Outcome",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_8",
       "name": "총 40종목",
-      "type": "Result",
-      "chunk_id": 13
-    },
-    {
-      "entity_id": "c13_ENT_14",
-      "name": "예비종목수",
-      "type": "Count",
-      "chunk_id": 13
-    },
-    {
-      "entity_id": "c13_ENT_15",
-      "name": "편입종목",
-      "type": "Action",
-      "chunk_id": 13
-    },
-    {
-      "entity_id": "c13_ENT_16",
-      "name": "제외종목",
-      "type": "Action",
+      "type": "Quantity",
       "chunk_id": 13
     },
     {
       "entity_id": "c13_ENT_17",
-      "name": "금융 산업군",
-      "type": "Industry",
+      "name": "종목 세부내역",
+      "type": "Document",
       "chunk_id": 13
     },
     {
       "entity_id": "c13_ENT_18",
-      "name": "산업재 산업군",
-      "type": "Industry",
+      "name": "붙임 2",
+      "type": "Document",
       "chunk_id": 13
     },
     {
@@ -1689,44 +1767,68 @@
     },
     {
       "entity_id": "c13_ENT_20",
-      "name": "006.png",
-      "type": "Image",
+      "name": "V 종목",
+      "type": "Entity",
       "chunk_id": 13
     },
     {
       "entity_id": "c13_ENT_21",
-      "name": "V 종목 선정결과",
-      "type": "Section",
+      "name": "교체종목",
+      "type": "Entity",
       "chunk_id": 13
     },
     {
       "entity_id": "c13_ENT_22",
-      "name": "교체종목",
-      "type": "Action",
+      "name": "총 14종목",
+      "type": "Quantity",
       "chunk_id": 13
     },
     {
       "entity_id": "c13_ENT_23",
-      "name": "14종목",
-      "type": "Count",
-      "chunk_id": 13
-    },
-    {
-      "entity_id": "c13_ENT_24",
       "name": "9.3%",
       "type": "Percentage",
       "chunk_id": 13
     },
     {
+      "entity_id": "c13_ENT_24",
+      "name": "편입종목",
+      "type": "Entity",
+      "chunk_id": 13
+    },
+    {
       "entity_id": "c13_ENT_25",
-      "name": "편입",
-      "type": "Action",
+      "name": "금융 산업군",
+      "type": "Industry",
       "chunk_id": 13
     },
     {
       "entity_id": "c13_ENT_26",
-      "name": "제외",
-      "type": "Action",
+      "name": "4종목",
+      "type": "Quantity",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_27",
+      "name": "제외종목",
+      "type": "Entity",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_28",
+      "name": "시총이 낮은",
+      "type": "Attribute",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_29",
+      "name": "산업재 산업군",
+      "type": "Industry",
+      "chunk_id": 13
+    },
+    {
+      "entity_id": "c13_ENT_30",
+      "name": "8종목",
+      "type": "Quantity",
       "chunk_id": 13
     },
     {
@@ -2866,13 +2968,13 @@
     {
       "entity_id": "c25_ENT_2",
       "name": "043150",
-      "type": "ShortCode",
+      "type": "StockCode",
       "chunk_id": 25
     },
     {
       "entity_id": "c25_ENT_3",
       "name": "바텍",
-      "type": "Company",
+      "type": "CompanyName",
       "chunk_id": 25
     },
     {
@@ -2890,13 +2992,13 @@
     {
       "entity_id": "c25_ENT_6",
       "name": "048530",
-      "type": "ShortCode",
+      "type": "StockCode",
       "chunk_id": 25
     },
     {
       "entity_id": "c25_ENT_7",
       "name": "인트론바이오",
-      "type": "Company",
+      "type": "CompanyName",
       "chunk_id": 25
     },
     {
@@ -2914,13 +3016,13 @@
     {
       "entity_id": "c25_ENT_10",
       "name": "144510",
-      "type": "ShortCode",
+      "type": "StockCode",
       "chunk_id": 25
     },
     {
       "entity_id": "c25_ENT_11",
       "name": "녹십자랩센",
-      "type": "Company",
+      "type": "CompanyName",
       "chunk_id": 25
     },
     {
@@ -2938,13 +3040,13 @@
     {
       "entity_id": "c25_ENT_14",
       "name": "214450",
-      "type": "ShortCode",
+      "type": "StockCode",
       "chunk_id": 25
     },
     {
       "entity_id": "c25_ENT_15",
       "name": "파마리서치프로덕트",
-      "type": "Company",
+      "type": "CompanyName",
       "chunk_id": 25
     },
     {
@@ -2962,13 +3064,13 @@
     {
       "entity_id": "c25_ENT_18",
       "name": "084110",
-      "type": "ShortCode",
+      "type": "StockCode",
       "chunk_id": 25
     },
     {
       "entity_id": "c25_ENT_19",
       "name": "휴온스글로벌",
-      "type": "Company",
+      "type": "CompanyName",
       "chunk_id": 25
     },
     {
@@ -2986,13 +3088,13 @@
     {
       "entity_id": "c25_ENT_22",
       "name": "065660",
-      "type": "ShortCode",
+      "type": "StockCode",
       "chunk_id": 25
     },
     {
       "entity_id": "c25_ENT_23",
       "name": "안트로젠",
-      "type": "Company",
+      "type": "CompanyName",
       "chunk_id": 25
     },
     {
@@ -3010,13 +3112,13 @@
     {
       "entity_id": "c25_ENT_26",
       "name": "182400",
-      "type": "ShortCode",
+      "type": "StockCode",
       "chunk_id": 25
     },
     {
       "entity_id": "c25_ENT_27",
       "name": "엔케이맥스",
-      "type": "Company",
+      "type": "CompanyName",
       "chunk_id": 25
     },
     {
@@ -3034,7 +3136,13 @@
     {
       "entity_id": "c25_ENT_30",
       "name": "041830",
-      "type": "ShortCode",
+      "type": "StockCode",
+      "chunk_id": 25
+    },
+    {
+      "entity_id": "c25_ENT_31",
+      "name": "인바디",
+      "type": "CompanyName",
       "chunk_id": 25
     },
     {
@@ -4501,6 +4609,27 @@
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
+      "source_id": "c3_ENT_21",
+      "target_id": "c3_ENT_22",
+      "relation": "threshold",
+      "chunk_id": 3,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c3_ENT_23",
+      "target_id": "c3_ENT_24",
+      "relation": "excluded",
+      "chunk_id": 3,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c3_ENT_23",
+      "target_id": "c3_ENT_25",
+      "relation": "included",
+      "chunk_id": 3,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
       "source_id": "c4_ENT_1",
       "target_id": "c4_ENT_4",
       "relation": "related to",
@@ -4536,69 +4665,6 @@
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c4_ENT_3",
-      "target_id": "c4_ENT_6",
-      "relation": "related to",
-      "chunk_id": 4,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c4_ENT_3",
-      "target_id": "c4_ENT_7",
-      "relation": "contains",
-      "chunk_id": 4,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c4_ENT_3",
-      "target_id": "c4_ENT_8",
-      "relation": "contains",
-      "chunk_id": 4,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c4_ENT_3",
-      "target_id": "c4_ENT_9",
-      "relation": "contains",
-      "chunk_id": 4,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c4_ENT_3",
-      "target_id": "c4_ENT_10",
-      "relation": "contains",
-      "chunk_id": 4,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c4_ENT_3",
-      "target_id": "c4_ENT_11",
-      "relation": "contains",
-      "chunk_id": 4,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c4_ENT_3",
-      "target_id": "c4_ENT_12",
-      "relation": "contains",
-      "chunk_id": 4,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c4_ENT_3",
-      "target_id": "c4_ENT_14",
-      "relation": "contains",
-      "chunk_id": 4,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c4_ENT_4",
-      "target_id": "c4_ENT_3",
-      "relation": "related to",
-      "chunk_id": 4,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
       "source_id": "c4_ENT_4",
       "target_id": "c4_ENT_5",
       "relation": "applies to",
@@ -4607,106 +4673,50 @@
     },
     {
       "source_id": "c4_ENT_5",
-      "target_id": "c4_ENT_3",
-      "relation": "part of",
-      "chunk_id": 4,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c4_ENT_6",
-      "target_id": "c4_ENT_3",
-      "relation": "applies to",
-      "chunk_id": 4,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c4_ENT_6",
-      "target_id": "c4_ENT_7",
-      "relation": "applies to",
-      "chunk_id": 4,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c4_ENT_6",
-      "target_id": "c4_ENT_8",
-      "relation": "applies to",
-      "chunk_id": 4,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c4_ENT_6",
-      "target_id": "c4_ENT_9",
-      "relation": "applies to",
-      "chunk_id": 4,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c4_ENT_6",
-      "target_id": "c4_ENT_10",
-      "relation": "applies to",
-      "chunk_id": 4,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c4_ENT_6",
-      "target_id": "c4_ENT_11",
-      "relation": "applies to",
-      "chunk_id": 4,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c4_ENT_6",
-      "target_id": "c4_ENT_12",
-      "relation": "applies to",
-      "chunk_id": 4,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c4_ENT_6",
-      "target_id": "c4_ENT_14",
-      "relation": "applies to",
+      "target_id": "c4_ENT_6",
+      "relation": "subject to",
       "chunk_id": 4,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
       "source_id": "c4_ENT_7",
-      "target_id": "c4_ENT_3",
-      "relation": "part of",
+      "target_id": "c4_ENT_6",
+      "relation": "subject to",
       "chunk_id": 4,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
       "source_id": "c4_ENT_8",
-      "target_id": "c4_ENT_3",
-      "relation": "part of",
+      "target_id": "c4_ENT_6",
+      "relation": "subject to",
       "chunk_id": 4,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
       "source_id": "c4_ENT_9",
-      "target_id": "c4_ENT_3",
-      "relation": "part of",
+      "target_id": "c4_ENT_6",
+      "relation": "subject to",
       "chunk_id": 4,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
       "source_id": "c4_ENT_10",
-      "target_id": "c4_ENT_3",
-      "relation": "part of",
+      "target_id": "c4_ENT_6",
+      "relation": "subject to",
       "chunk_id": 4,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
       "source_id": "c4_ENT_11",
-      "target_id": "c4_ENT_3",
-      "relation": "part of",
+      "target_id": "c4_ENT_6",
+      "relation": "subject to",
       "chunk_id": 4,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
       "source_id": "c4_ENT_12",
-      "target_id": "c4_ENT_3",
-      "relation": "part of",
+      "target_id": "c4_ENT_6",
+      "relation": "subject to",
       "chunk_id": 4,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
@@ -4718,16 +4728,58 @@
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c4_ENT_13",
-      "target_id": "c4_ENT_2",
-      "relation": "related to",
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_14",
+      "relation": "measures",
+      "chunk_id": 4,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c4_ENT_2",
+      "target_id": "c4_ENT_14",
+      "relation": "measures",
       "chunk_id": 4,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
       "source_id": "c4_ENT_14",
       "target_id": "c4_ENT_3",
-      "relation": "part of",
+      "relation": "classified under",
+      "chunk_id": 4,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c4_ENT_14",
+      "target_id": "c4_ENT_5",
+      "relation": "classified under",
+      "chunk_id": 4,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c4_ENT_14",
+      "target_id": "c4_ENT_6",
+      "relation": "classified under",
+      "chunk_id": 4,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c4_ENT_14",
+      "target_id": "c4_ENT_12",
+      "relation": "classified under",
+      "chunk_id": 4,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c4_ENT_14",
+      "target_id": "c4_ENT_10",
+      "relation": "classified under",
+      "chunk_id": 4,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c4_ENT_14",
+      "target_id": "c4_ENT_11",
+      "relation": "classified under",
       "chunk_id": 4,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
@@ -4901,21 +4953,28 @@
     },
     {
       "source_id": "c6_ENT_2",
-      "target_id": "c6_ENT_3",
+      "target_id": "c6_ENT_1",
       "relation": "part_of",
       "chunk_id": 6,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c6_ENT_2",
-      "target_id": "c6_ENT_4",
+      "source_id": "c6_ENT_3",
+      "target_id": "c6_ENT_2",
       "relation": "part_of",
       "chunk_id": 6,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c6_ENT_2",
-      "target_id": "c6_ENT_5",
+      "source_id": "c6_ENT_4",
+      "target_id": "c6_ENT_2",
+      "relation": "part_of",
+      "chunk_id": 6,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c6_ENT_5",
+      "target_id": "c6_ENT_2",
       "relation": "part_of",
       "chunk_id": 6,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
@@ -4928,15 +4987,22 @@
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c6_ENT_6",
-      "target_id": "c6_ENT_8",
+      "source_id": "c6_ENT_7",
+      "target_id": "c6_ENT_6",
       "relation": "part_of",
       "chunk_id": 6,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c6_ENT_6",
-      "target_id": "c6_ENT_9",
+      "source_id": "c6_ENT_8",
+      "target_id": "c6_ENT_6",
+      "relation": "part_of",
+      "chunk_id": 6,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c6_ENT_9",
+      "target_id": "c6_ENT_6",
       "relation": "part_of",
       "chunk_id": 6,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
@@ -4949,49 +5015,28 @@
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c6_ENT_10",
-      "target_id": "c6_ENT_12",
+      "source_id": "c6_ENT_11",
+      "target_id": "c6_ENT_10",
       "relation": "part_of",
       "chunk_id": 6,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c6_ENT_10",
-      "target_id": "c6_ENT_13",
+      "source_id": "c6_ENT_12",
+      "target_id": "c6_ENT_10",
       "relation": "part_of",
       "chunk_id": 6,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c6_ENT_14",
-      "target_id": "c6_ENT_18",
-      "relation": "part_of",
-      "chunk_id": 6,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c6_ENT_14",
-      "target_id": "c6_ENT_19",
+      "source_id": "c6_ENT_13",
+      "target_id": "c6_ENT_10",
       "relation": "part_of",
       "chunk_id": 6,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
       "source_id": "c6_ENT_14",
-      "target_id": "c6_ENT_20",
-      "relation": "part_of",
-      "chunk_id": 6,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c6_ENT_14",
-      "target_id": "c6_ENT_21",
-      "relation": "part_of",
-      "chunk_id": 6,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c6_ENT_15",
       "target_id": "c6_ENT_18",
       "relation": "part_of",
       "chunk_id": 6,
@@ -5005,63 +5050,7 @@
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c6_ENT_15",
-      "target_id": "c6_ENT_20",
-      "relation": "part_of",
-      "chunk_id": 6,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c6_ENT_15",
-      "target_id": "c6_ENT_21",
-      "relation": "part_of",
-      "chunk_id": 6,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
       "source_id": "c6_ENT_16",
-      "target_id": "c6_ENT_18",
-      "relation": "part_of",
-      "chunk_id": 6,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c6_ENT_16",
-      "target_id": "c6_ENT_19",
-      "relation": "part_of",
-      "chunk_id": 6,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c6_ENT_16",
-      "target_id": "c6_ENT_20",
-      "relation": "part_of",
-      "chunk_id": 6,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c6_ENT_16",
-      "target_id": "c6_ENT_21",
-      "relation": "part_of",
-      "chunk_id": 6,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c6_ENT_17",
-      "target_id": "c6_ENT_18",
-      "relation": "part_of",
-      "chunk_id": 6,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c6_ENT_17",
-      "target_id": "c6_ENT_19",
-      "relation": "part_of",
-      "chunk_id": 6,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c6_ENT_17",
       "target_id": "c6_ENT_20",
       "relation": "part_of",
       "chunk_id": 6,
@@ -5076,86 +5065,338 @@
     },
     {
       "source_id": "c6_ENT_18",
-      "target_id": "c6_ENT_22",
-      "relation": "part_of",
-      "chunk_id": 6,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c6_ENT_18",
-      "target_id": "c6_ENT_23",
-      "relation": "part_of",
-      "chunk_id": 6,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c6_ENT_18",
-      "target_id": "c6_ENT_24",
+      "target_id": "c6_ENT_14",
       "relation": "part_of",
       "chunk_id": 6,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
       "source_id": "c6_ENT_19",
-      "target_id": "c6_ENT_22",
-      "relation": "part_of",
-      "chunk_id": 6,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c6_ENT_19",
-      "target_id": "c6_ENT_23",
-      "relation": "part_of",
-      "chunk_id": 6,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c6_ENT_19",
-      "target_id": "c6_ENT_24",
+      "target_id": "c6_ENT_15",
       "relation": "part_of",
       "chunk_id": 6,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
       "source_id": "c6_ENT_20",
-      "target_id": "c6_ENT_22",
-      "relation": "part_of",
-      "chunk_id": 6,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c6_ENT_20",
-      "target_id": "c6_ENT_23",
-      "relation": "part_of",
-      "chunk_id": 6,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c6_ENT_20",
-      "target_id": "c6_ENT_24",
+      "target_id": "c6_ENT_16",
       "relation": "part_of",
       "chunk_id": 6,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
       "source_id": "c6_ENT_21",
-      "target_id": "c6_ENT_22",
+      "target_id": "c6_ENT_17",
       "relation": "part_of",
       "chunk_id": 6,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c6_ENT_21",
-      "target_id": "c6_ENT_23",
+      "source_id": "c6_ENT_22",
+      "target_id": "c6_ENT_14",
       "relation": "part_of",
       "chunk_id": 6,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c6_ENT_21",
-      "target_id": "c6_ENT_24",
+      "source_id": "c6_ENT_23",
+      "target_id": "c6_ENT_15",
       "relation": "part_of",
       "chunk_id": 6,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c6_ENT_24",
+      "target_id": "c6_ENT_17",
+      "relation": "part_of",
+      "chunk_id": 6,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_2",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_3",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_4",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_5",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_6",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_7",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_8",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_9",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_2",
+      "target_id": "c8_ENT_1",
+      "relation": "classified in",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_3",
+      "target_id": "c8_ENT_1",
+      "relation": "classified in",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_4",
+      "target_id": "c8_ENT_1",
+      "relation": "classified in",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_5",
+      "target_id": "c8_ENT_1",
+      "relation": "classified in",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_6",
+      "target_id": "c8_ENT_1",
+      "relation": "classified in",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_7",
+      "target_id": "c8_ENT_1",
+      "relation": "classified in",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_8",
+      "target_id": "c8_ENT_1",
+      "relation": "classified in",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_9",
+      "target_id": "c8_ENT_1",
+      "relation": "classified in",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_10",
+      "target_id": "c8_ENT_11",
+      "relation": "applies to",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_11",
+      "target_id": "c8_ENT_12",
+      "relation": "maintains",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_12",
+      "target_id": "c8_ENT_13",
+      "relation": "based on",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_12",
+      "target_id": "c8_ENT_14",
+      "relation": "based on",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_15",
+      "target_id": "c8_ENT_11",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_15",
+      "target_id": "c8_ENT_2",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_15",
+      "target_id": "c8_ENT_3",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_15",
+      "target_id": "c8_ENT_4",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_15",
+      "target_id": "c8_ENT_5",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_15",
+      "target_id": "c8_ENT_6",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_15",
+      "target_id": "c8_ENT_7",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_15",
+      "target_id": "c8_ENT_8",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_15",
+      "target_id": "c8_ENT_9",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_16",
+      "target_id": "c8_ENT_17",
+      "relation": "meets",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_17",
+      "target_id": "c8_ENT_18",
+      "relation": "based on",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_18",
+      "target_id": "c8_ENT_19",
+      "relation": "ratio",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_18",
+      "target_id": "c8_ENT_20",
+      "relation": "ratio",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_21",
+      "target_id": "c8_ENT_1",
+      "relation": "classified in",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_22",
+      "target_id": "c8_ENT_1",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_23",
+      "target_id": "c8_ENT_1",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_24",
+      "target_id": "c8_ENT_1",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_25",
+      "target_id": "c8_ENT_1",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_26",
+      "target_id": "c8_ENT_1",
+      "relation": "counts",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_27",
+      "target_id": "c8_ENT_1",
+      "relation": "applies to",
+      "chunk_id": 8,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c8_ENT_28",
+      "target_id": "c8_ENT_1",
+      "relation": "applies to",
+      "chunk_id": 8,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
@@ -5209,154 +5450,126 @@
     },
     {
       "source_id": "c13_ENT_1",
+      "target_id": "c13_ENT_2",
+      "relation": "defines",
+      "chunk_id": 13,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c13_ENT_1",
       "target_id": "c13_ENT_3",
-      "relation": "applies to",
+      "relation": "references",
       "chunk_id": 13,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
       "source_id": "c13_ENT_1",
       "target_id": "c13_ENT_4",
-      "relation": "applies to",
+      "relation": "references",
       "chunk_id": 13,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
       "source_id": "c13_ENT_1",
-      "target_id": "c13_ENT_2",
-      "relation": "applies to",
+      "target_id": "c13_ENT_5",
+      "relation": "references",
+      "chunk_id": 13,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c13_ENT_1",
+      "target_id": "c13_ENT_6",
+      "relation": "references",
+      "chunk_id": 13,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c13_ENT_1",
+      "target_id": "c13_ENT_7",
+      "relation": "references",
+      "chunk_id": 13,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c13_ENT_1",
+      "target_id": "c13_ENT_8",
+      "relation": "references",
+      "chunk_id": 13,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c13_ENT_1",
+      "target_id": "c13_ENT_9",
+      "relation": "references",
+      "chunk_id": 13,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c13_ENT_1",
+      "target_id": "c13_ENT_10",
+      "relation": "references",
+      "chunk_id": 13,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c13_ENT_1",
+      "target_id": "c13_ENT_11",
+      "relation": "references",
+      "chunk_id": 13,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c13_ENT_1",
+      "target_id": "c13_ENT_12",
+      "relation": "references",
       "chunk_id": 13,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
       "source_id": "c13_ENT_1",
       "target_id": "c13_ENT_13",
-      "relation": "results in",
+      "relation": "references",
       "chunk_id": 13,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c13_ENT_4",
-      "target_id": "c13_ENT_5",
-      "relation": "includes",
-      "chunk_id": 13,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c13_ENT_4",
-      "target_id": "c13_ENT_6",
-      "relation": "includes",
-      "chunk_id": 13,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c13_ENT_4",
-      "target_id": "c13_ENT_7",
-      "relation": "includes",
-      "chunk_id": 13,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c13_ENT_4",
-      "target_id": "c13_ENT_8",
-      "relation": "includes",
-      "chunk_id": 13,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c13_ENT_4",
-      "target_id": "c13_ENT_9",
-      "relation": "includes",
-      "chunk_id": 13,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c13_ENT_4",
-      "target_id": "c13_ENT_10",
-      "relation": "includes",
-      "chunk_id": 13,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c13_ENT_4",
-      "target_id": "c13_ENT_11",
-      "relation": "includes",
-      "chunk_id": 13,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c13_ENT_4",
-      "target_id": "c13_ENT_12",
-      "relation": "includes",
-      "chunk_id": 13,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c13_ENT_13",
+      "source_id": "c13_ENT_1",
       "target_id": "c13_ENT_14",
-      "relation": "has",
+      "relation": "references",
       "chunk_id": 13,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c13_ENT_14",
-      "target_id": "c13_ENT_5",
-      "relation": "has count",
+      "source_id": "c13_ENT_1",
+      "target_id": "c13_ENT_15",
+      "relation": "references",
       "chunk_id": 13,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c13_ENT_14",
-      "target_id": "c13_ENT_6",
-      "relation": "has count",
+      "source_id": "c13_ENT_1",
+      "target_id": "c13_ENT_16",
+      "relation": "references",
       "chunk_id": 13,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c13_ENT_14",
-      "target_id": "c13_ENT_7",
-      "relation": "has count",
+      "source_id": "c13_ENT_1",
+      "target_id": "c13_ENT_17",
+      "relation": "references",
       "chunk_id": 13,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c13_ENT_14",
-      "target_id": "c13_ENT_8",
-      "relation": "has count",
+      "source_id": "c13_ENT_1",
+      "target_id": "c13_ENT_18",
+      "relation": "references",
       "chunk_id": 13,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c13_ENT_14",
-      "target_id": "c13_ENT_9",
-      "relation": "has count",
-      "chunk_id": 13,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c13_ENT_14",
-      "target_id": "c13_ENT_10",
-      "relation": "has count",
-      "chunk_id": 13,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c13_ENT_14",
-      "target_id": "c13_ENT_11",
-      "relation": "has count",
-      "chunk_id": 13,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c13_ENT_14",
-      "target_id": "c13_ENT_12",
-      "relation": "has count",
-      "chunk_id": 13,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c13_ENT_19",
-      "target_id": "c13_ENT_13",
+      "source_id": "c13_ENT_1",
+      "target_id": "c13_ENT_19",
       "relation": "references",
       "chunk_id": 13,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
@@ -5364,56 +5577,56 @@
     {
       "source_id": "c13_ENT_20",
       "target_id": "c13_ENT_21",
-      "relation": "contains",
+      "relation": "defines",
       "chunk_id": 13,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c13_ENT_21",
+      "source_id": "c13_ENT_20",
       "target_id": "c13_ENT_22",
-      "relation": "has",
+      "relation": "references",
       "chunk_id": 13,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c13_ENT_22",
+      "source_id": "c13_ENT_20",
       "target_id": "c13_ENT_23",
-      "relation": "has count",
+      "relation": "references",
       "chunk_id": 13,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c13_ENT_22",
-      "target_id": "c13_ENT_24",
-      "relation": "has percentage",
-      "chunk_id": 13,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c13_ENT_22",
+      "source_id": "c13_ENT_24",
       "target_id": "c13_ENT_25",
-      "relation": "includes",
+      "relation": "references",
       "chunk_id": 13,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c13_ENT_22",
+      "source_id": "c13_ENT_24",
       "target_id": "c13_ENT_26",
-      "relation": "includes",
+      "relation": "references",
       "chunk_id": 13,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c13_ENT_22",
-      "target_id": "c13_ENT_17",
-      "relation": "includes",
+      "source_id": "c13_ENT_27",
+      "target_id": "c13_ENT_28",
+      "relation": "references",
       "chunk_id": 13,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c13_ENT_22",
-      "target_id": "c13_ENT_18",
-      "relation": "includes",
+      "source_id": "c13_ENT_27",
+      "target_id": "c13_ENT_29",
+      "relation": "references",
+      "chunk_id": 13,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c13_ENT_27",
+      "target_id": "c13_ENT_30",
+      "relation": "references",
       "chunk_id": 13,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
@@ -5614,7 +5827,7 @@
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c15_ENT_2",
+      "source_id": "c15_ENT_3",
       "target_id": "c15_ENT_4",
       "relation": "related to",
       "chunk_id": 15,
@@ -6358,7 +6571,7 @@
     {
       "source_id": "c25_ENT_1",
       "target_id": "c25_ENT_2",
-      "relation": "has_short_code",
+      "relation": "has_code",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
@@ -6377,149 +6590,226 @@
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_6",
+      "source_id": "c25_ENT_1",
       "target_id": "c25_ENT_7",
       "relation": "belongs_to",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_6",
-      "target_id": "c25_ENT_10",
-      "relation": "has_short_code",
+      "source_id": "c25_ENT_1",
+      "target_id": "c25_ENT_6",
+      "relation": "has_code",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_6",
+      "source_id": "c25_ENT_1",
       "target_id": "c25_ENT_8",
       "relation": "has_average_market_cap",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_6",
+      "source_id": "c25_ENT_1",
       "target_id": "c25_ENT_9",
       "relation": "has_average_trading_value",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_11",
+      "source_id": "c25_ENT_1",
+      "target_id": "c25_ENT_11",
+      "relation": "belongs_to",
+      "chunk_id": 25,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c25_ENT_1",
+      "target_id": "c25_ENT_10",
+      "relation": "has_code",
+      "chunk_id": 25,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c25_ENT_1",
       "target_id": "c25_ENT_12",
       "relation": "has_average_market_cap",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_11",
+      "source_id": "c25_ENT_1",
       "target_id": "c25_ENT_13",
       "relation": "has_average_trading_value",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_14",
+      "source_id": "c25_ENT_1",
       "target_id": "c25_ENT_15",
       "relation": "belongs_to",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_14",
+      "source_id": "c25_ENT_1",
+      "target_id": "c25_ENT_14",
+      "relation": "has_code",
+      "chunk_id": 25,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c25_ENT_1",
       "target_id": "c25_ENT_16",
-      "relation": "has_short_code",
+      "relation": "has_average_market_cap",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_14",
+      "source_id": "c25_ENT_1",
       "target_id": "c25_ENT_17",
-      "relation": "has_average_market_cap",
+      "relation": "has_average_trading_value",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_14",
+      "source_id": "c25_ENT_1",
+      "target_id": "c25_ENT_19",
+      "relation": "belongs_to",
+      "chunk_id": 25,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c25_ENT_1",
       "target_id": "c25_ENT_18",
-      "relation": "has_average_trading_value",
+      "relation": "has_code",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_19",
+      "source_id": "c25_ENT_1",
       "target_id": "c25_ENT_20",
-      "relation": "belongs_to",
+      "relation": "has_average_market_cap",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_19",
+      "source_id": "c25_ENT_1",
       "target_id": "c25_ENT_21",
-      "relation": "has_short_code",
-      "chunk_id": 25,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c25_ENT_19",
-      "target_id": "c25_ENT_22",
-      "relation": "has_average_market_cap",
-      "chunk_id": 25,
-      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
-    },
-    {
-      "source_id": "c25_ENT_19",
-      "target_id": "c25_ENT_23",
       "relation": "has_average_trading_value",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_24",
-      "target_id": "c25_ENT_25",
+      "source_id": "c25_ENT_1",
+      "target_id": "c25_ENT_23",
       "relation": "belongs_to",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_24",
-      "target_id": "c25_ENT_26",
-      "relation": "has_short_code",
+      "source_id": "c25_ENT_1",
+      "target_id": "c25_ENT_22",
+      "relation": "has_code",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_24",
-      "target_id": "c25_ENT_27",
+      "source_id": "c25_ENT_1",
+      "target_id": "c25_ENT_24",
       "relation": "has_average_market_cap",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_24",
-      "target_id": "c25_ENT_28",
+      "source_id": "c25_ENT_1",
+      "target_id": "c25_ENT_25",
       "relation": "has_average_trading_value",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_30",
+      "source_id": "c25_ENT_1",
+      "target_id": "c25_ENT_27",
+      "relation": "belongs_to",
+      "chunk_id": 25,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c25_ENT_1",
+      "target_id": "c25_ENT_26",
+      "relation": "has_code",
+      "chunk_id": 25,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c25_ENT_1",
+      "target_id": "c25_ENT_28",
+      "relation": "has_average_market_cap",
+      "chunk_id": 25,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c25_ENT_1",
+      "target_id": "c25_ENT_29",
+      "relation": "has_average_trading_value",
+      "chunk_id": 25,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c25_ENT_1",
       "target_id": "c25_ENT_31",
       "relation": "belongs_to",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_30",
-      "target_id": "c25_ENT_32",
-      "relation": "has_short_code",
+      "source_id": "c25_ENT_1",
+      "target_id": "c25_ENT_30",
+      "relation": "has_code",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },
     {
-      "source_id": "c25_ENT_30",
-      "target_id": "c25_ENT_33",
+      "source_id": "c25_ENT_1",
+      "target_id": "c25_ENT_32",
       "relation": "has_average_market_cap",
+      "chunk_id": 25,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c25_ENT_1",
+      "target_id": "c25_ENT_33",
+      "relation": "has_average_trading_value",
+      "chunk_id": 25,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c25_ENT_34",
+      "target_id": "c25_ENT_31",
+      "relation": "belongs_to",
+      "chunk_id": 25,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c25_ENT_34",
+      "target_id": "c25_ENT_30",
+      "relation": "has_code",
+      "chunk_id": 25,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c25_ENT_34",
+      "target_id": "c25_ENT_32",
+      "relation": "has_average_market_cap",
+      "chunk_id": 25,
+      "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
+    },
+    {
+      "source_id": "c25_ENT_34",
+      "target_id": "c25_ENT_33",
+      "relation": "has_average_trading_value",
       "chunk_id": 25,
       "document_id": "20.6월 코스닥150 정기변경안(최종_수정본)"
     },

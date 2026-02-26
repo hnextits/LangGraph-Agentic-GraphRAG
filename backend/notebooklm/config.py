@@ -1,11 +1,17 @@
 import os
 import json
 import logging
+import sys
 try:
     import torch  # type: ignore
 except Exception:
     torch = None
 from pathlib import Path
+
+# backend 디렉토리를 sys.path에 추가하여 utils.* 모듈을 notebooklm에서 직접 실행할 때도 불러올 수 있도록 함
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+if str(BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(BACKEND_DIR))
 
 # 특정 모듈의 로그 레벨 조정은 main.py에서 configure_logging 호출 후 수행
 # 여기서는 로깅 설정을 호출하지 않음
