@@ -331,7 +331,7 @@ docker run -d --name neo4j-dev \
 
 ## Contribution & Contact
 
-Issues and PRs are welcome. For questions or concerns, please open an issue on GitHub.
+Issues and PRs are welcome. For questions or concerns, please open an issue on GitHub or email us at **jeongnext@hnextits.com**.
 
 ---
 
