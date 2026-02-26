@@ -11,7 +11,7 @@
 LangGraph-Agentic-Graph RAG는 **LangGraph + SGLang** 기반의 벡터–그래프 하이브리드 RAG 플랫폼입니다. 수집 파이프라인은 LangGraph 상태 머신과 체크포인트 영속성을 통해 원시 문서를 Markdown 청크 및 그래프 메타데이터로 변환합니다. 쿼리 시점에는 품질 게이트 백트래킹이 적용된 홉 기반 라우터가 Vector, Weaviate GraphRAG, Neo4j GraphDB 세 가지 검색 경로 중 하나를 선택하여 답변을 생성합니다.
 
 <div align="center">
-<img src="https://github.com/user-attachments/assets/f1ee3090-a1a2-4962-86d6-03f4347a93b3" width="512" height="768" ></img><br/>
+<img src="https://github.com/user-attachments/assets/441a4a4b-d239-45c1-b385-80ddd95f31e6" width="512" height="768" ></img><br/>
 </div>
 
 ---
