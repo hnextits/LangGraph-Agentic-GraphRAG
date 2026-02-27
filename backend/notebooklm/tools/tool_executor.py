@@ -150,7 +150,12 @@ class ToolExecutor:
         if intent == "database":
             return {"sql": query, "raw_query": query}
         if intent == "api_call":
-            return {"prompt": query}
+            url = self._extract_url(query)
+            return {
+                "url": url,
+                "method": "GET",
+                "prompt": query,
+            }
         if intent == "code_exec":
             return {"snippet": query}
         return {"prompt": query}
@@ -188,9 +193,9 @@ class ToolExecutor:
         if tool_name == "sql_executor":
             return self._execute_sql_stub(inputs)
         if tool_name == "api_caller":
-            return self._execute_api_stub(inputs)
+            return self._execute_api_caller(inputs)
         if tool_name == "code_runner":
-            return self._execute_code_stub(inputs)
+            return self._execute_code_runner(inputs)
         
         return {"status": "error", "message": f"알 수 없는 Tool: {tool_name}"}
 
@@ -245,21 +250,91 @@ class ToolExecutor:
             "sql": inputs.get("sql") or inputs.get("raw_query", ""),
         }
 
-    def _execute_api_stub(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        """API 호출기 스텁 (추후 구현)."""
-        return {
-            "status": "not_implemented",
-            "message": "API 호출기는 아직 구현되지 않았습니다.",
-            "request": inputs,
-        }
+    def _execute_api_caller(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """간단한 HTTP API 호출기."""
+        try:
+            import requests
+        except ImportError as exc:
+            return {"status": "error", "message": f"requests 모듈이 필요합니다: {exc}"}
 
-    def _execute_code_stub(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
-        """코드 실행기 스텁 (추후 구현)."""
-        return {
-            "status": "not_implemented",
-            "message": "코드 실행기는 아직 구현되지 않았습니다.",
-            "snippet": inputs.get("snippet") or inputs.get("prompt", ""),
+        url = inputs.get("url") or self._extract_url(inputs.get("prompt", ""))
+        if not url:
+            return {"status": "error", "message": "요청할 URL을 찾을 수 없습니다."}
+
+        method = (inputs.get("method") or "GET").upper()
+        if method not in {"GET", "POST"}:
+            return {"status": "error", "message": f"지원하지 않는 HTTP 메서드: {method}"}
+
+        headers = inputs.get("headers") or {}
+        params = inputs.get("params") or {}
+        data = inputs.get("data")
+        json_payload = inputs.get("json")
+        timeout = inputs.get("timeout") or 10
+
+        try:
+            resp = requests.request(
+                method,
+                url,
+                headers=headers,
+                params=params,
+                data=data,
+                json=json_payload,
+                timeout=timeout,
+            )
+            snippet = resp.text[:1000]
+            return {
+                "status": "ok",
+                "result": {
+                    "status_code": resp.status_code,
+                    "headers": dict(resp.headers),
+                    "body": snippet,
+                },
+                "message": f"HTTP {method} {url} → {resp.status_code}",
+            }
+        except requests.RequestException as exc:
+            return {"status": "error", "message": f"API 호출 실패: {exc}"}
+
+    def _execute_code_runner(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """간단한 Python 코드 실행기 (샌드박스)."""
+        snippet = inputs.get("snippet") or inputs.get("prompt", "")
+        if not snippet:
+            return {"status": "error", "message": "실행할 코드 스니펫이 없습니다."}
+
+        lowered = snippet.lower()
+        forbidden_tokens = ["import", "__", "open(", "exec", "eval", "os.", "sys."]
+        if any(token in lowered for token in forbidden_tokens):
+            return {"status": "error", "message": "허용되지 않는 코드 패턴이 포함되어 있습니다."}
+
+        allowed_builtins = {
+            "abs": abs,
+            "min": min,
+            "max": max,
+            "sum": sum,
+            "len": len,
+            "range": range,
+            "round": round,
         }
+        local_env: Dict[str, Any] = {}
+
+        try:
+            exec(compile(snippet, "<code_runner>", "exec"), {"__builtins__": allowed_builtins}, local_env)
+            return {
+                "status": "ok",
+                "result": {k: v for k, v in local_env.items() if not k.startswith("_")},
+                "message": "코드 실행 완료",
+            }
+        except Exception as exc:
+            return {"status": "error", "message": f"코드 실행 실패: {exc}"}
+
+    def _extract_url(self, text: str) -> Optional[str]:
+        """텍스트에서 URL 추출."""
+        if not text:
+            return None
+        match = re.search(r"https?://[\w\-._~:/?#\[\]@!$&'()*+,;=%]+", text)
+        if match:
+            url = match.group(0)
+            return url.rstrip('.,)')
+        return None
 
     def summarize_result(self, result: Any) -> str:
         """Tool 실행 결과 요약."""
