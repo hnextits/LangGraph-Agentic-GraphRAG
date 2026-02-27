@@ -222,6 +222,8 @@ class GraphReasoner:
             if not reasoner.tool_executor:
                 return {
                     "tool_result": {"status": "error", "message": "ToolExecutor가 초기화되지 않았습니다."},
+                    "tool_status": "error",
+                    "abort_reason": "tool_failed",
                     "answer_notes": ["Tool Executor: 초기화 실패"],
                 }
             
@@ -233,11 +235,19 @@ class GraphReasoner:
             else:
                 result = reasoner.tool_executor.execute_tool(tool_name, tool_inputs)
             
+            tool_status = result.get("status", "error")
             summary = reasoner.tool_executor.summarize_result(result)
-            logger.info("Tool Executor: tool=%s summary=%s", tool_name or "n/a", summary)
+            logger.info("Tool Executor: tool=%s status=%s summary=%s", tool_name or "n/a", tool_status, summary)
+            notes = [f"Tool Executor[{tool_name or 'n/a'}]: {summary}"]
+            abort_reason = None
+            if tool_status != "ok":
+                notes.append("Tool 실행 실패: tool calling 중단")
+                abort_reason = "tool_failed"
             return {
                 "tool_result": result,
-                "answer_notes": [f"Tool Executor[{tool_name or 'n/a'}]: {summary}"],
+                "tool_status": tool_status,
+                "abort_reason": abort_reason,
+                "answer_notes": notes,
             }
 
         def vector_retriever(state: GraphReasonerState) -> dict:
@@ -466,16 +476,24 @@ class GraphReasoner:
 
             tool_result = state.get("tool_result")
             dispatch_target = state.get("dispatch_target", "rag")
+            abort_reason = state.get("abort_reason")
 
             if dispatch_target == "tool" and tool_result is not None:
-                notes.append("툴 실행 결과를 반환합니다.")
+                tool_status = state.get("tool_status", tool_result.get("status", "error"))
+                if tool_status == "ok":
+                    notes.append("툴 실행 결과를 반환합니다.")
+                else:
+                    message = tool_result.get("message") or "tool calling 실패"
+                    notes.append(f"툴 실행 실패: {message}")
+                    if not abort_reason:
+                        abort_reason = "tool_failed"
             elif entities or events:
                 notes.append(f"최종 결과 - 엔티티 {len(entities)}개, 이벤트 {len(events)}개")
             else:
                 notes.append("그래프 탐색에서 관련 노드를 찾지 못했습니다.")
 
             snippets = []
-            if dispatch_target != "tool":
+            if dispatch_target != "tool" and abort_reason is None:
                 snippets = reasoner._build_context_snippets(state)
                 if snippets:
                     notes.append(f"컨텍스트 스니펫 {len(snippets)}건 생성")
