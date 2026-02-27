@@ -258,17 +258,18 @@ backend/
 
 1. `POST /v1/chat` → `rag_pipeline.retrieve()` is invoked.
 2. `graph_reasoner.py` runs the LangGraph workflow:
-   - **planner** → analyzes query, sets `max_hops` based on LLM+Heuristic hop classification.
+   - **planner** → analyzes the query and records high-level plan/history.
    - **tool_router** → LLM classifies query intent (knowledge/calculation/database/api_call/code_exec):
      - If `knowledge` → routes to **rag_router**
      - If computational task → routes to **tool_executor**
-   - **rag_router** (for knowledge queries) → selects initial path (Vector/Cross-Ref/GraphDB) based on hop count:
+   - **rag_router** (for knowledge queries) → performs hop classification (LLM + heuristic), sets `max_hops`, and selects the initial path (Vector/Cross-Ref/GraphDB):
      - hop ≤ 2 → `vector_retriever`
      - hop 3-5 → `crossref_retriever`
      - hop ≥ 6 → `graphdb_retriever`
-   - **tool_executor** (for computational tasks) → executes tool via MCP server or local fallback:
-     - Calculator: AST-based safe math evaluation
-     - SQL/API/Code: stub implementations (extensible via MCP)
+   - **tool_executor** (for computational tasks) → executes tools via MCP server (preferred) or local fallback:
+     - Calculator: AST-based safe math evaluation (완료)
+     - API Caller / Code Runner: lightweight local implementations for quick testing (full MCP versions recommended)
+     - SQL Executor: currently `not_implemented` placeholder
    - **retrieval node** (Path 1/2/3) → executes selected retrieval strategy.
    - **quality_gate** → Observer LLM scores result (0.0–1.0).
      - If quality < `QUALITY_GATE_THRESHOLD` → **intelligent backtracking**: `_select_best_path()` evaluates remaining paths based on query keywords and hop count, selects the most suitable alternative (max `MAX_BACKTRACK_COUNT` retries).

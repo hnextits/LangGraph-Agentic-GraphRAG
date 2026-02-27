@@ -237,15 +237,19 @@ backend/
 2. **跳数分类（LLM + 启发式）**：
    - 基于 LLM 的分类器（通过 SGLang）估计查询复杂度（1–6 跳）。
    - 启发式备用方案使用关键词模式和查询结构分析。
-   - 结果决定初始检索路径选择。
 3. `graph_reasoner.py` 运行 LangGraph 工作流：
-   - **planner** → 分析查询，基于 LLM+启发式分类设置 `max_hops`。
-   - **router** → 根据跳数选择初始路径（Vector/Cross-Ref/GraphDB）。
+   - **planner** → 仅负责分析查询并记录计划/历史（不再执行跳数分类）。
+   - **tool_router** → LLM 判别 query intent（knowledge/calculation/database/api_call/code_exec），决定进入 RAG 或 Tool。
+   - **rag_router** → 基于 LLM+启发式跳数分类设置 `max_hops`，并选择 Vector/Cross-Ref/GraphDB 路径。
    - **检索节点**（路径 1/2/3）→ 执行选定的检索策略。
    - **quality_gate** → 观察者 LLM 对结果评分（0.0–1.0）。
    - 如果 quality < threshold → **智能回溯**：`_select_best_path()` 基于查询关键词和跳数评估剩余路径，选择最合适的替代方案（最多 MAX_BACKTRACK 次重试）。
    - 如果启用 GoT → 带有基于快照回溯的 **thought_expander**。
-   - **aggregator** 构建上下文片段。
+   - **tool_executor** → 优先调用 MCP 服务器，失败时回退到本地实现：
+     - 计算器：AST 安全计算（已完成）
+     - API 调用/代码执行：轻量本地实现（适合 PoC，建议配合 MCP 正式工具）
+     - SQL 执行：当前为 `not_implemented`
+   - **aggregator** 构建上下文片段或格式化工具结果。
 4. `generator.py` 从原始查询 + 上下文片段生成答案。
 5. （可选）`refiner.py` 润色答案；`evaluator.py` 记录质量说明。
 6. 响应包含用于调试的 `plan`、`hops`、`notes`、`context_snippets`、`backtrack_count`、`tried_paths` 和 `thought_steps`。

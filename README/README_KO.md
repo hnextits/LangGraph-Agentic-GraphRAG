@@ -238,15 +238,19 @@ backend/
 2. **홉 분류 (LLM + Heuristic)**:
    - LLM 기반 분류기(SGLang 사용)가 쿼리 복잡도(1–6 홉)를 추정합니다.
    - 휴리스틱 fallback은 키워드 패턴과 쿼리 구조 분석을 사용합니다.
-   - 결과가 초기 검색 경로 선택을 결정합니다.
 3. `graph_reasoner.py`가 LangGraph 워크플로우 실행:
-   - **planner** → 쿼리 분석, LLM+Heuristic 분류 기반으로 `max_hops` 설정.
-   - **router** → 홉 수 기반으로 초기 경로(Vector/Cross-Ref/GraphDB) 선택.
+   - **planner** → 쿼리를 분석하고 필요한 단계(plan)와 히스토리를 기록합니다.
+   - **tool_router** → LLM이 의도(knowledge/calculation/database/api_call/code_exec)를 분류하여 RAG 또는 Tool 경로 결정.
+   - **rag_router** → LLM+휴리스틱 기반 홉 분류 결과로 `max_hops`를 설정하고 Vector/Cross-Ref/GraphDB 경로를 선택.
    - **검색 노드** (Path 1/2/3) → 선택된 검색 전략 실행.
    - **quality_gate** → 관찰자 LLM이 결과 점수화 (0.0–1.0).
    - quality < threshold이면 → **지능형 백트래킹**: `_select_best_path()`가 쿼리 키워드와 홉 수 기반으로 남은 경로를 평가하여 가장 적합한 대안 선택 (최대 MAX_BACKTRACK 재시도).
    - GoT 활성화 시 → 스냅샷 기반 백트래킹이 적용된 **thought_expander**.
-   - **aggregator**가 컨텍스트 스니펫을 구성합니다.
+   - **tool_executor** → MCP 서버 우선, 실패 시 로컬 fallback으로 툴 실행.
+     - 계산기: AST 기반 안전 계산 (완료)
+     - API/Code: 경량 로컬 구현(프로토타입용) — 정식 사용 시 MCP Tool 권장
+     - SQL: 현재 `not_implemented`
+   - **aggregator**가 컨텍스트 스니펫 또는 툴 결과를 구성합니다.
 4. `generator.py`가 원본 쿼리 + 컨텍스트 스니펫으로 답변을 생성합니다.
 5. (선택) `refiner.py`가 답변을 다듬고; `evaluator.py`가 품질 노트를 기록합니다.
 6. 응답에는 디버깅을 위한 `plan`, `hops`, `notes`, `context_snippets`, `backtrack_count`, `tried_paths`, `thought_steps`가 포함됩니다.
