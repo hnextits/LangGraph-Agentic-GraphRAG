@@ -1010,7 +1010,7 @@ class GraphReasoner:
     # 워크플로우 실행
     # ------------------------------------------------------------------
     def _run_workflow(self, query: str, allowed_doc_ids: Optional[List[str]] = None) -> GraphReasonerState:
-        state = make_initial_state(query, allowed_doc_ids=allowed_doc_ids)
+        state = make_initial_state(query, allowed_document_uuids=set(allowed_doc_ids) if allowed_doc_ids else None)
         if not self.workflow:
             state["plan"] = [
                 "질문을 분석하고 향후 LangGraph 워크플로우에 전달",

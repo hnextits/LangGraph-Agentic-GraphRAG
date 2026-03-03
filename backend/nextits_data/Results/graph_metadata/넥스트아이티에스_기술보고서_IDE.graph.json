@@ -1,0 +1,2498 @@
+{
+  "document_id": "넥스트아이티에스_기술보고서_IDE",
+  "entities": [
+    {
+      "entity_id": "c1_ENT_1",
+      "name": "NIT-Editor",
+      "type": "Product",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_2",
+      "name": "VS Code",
+      "type": "Product",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_3",
+      "name": "Web IDE",
+      "type": "Product",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_4",
+      "name": "LLM",
+      "type": "Technology",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_5",
+      "name": "Custom Editor",
+      "type": "Technology",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_6",
+      "name": "Webview",
+      "type": "Technology",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_7",
+      "name": "LMS",
+      "type": "Technology",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_8",
+      "name": "Agent",
+      "type": "Technology",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_9",
+      "name": "Multi LLM Platform",
+      "type": "Product",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_10",
+      "name": "Education",
+      "type": "Industry",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_11",
+      "name": "Advertising",
+      "type": "RevenueModel",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_12",
+      "name": "Subscription",
+      "type": "RevenueModel",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_13",
+      "name": "src/vs/workbench/...",
+      "type": "Code",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_14",
+      "name": "src/server-main.ts",
+      "type": "Code",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_15",
+      "name": "remote/web/...",
+      "type": "Code",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_16",
+      "name": "HTTP Server",
+      "type": "Technology",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_17",
+      "name": "WebSocket",
+      "type": "Technology",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_18",
+      "name": "remoteExtensionHostAgentServer",
+      "type": "Code",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_19",
+      "name": "License Agreement",
+      "type": "Legal",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_20",
+      "name": "Port",
+      "type": "Configuration",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_21",
+      "name": "Host",
+      "type": "Configuration",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c1_ENT_22",
+      "name": "Socket Path",
+      "type": "Configuration",
+      "chunk_id": 1
+    },
+    {
+      "entity_id": "c2_ENT_1",
+      "name": "바인딩 주소",
+      "type": "TechnicalTerm",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_2",
+      "name": "브라우저",
+      "type": "Software",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_3",
+      "name": "원격 IDE",
+      "type": "Software",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_4",
+      "name": "Server-side VS Code",
+      "type": "Software",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_5",
+      "name": "온프레미스",
+      "type": "Infrastructure",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_6",
+      "name": "사내망",
+      "type": "Infrastructure",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_7",
+      "name": "개발 서버형 IDE 제품",
+      "type": "Software",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_8",
+      "name": "Webview",
+      "type": "Component",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_9",
+      "name": "Custom Editor",
+      "type": "Component",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_10",
+      "name": "workbench.common.main.ts",
+      "type": "File",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_11",
+      "name": "CustomEditorService",
+      "type": "Component",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_12",
+      "name": "파일 패턴",
+      "type": "Configuration",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_13",
+      "name": "glob",
+      "type": "Pattern",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_14",
+      "name": "diff 에디터",
+      "type": "Component",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_15",
+      "name": "Undo/Redo",
+      "type": "Feature",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_16",
+      "name": "capabilities",
+      "type": "Feature",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_17",
+      "name": "editor resolver",
+      "type": "Component",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_18",
+      "name": "CustomEditorInputSerializer",
+      "type": "Component",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_19",
+      "name": "더티 여부",
+      "type": "State",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_20",
+      "name": "backupId",
+      "type": "Identifier",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_21",
+      "name": "webview 옵션",
+      "type": "Configuration",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_22",
+      "name": "브라우저 새로고침",
+      "type": "Event",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_23",
+      "name": "세션 복원",
+      "type": "Event",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_24",
+      "name": "탭",
+      "type": "UIElement",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_25",
+      "name": "상태 복구",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_26",
+      "name": "WebviewEditorService",
+      "type": "Component",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_27",
+      "name": "활성 Webview",
+      "type": "State",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_28",
+      "name": "컨텍스트 키",
+      "type": "Identifier",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_29",
+      "name": "Diff 에디터 환경",
+      "type": "Environment",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_30",
+      "name": "Webview 탭",
+      "type": "UIElement",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_31",
+      "name": "Reviver",
+      "type": "Component",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_32",
+      "name": "RevivalPool",
+      "type": "Component",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_33",
+      "name": "Webview 복원",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_34",
+      "name": "Webview 재연결",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_35",
+      "name": "도메인 특화 UI",
+      "type": "UIElement",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_36",
+      "name": "그래프",
+      "type": "UIElement",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_37",
+      "name": "파이프라인",
+      "type": "UIElement",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_38",
+      "name": "대시보드",
+      "type": "UIElement",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_39",
+      "name": "워크플로우",
+      "type": "UIElement",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_40",
+      "name": "에디터 탭",
+      "type": "UIElement",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_41",
+      "name": "통합",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_42",
+      "name": "구조",
+      "type": "Architecture",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_43",
+      "name": "브라우저에서 접속 가능",
+      "type": "Feature",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_44",
+      "name": "원격 IDE 제공",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_45",
+      "name": "온프레미스 설치",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_46",
+      "name": "사내망 설치",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_47",
+      "name": "커스텀 에디터 등록",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_48",
+      "name": "파일 이동",
+      "type": "Event",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_49",
+      "name": "이름 변경",
+      "type": "Event",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_50",
+      "name": "확장자",
+      "type": "Identifier",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_51",
+      "name": "자동 교체",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_52",
+      "name": "상태 직렬화",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_53",
+      "name": "상태 역직렬화",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_54",
+      "name": "탭 복구",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_55",
+      "name": "활성 Webview 추적",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_56",
+      "name": "Webview 탭 관리",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_59",
+      "name": "브라우저 새로고침 시 탭 복구",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_60",
+      "name": "세션 복원 시 상태 복구",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_61",
+      "name": "커스텀 에디터 쌍 구성",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_62",
+      "name": "원본/수정본",
+      "type": "Pair",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_63",
+      "name": "Undo/Redo 연동",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_64",
+      "name": "capabilities 연동",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_65",
+      "name": "editor resolver 연동",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_66",
+      "name": "커스텀 에디터 상태 관리",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_67",
+      "name": "Webview 옵션 관리",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_68",
+      "name": "WebviewEditorService 기능",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_69",
+      "name": "컨텍스트 키 노출",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_70",
+      "name": "Webview 탭 관리 기능",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_71",
+      "name": "Reviver/RevivalPool 활용",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_72",
+      "name": "Webview 복원 기능",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_73",
+      "name": "Webview 재연결 기능",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_74",
+      "name": "도메인 특화 UI 통합",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_75",
+      "name": "에디터 탭 통합",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_76",
+      "name": "구조 통합",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c2_ENT_77",
+      "name": "브라우저에서 접속 가능 기능",
+      "type": "Function",
+      "chunk_id": 2
+    },
+    {
+      "entity_id": "c3_ENT_1",
+      "name": "auth-server",
+      "type": "Server",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_2",
+      "name": "Node",
+      "type": "ProgrammingLanguage",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_3",
+      "name": "Express",
+      "type": "Framework",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_4",
+      "name": "VS Code",
+      "type": "IDE",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_5",
+      "name": "ChatGPT",
+      "type": "LLM",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_6",
+      "name": "Claude",
+      "type": "LLM",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_7",
+      "name": "Gemini",
+      "type": "LLM",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_8",
+      "name": "NIT-Editor",
+      "type": "IDE",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_9",
+      "name": "LLM",
+      "type": "Model",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c3_ENT_10",
+      "name": "IDE",
+      "type": "Software",
+      "chunk_id": 3
+    },
+    {
+      "entity_id": "c4_ENT_1",
+      "name": "MCP",
+      "type": "Protocol",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_4",
+      "name": "FileExtension",
+      "type": "Entity",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_5",
+      "name": "RequestType",
+      "type": "Entity",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_6",
+      "name": "AgenticCoder",
+      "type": "Entity",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_8",
+      "name": "CodeAssistant",
+      "type": "Entity",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_9",
+      "name": "Git",
+      "type": "System",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_10",
+      "name": "TestResult",
+      "type": "Entity",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_11",
+      "name": "Workflow",
+      "type": "Process",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_12",
+      "name": "Commit",
+      "type": "Action",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_13",
+      "name": "Refactoring",
+      "type": "Action",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_14",
+      "name": "TestCode",
+      "type": "Entity",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_15",
+      "name": "BugDescription",
+      "type": "Entity",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_16",
+      "name": "Prompt",
+      "type": "Entity",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c4_ENT_17",
+      "name": "BYOLLM",
+      "type": "Entity",
+      "chunk_id": 4
+    },
+    {
+      "entity_id": "c5_ENT_2",
+      "name": "BYO LLM",
+      "type": "Mode",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_3",
+      "name": "NIT-Editor 전용 코더",
+      "type": "Feature",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_4",
+      "name": "프로/엔터프라이즈 플랜",
+      "type": "PlanType",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_5",
+      "name": "사내 LLM",
+      "type": "System",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_6",
+      "name": "사내 코더 에이전트 개발 서비스",
+      "type": "Service",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_7",
+      "name": "LMS",
+      "type": "System",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_8",
+      "name": "Webview",
+      "type": "Interface",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_9",
+      "name": "Custom Editor",
+      "type": "Interface",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_10",
+      "name": "과제 설명",
+      "type": "Content",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_11",
+      "name": "힌트",
+      "type": "Content",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_12",
+      "name": "체크리스트",
+      "type": "Content",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_13",
+      "name": "테스트 결과",
+      "type": "Content",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_14",
+      "name": "IDE 탭",
+      "type": "Interface",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_15",
+      "name": "학생 코드",
+      "type": "Data",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_16",
+      "name": "과제 상태",
+      "type": "Data",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_17",
+      "name": "auth-server",
+      "type": "System",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_18",
+      "name": "수강생",
+      "type": "Role",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_19",
+      "name": "강사",
+      "type": "Role",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_20",
+      "name": "강의",
+      "type": "Entity",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_21",
+      "name": "과제",
+      "type": "Entity",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_22",
+      "name": "권한",
+      "type": "AccessControl",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_23",
+      "name": "접근 제어",
+      "type": "AccessControl",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_24",
+      "name": "현재 강의의 과제 목록",
+      "type": "Tab",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_25",
+      "name": "자동 채점 결과",
+      "type": "Data",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_26",
+      "name": "피드백",
+      "type": "Data",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_27",
+      "name": "권장 프롬프트 템플릿",
+      "type": "Template",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_28",
+      "name": "TDD로 이 문제 풀어보기",
+      "type": "Prompt",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_29",
+      "name": "학생별 코드 제출 기록",
+      "type": "Data",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_30",
+      "name": "LLM 사용 로그",
+      "type": "Data",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_31",
+      "name": "자동화된 피드백 데이터",
+      "type": "Data",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_32",
+      "name": "교육 기관",
+      "type": "Organization",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_33",
+      "name": "부트캠프",
+      "type": "Organization",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_34",
+      "name": "코딩 교육용",
+      "type": "ProductType",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_35",
+      "name": "AI 튜터 내장 IDE",
+      "type": "Product",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_37",
+      "name": "AI TA(Teaching Assistant)",
+      "type": "Role",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_38",
+      "name": "코드 리뷰",
+      "type": "Function",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_39",
+      "name": "힌트 제공",
+      "type": "Function",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_40",
+      "name": "리팩토링 제안",
+      "type": "Function",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c5_ENT_41",
+      "name": "광고 슬롯",
+      "type": "Feature",
+      "chunk_id": 5
+    },
+    {
+      "entity_id": "c6_ENT_1",
+      "name": "수익 모델",
+      "type": "RevenueModel",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_3",
+      "name": "좌측 사이드바",
+      "type": "UIComponent",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_4",
+      "name": "우측 상단 고정 영역",
+      "type": "UIComponent",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_5",
+      "name": "정적 배너 광고 슬롯",
+      "type": "AdvertisingSlot",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_6",
+      "name": "동적 배너 광고 슬롯",
+      "type": "AdvertisingSlot",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_8",
+      "name": "외부 브라우저",
+      "type": "Technology",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_9",
+      "name": "노출 로그",
+      "type": "Data",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_10",
+      "name": "클릭 로그",
+      "type": "Data",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_11",
+      "name": "서버",
+      "type": "Infrastructure",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_12",
+      "name": "리포팅",
+      "type": "Service",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_13",
+      "name": "과금",
+      "type": "Service",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_14",
+      "name": "BYO LLM",
+      "type": "ModelType",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_15",
+      "name": "OpenAI",
+      "type": "Organization",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_16",
+      "name": "Claude",
+      "type": "Organization",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_17",
+      "name": "Gemini",
+      "type": "Organization",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_18",
+      "name": "Cursor",
+      "type": "Product",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_19",
+      "name": "Windsurf",
+      "type": "Product",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_20",
+      "name": "LLM 비용",
+      "type": "Cost",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_21",
+      "name": "IDE",
+      "type": "Product",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_22",
+      "name": "광고 배너",
+      "type": "AdvertisingSlot",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_23",
+      "name": "사용자 스토리",
+      "type": "UserStory",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_24",
+      "name": "클라우드",
+      "type": "Industry",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_25",
+      "name": "DevOps",
+      "type": "Industry",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_26",
+      "name": "모니터링",
+      "type": "Industry",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_27",
+      "name": "보안",
+      "type": "Industry",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_28",
+      "name": "협업 도구",
+      "type": "Industry",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_29",
+      "name": "개발자 SaaS",
+      "type": "Industry",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_30",
+      "name": "SDK",
+      "type": "Technology",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_31",
+      "name": "B2D 인벤토리",
+      "type": "InventoryType",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_32",
+      "name": "UX",
+      "type": "Design",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_33",
+      "name": "보안",
+      "type": "Design",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_34",
+      "name": "팝업 광고",
+      "type": "AdvertisingType",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_35",
+      "name": "영상 광고",
+      "type": "AdvertisingType",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_36",
+      "name": "스트립 광고",
+      "type": "AdvertisingType",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_37",
+      "name": "배지 광고",
+      "type": "AdvertisingType",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_38",
+      "name": "유료 플랜",
+      "type": "SubscriptionPlan",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_39",
+      "name": "광고 제거 옵션",
+      "type": "Feature",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_40",
+      "name": "코드",
+      "type": "Data",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_41",
+      "name": "프롬프트",
+      "type": "Data",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_42",
+      "name": "광고 타깃팅",
+      "type": "AdvertisingTargeting",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c6_ENT_43",
+      "name": "비식별 최소 메타데이터",
+      "type": "MetadataType",
+      "chunk_id": 6
+    },
+    {
+      "entity_id": "c7_ENT_1",
+      "name": "비타깃팅 광고",
+      "type": "Advertising",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_2",
+      "name": "Free",
+      "type": "PlanType",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_3",
+      "name": "Pro",
+      "type": "PlanType",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_4",
+      "name": "Enterprise",
+      "type": "PlanType",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_5",
+      "name": "BYO LLM",
+      "type": "Technology",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_6",
+      "name": "LLM 구독",
+      "type": "Subscription",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_7",
+      "name": "좌/우측 배너 광고",
+      "type": "Advertising",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_8",
+      "name": "기본 IDE",
+      "type": "Technology",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_9",
+      "name": "기본 LLM 연동 기능",
+      "type": "Functionality",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_10",
+      "name": "광고 제거",
+      "type": "Feature",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_11",
+      "name": "자체 코더",
+      "type": "Technology",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_12",
+      "name": "멀티 LLM 라우팅",
+      "type": "Functionality",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_13",
+      "name": "프롬프트 템플릿",
+      "type": "Feature",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_14",
+      "name": "히스토리 검색",
+      "type": "Feature",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_15",
+      "name": "LMS 연동",
+      "type": "Integration",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_16",
+      "name": "SSO",
+      "type": "Technology",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_17",
+      "name": "RBAC",
+      "type": "Technology",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_18",
+      "name": "사내 LLM",
+      "type": "Technology",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_19",
+      "name": "프로젝트/조직 단위 LLM 정책",
+      "type": "Policy",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_20",
+      "name": "감사 로그",
+      "type": "Feature",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_21",
+      "name": "온프레미스",
+      "type": "Deployment",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_22",
+      "name": "VPC 배포",
+      "type": "Deployment",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_23",
+      "name": "벤더 중립 멀티 LLM IDE",
+      "type": "Product",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_27",
+      "name": "LMS 통합 교육/업무 환경",
+      "type": "Environment",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_28",
+      "name": "AI 코더",
+      "type": "Technology",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_29",
+      "name": "TA",
+      "type": "Technology",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_30",
+      "name": "LMS 통합 IDE",
+      "type": "Product",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_31",
+      "name": "광고 기반 무료 플랜",
+      "type": "PlanType",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_32",
+      "name": "Pro/Enterprise 구독",
+      "type": "PlanType",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_33",
+      "name": "컨설팅",
+      "type": "Service",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_34",
+      "name": "커스터마이징",
+      "type": "Service",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_35",
+      "name": "VS Code 포크",
+      "type": "Technology",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_36",
+      "name": "서버형/웹형 IDE",
+      "type": "Technology",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_39",
+      "name": "auth-server",
+      "type": "Technology",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_40",
+      "name": "조직 계정",
+      "type": "Feature",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_41",
+      "name": "접근 제어",
+      "type": "Functionality",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c7_ENT_42",
+      "name": "플랫폼형 IDE",
+      "type": "Product",
+      "chunk_id": 7
+    },
+    {
+      "entity_id": "c8_ENT_1",
+      "name": "Copilot 대체 플러그인",
+      "type": "Product",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_3",
+      "name": "자체 코더",
+      "type": "Product",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_5",
+      "name": "광고/구독 혼합 모델",
+      "type": "BusinessModel",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_6",
+      "name": "교육/엔터프라이즈/개발자 SaaS 시장",
+      "type": "Market",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_7",
+      "name": "멀티 LLM 라우팅",
+      "type": "Technology",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_8",
+      "name": "자체 코더-LMS 연계 아키텍처",
+      "type": "Architecture",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_9",
+      "name": "Free / Pro / Enterprise 플랜",
+      "type": "BusinessPlan",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_10",
+      "name": "광고 슬롯 UX 가이드라인",
+      "type": "UXGuideline",
+      "chunk_id": 8
+    },
+    {
+      "entity_id": "c8_ENT_11",
+      "name": "엔터프라이즈/교육용 “광고 없는 빌드”",
+      "type": "Policy",
+      "chunk_id": 8
+    }
+  ],
+  "events": [],
+  "relations": [
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_2",
+      "relation": "forked from",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_3",
+      "relation": "based on",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_4",
+      "relation": "integrates",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_5",
+      "relation": "custom editor",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_6",
+      "relation": "webview infrastructure",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_7",
+      "relation": "linked to",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_8",
+      "relation": "develops",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_9",
+      "relation": "multi LLM platform",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_10",
+      "relation": "education integration",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_11",
+      "relation": "revenue model",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c1_ENT_1",
+      "target_id": "c1_ENT_12",
+      "relation": "revenue model",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c1_ENT_14",
+      "target_id": "c1_ENT_16",
+      "relation": "handles",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c1_ENT_14",
+      "target_id": "c1_ENT_17",
+      "relation": "handles",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c1_ENT_14",
+      "target_id": "c1_ENT_18",
+      "relation": "delegates to",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c1_ENT_14",
+      "target_id": "c1_ENT_19",
+      "relation": "displays",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c1_ENT_14",
+      "target_id": "c1_ENT_20",
+      "relation": "configures",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c1_ENT_14",
+      "target_id": "c1_ENT_21",
+      "relation": "configures",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c1_ENT_14",
+      "target_id": "c1_ENT_22",
+      "relation": "configures",
+      "chunk_id": 1,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_2",
+      "relation": "exposes",
+      "chunk_id": 4,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_4",
+      "relation": "maps to",
+      "chunk_id": 4,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c4_ENT_1",
+      "target_id": "c4_ENT_5",
+      "relation": "maps to",
+      "chunk_id": 4,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c4_ENT_4",
+      "target_id": "c4_ENT_5",
+      "relation": "maps to",
+      "chunk_id": 4,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c4_ENT_8",
+      "target_id": "c4_ENT_11",
+      "relation": "automates",
+      "chunk_id": 4,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c4_ENT_11",
+      "target_id": "c4_ENT_12",
+      "relation": "includes",
+      "chunk_id": 4,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c4_ENT_11",
+      "target_id": "c4_ENT_13",
+      "relation": "includes",
+      "chunk_id": 4,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c4_ENT_11",
+      "target_id": "c4_ENT_14",
+      "relation": "includes",
+      "chunk_id": 4,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c4_ENT_11",
+      "target_id": "c4_ENT_15",
+      "relation": "includes",
+      "chunk_id": 4,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c4_ENT_16",
+      "target_id": "c4_ENT_17",
+      "relation": "is a type of",
+      "chunk_id": 4,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c4_ENT_17",
+      "target_id": "c4_ENT_2",
+      "relation": "uses",
+      "chunk_id": 4,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c4_ENT_17",
+      "target_id": "c4_ENT_16",
+      "relation": "is used with",
+      "chunk_id": 4,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_3",
+      "relation": "includes",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_3",
+      "target_id": "c5_ENT_4",
+      "relation": "provided as",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_5",
+      "relation": "combined with",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_6",
+      "relation": "extended to",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_1",
+      "target_id": "c5_ENT_7",
+      "relation": "integrated with",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_8",
+      "target_id": "c5_ENT_14",
+      "relation": "through",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_9",
+      "target_id": "c5_ENT_14",
+      "relation": "through",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_10",
+      "target_id": "c5_ENT_14",
+      "relation": "provided in",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_11",
+      "target_id": "c5_ENT_14",
+      "relation": "provided in",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_12",
+      "target_id": "c5_ENT_14",
+      "relation": "provided in",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_13",
+      "target_id": "c5_ENT_14",
+      "relation": "provided in",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_15",
+      "target_id": "c5_ENT_14",
+      "relation": "provided in",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_16",
+      "target_id": "c5_ENT_14",
+      "relation": "provided in",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_17",
+      "target_id": "c5_ENT_18",
+      "relation": "linked to",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_17",
+      "target_id": "c5_ENT_19",
+      "relation": "linked to",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_17",
+      "target_id": "c5_ENT_20",
+      "relation": "linked to",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_17",
+      "target_id": "c5_ENT_21",
+      "relation": "linked to",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_17",
+      "target_id": "c5_ENT_22",
+      "relation": "linked to",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_17",
+      "target_id": "c5_ENT_23",
+      "relation": "linked to",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_20",
+      "target_id": "c5_ENT_22",
+      "relation": "access control for",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_21",
+      "target_id": "c5_ENT_22",
+      "relation": "access control for",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_24",
+      "target_id": "c5_ENT_14",
+      "relation": "tab in",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_25",
+      "target_id": "c5_ENT_14",
+      "relation": "tab in",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_26",
+      "target_id": "c5_ENT_14",
+      "relation": "tab in",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_27",
+      "target_id": "c5_ENT_28",
+      "relation": "linked to",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_27",
+      "target_id": "c5_ENT_3",
+      "relation": "integrated with",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_29",
+      "target_id": "c5_ENT_31",
+      "relation": "collected",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_32",
+      "target_id": "c5_ENT_34",
+      "relation": "targeted for",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_33",
+      "target_id": "c5_ENT_34",
+      "relation": "targeted for",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_34",
+      "target_id": "c5_ENT_35",
+      "relation": "positioned as",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_37",
+      "target_id": "c5_ENT_38",
+      "relation": "automates",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_37",
+      "target_id": "c5_ENT_39",
+      "relation": "automates",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_37",
+      "target_id": "c5_ENT_40",
+      "relation": "automates",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c5_ENT_41",
+      "target_id": "c5_ENT_3",
+      "relation": "utilized for",
+      "chunk_id": 5,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_1",
+      "target_id": "c6_ENT_2",
+      "relation": "defines",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_2",
+      "target_id": "c6_ENT_3",
+      "relation": "contains",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_2",
+      "target_id": "c6_ENT_4",
+      "relation": "contains",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_2",
+      "target_id": "c6_ENT_5",
+      "relation": "contains",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_2",
+      "target_id": "c6_ENT_6",
+      "relation": "contains",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_5",
+      "target_id": "c6_ENT_7",
+      "relation": "links to",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_5",
+      "target_id": "c6_ENT_8",
+      "relation": "links to",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_5",
+      "target_id": "c6_ENT_9",
+      "relation": "tracks",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_5",
+      "target_id": "c6_ENT_10",
+      "relation": "tracks",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_9",
+      "target_id": "c6_ENT_11",
+      "relation": "transmits to",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_10",
+      "target_id": "c6_ENT_11",
+      "relation": "transmits to",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_11",
+      "target_id": "c6_ENT_12",
+      "relation": "supports",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_11",
+      "target_id": "c6_ENT_13",
+      "relation": "supports",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_1",
+      "target_id": "c6_ENT_14",
+      "relation": "combines with",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_14",
+      "target_id": "c6_ENT_15",
+      "relation": "includes",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_14",
+      "target_id": "c6_ENT_16",
+      "relation": "includes",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_14",
+      "target_id": "c6_ENT_17",
+      "relation": "includes",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_14",
+      "target_id": "c6_ENT_18",
+      "relation": "includes",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_14",
+      "target_id": "c6_ENT_19",
+      "relation": "includes",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_1",
+      "target_id": "c6_ENT_20",
+      "relation": "combines with",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_20",
+      "target_id": "c6_ENT_21",
+      "relation": "operates",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_21",
+      "target_id": "c6_ENT_22",
+      "relation": "contains",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_22",
+      "target_id": "c6_ENT_20",
+      "relation": "supports",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_23",
+      "target_id": "c6_ENT_24",
+      "relation": "targets",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_23",
+      "target_id": "c6_ENT_25",
+      "relation": "targets",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_23",
+      "target_id": "c6_ENT_26",
+      "relation": "targets",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_23",
+      "target_id": "c6_ENT_27",
+      "relation": "targets",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_23",
+      "target_id": "c6_ENT_28",
+      "relation": "targets",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_23",
+      "target_id": "c6_ENT_29",
+      "relation": "targets",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_23",
+      "target_id": "c6_ENT_30",
+      "relation": "targets",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_1",
+      "target_id": "c6_ENT_31",
+      "relation": "targets",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_31",
+      "target_id": "c6_ENT_32",
+      "relation": "related to",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_31",
+      "target_id": "c6_ENT_33",
+      "relation": "related to",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_31",
+      "target_id": "c6_ENT_34",
+      "relation": "avoids",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c6_ENT_31",
+      "target_id": "c6_ENT_35",
+      "relation": "avoids",
+      "chunk_id": 6,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_1",
+      "target_id": "c7_ENT_2",
+      "relation": "included in",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_1",
+      "target_id": "c7_ENT_3",
+      "relation": "included in",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_1",
+      "target_id": "c7_ENT_4",
+      "relation": "included in",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_2",
+      "target_id": "c7_ENT_5",
+      "relation": "uses",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_2",
+      "target_id": "c7_ENT_6",
+      "relation": "uses",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_2",
+      "target_id": "c7_ENT_7",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_2",
+      "target_id": "c7_ENT_8",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_2",
+      "target_id": "c7_ENT_9",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_3",
+      "target_id": "c7_ENT_10",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_3",
+      "target_id": "c7_ENT_11",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_3",
+      "target_id": "c7_ENT_12",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_4",
+      "target_id": "c7_ENT_15",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_4",
+      "target_id": "c7_ENT_16",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_4",
+      "target_id": "c7_ENT_17",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_4",
+      "target_id": "c7_ENT_18",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_4",
+      "target_id": "c7_ENT_19",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_4",
+      "target_id": "c7_ENT_20",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_4",
+      "target_id": "c7_ENT_21",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_4",
+      "target_id": "c7_ENT_22",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_23",
+      "target_id": "c7_ENT_24",
+      "relation": "uses",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_23",
+      "target_id": "c7_ENT_25",
+      "relation": "uses",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_23",
+      "target_id": "c7_ENT_26",
+      "relation": "uses",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_23",
+      "target_id": "c7_ENT_27",
+      "relation": "uses",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_23",
+      "target_id": "c7_ENT_28",
+      "relation": "uses",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_23",
+      "target_id": "c7_ENT_29",
+      "relation": "uses",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_23",
+      "target_id": "c7_ENT_30",
+      "relation": "uses",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_31",
+      "target_id": "c7_ENT_2",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_31",
+      "target_id": "c7_ENT_3",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_31",
+      "target_id": "c7_ENT_4",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_32",
+      "target_id": "c7_ENT_3",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_32",
+      "target_id": "c7_ENT_4",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_32",
+      "target_id": "c7_ENT_33",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_32",
+      "target_id": "c7_ENT_34",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_35",
+      "target_id": "c7_ENT_36",
+      "relation": "based on",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_36",
+      "target_id": "c7_ENT_37",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_36",
+      "target_id": "c7_ENT_38",
+      "relation": "includes",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c7_ENT_39",
+      "target_id": "c7_ENT_40",
+      "relation": "manages",
+      "chunk_id": 7,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_2",
+      "relation": "is a type of",
+      "chunk_id": 8,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_3",
+      "relation": "integrates with",
+      "chunk_id": 8,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_4",
+      "relation": "integrates with",
+      "chunk_id": 8,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_5",
+      "relation": "uses",
+      "chunk_id": 8,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c8_ENT_1",
+      "target_id": "c8_ENT_6",
+      "relation": "targets",
+      "chunk_id": 8,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c8_ENT_2",
+      "target_id": "c8_ENT_7",
+      "relation": "utilizes",
+      "chunk_id": 8,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c8_ENT_2",
+      "target_id": "c8_ENT_8",
+      "relation": "connects",
+      "chunk_id": 8,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    },
+    {
+      "source_id": "c8_ENT_10",
+      "target_id": "c8_ENT_11",
+      "relation": "defines",
+      "chunk_id": 8,
+      "document_id": "넥스트아이티에스_기술보고서_IDE"
+    }
+  ]
+}
