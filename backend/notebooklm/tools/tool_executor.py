@@ -9,6 +9,11 @@ import logging
 import re
 from typing import Any, Dict, Literal, Optional
 
+try:  
+    import requests
+except ImportError: 
+    requests = None
+
 from .mcp_client import MCPClient
 
 logger = logging.getLogger(__name__)
@@ -77,7 +82,6 @@ class ToolExecutor:
         )
         
         try:
-            import requests
             resp = requests.post(
                 f"{endpoint}/v1/chat/completions",
                 json={
@@ -252,10 +256,8 @@ class ToolExecutor:
 
     def _execute_api_caller(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
         """간단한 HTTP API 호출기."""
-        try:
-            import requests
-        except ImportError as exc:
-            return {"status": "error", "message": f"requests 모듈이 필요합니다: {exc}"}
+        if requests is None:
+            return {"status": "error", "message": "requests 모듈이 설치되어 있지 않습니다."}
 
         url = inputs.get("url") or self._extract_url(inputs.get("prompt", ""))
         if not url:

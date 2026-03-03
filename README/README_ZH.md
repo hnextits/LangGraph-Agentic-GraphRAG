@@ -238,7 +238,7 @@ backend/
    - 基于 LLM 的分类器（通过 SGLang）估计查询复杂度（1–6 跳）。
    - 启发式备用方案使用关键词模式和查询结构分析。
 3. `graph_reasoner.py` 运行 LangGraph 工作流：
-   - **planner** → 仅负责分析查询并记录计划/历史（不再执行跳数分类）。
+   - **planner** → 仅负责分析查询并记录计划/历史。
    - **tool_router** → LLM 判别 query intent（knowledge/calculation/database/api_call/code_exec），决定进入 RAG 或 Tool。
    - **rag_router** → 基于 LLM+启发式跳数分类设置 `max_hops`，并选择 Vector/Cross-Ref/GraphDB 路径。
    - **检索节点**（路径 1/2/3）→ 执行选定的检索策略。
