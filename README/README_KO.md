@@ -236,7 +236,7 @@ backend/
 │           ├── udp_pdftopng_300dpi.py    # PDF → PNG 변환
 │           └── udp_layoutdetection.py    # 레이아웃 감지
 │
-├── services/                        # 비즈니스 로직 서비스
+├── services/                        
 │   ├── model_manager.py             # LazyModelManager (GPU 생명주기)
 │   ├── ocr_vision_manager.py        # OCR 엔진 관리
 │   └── rag_service.py               # RAG 서비스 오케스트레이션
