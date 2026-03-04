@@ -53,7 +53,7 @@ LangGraph-Agentic-Graph RAG는 **LangGraph + SGLang** 기반의 지능형 하이
   - **상태 추적**: `tried_paths` 필드가 실패한 전략의 재시도를 방지
 
 - **3-way 검색 라우팅**: 쿼리 복잡도(홉 수)가 최적의 검색 전략을 결정합니다:
-  - **Path 1 – Vector RAG (≤ 2 홉)**: BM25 + 리랭커를 통한 late-chunked TextDocument 코퍼스에서의 빠른 의미 유사성 검색. 직접적인 사실 질문에 이상적.
+  - **Path 1 – Vector RAG (≤ 2 홉)**: late-chunked TextDocument 코퍼스에서의 빠른 의미 유사성 검색. 직접적인 사실 질문에 이상적.
   - **Path 2 – Weaviate Cross-Reference GraphRAG (3–5 홉)**: BM25 시드 엔티티 검색 후 Weaviate 내에서 멀티홉 cross-reference 탐색(source/target/event refs). 관계 워킹을 통해 쿼리 인접 엔티티와 이벤트를 표면화.
   - **Path 3 – Neo4j Deep Graph Traversal (≥ 6 홉)**: 스키마 집중 관계 추론을 위한 Cypher 기반 심층 그래프 탐색. 광범위한 그래프 탐색이 필요한 복잡한 다중 엔티티 쿼리 처리.
   - **홉 분류**: LLM 주요 분류와 키워드 기반 fallback을 갖춘 하이브리드 LLM + 휴리스틱 접근 방식으로 쿼리 복잡도 추정
@@ -310,7 +310,7 @@ backend/
    - **출력**: `max_hops`, `retrieval_path`, `tried_paths`
 
    **단계 4a: 검색 실행** (Path 1/2/3)
-   - **Path 1**: TextDocument에서 BM25 의미 검색 + 리랭커
+   - **Path 1**: TextDocument에서 의미 검색 + 리랭커
    - **Path 2**: BM25 시드 검색 + Weaviate cross-reference 멀티홉 탐색
    - **Path 3**: Neo4j Cypher 심층 그래프 탐색
    - **출력**: `context_snippets`, `entities`, `events`, `relations`

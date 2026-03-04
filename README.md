@@ -53,7 +53,7 @@ The system features:
   - **State tracking**: `tried_paths` field prevents re-attempting failed strategies
 
 - **3-way retrieval routing**: Query complexity (hop count) determines the optimal retrieval strategy:
-  - **Path 1 – Vector RAG (≤ 2 hops)**: Fast semantic similarity search on late-chunked TextDocument corpus via BM25 + reranker. Ideal for direct factual questions.
+  - **Path 1 – Vector RAG (≤ 2 hops)**: Fast semantic similarity search on late-chunked TextDocument corpus. Ideal for direct factual questions.
   - **Path 2 – Weaviate Cross-Reference GraphRAG (3–5 hops)**: BM25 seed entity search followed by multi-hop cross-reference traversal (source/target/event refs) within Weaviate. Surfaces query-adjacent entities and events through relationship walking.
   - **Path 3 – Neo4j Deep Graph Traversal (≥ 6 hops)**: Cypher-based deep graph exploration for schema-intensive relationship reasoning. Handles complex multi-entity queries requiring extensive graph traversal.
   - **Hop classification**: Hybrid LLM + heuristic approach estimates query complexity, with LLM primary classification and keyword-based fallback
@@ -320,7 +320,7 @@ backend/
    - **Output**: `max_hops`, `retrieval_path`, `tried_paths`
 
    **Step 4a: Retrieval Execution** (Path 1/2/3)
-   - **Path 1**: BM25 semantic search + reranker on TextDocument
+   - **Path 1**: semantic search + reranker on TextDocument
    - **Path 2**: BM25 seed search + Weaviate cross-reference multi-hop traversal
    - **Path 3**: Neo4j Cypher deep graph traversal
    - **Output**: `context_snippets`, `entities`, `events`, `relations`
