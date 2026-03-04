@@ -7,7 +7,7 @@
 
 [English](../README.md) | 한국어 | [中文](README_ZH.md)
 </div>
-
+<br>
 **검색, 추론, 도구 실행을 하나의 상태 기반 그래프 워크플로우로 통합한 하이브리드 에이전틱 RAG 플랫폼**
 
 ## Introduction
@@ -17,7 +17,7 @@
 > LangGraph-Agentic-Graph RAG는 LangGraph 기반으로 설계되고 SGLang으로 구동되는 상태 기반 그래프 오케스트레이션 아키텍처를 제안합니다.
 >
 > 본 시스템은 지식 검색과 도구 실행을 단일 체크포인트 워크플로우 안에서 통합하여, 지능형 라우팅, 품질 기반 백트래킹, Graph-of-Thought 확장을 통한 적응형 다중 경로 추론을 가능하게 합니다.
-
+<br>
 LangGraph-Agentic-Graph RAG는 **LangGraph + SGLang** 기반의 지능형 하이브리드 RAG 플랫폼으로, 지식 검색과 툴 실행을 seamless하게 통합합니다. 
 
 주요 특징:

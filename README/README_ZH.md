@@ -7,7 +7,7 @@
 
 [English](../README.md) | [한국어](README_KO.md) | 中文
 </div>
-
+<br>
 **一个将检索、推理与工具执行统一于状态化图工作流中的混合智能体 RAG 平台**
 
 ## Introduction
@@ -17,7 +17,7 @@
 > LangGraph-Agentic-Graph RAG 提出了一种基于 LangGraph 构建、由 SGLang 驱动的状态化图编排架构。
 >
 > 该系统将知识检索与工具执行统一于单一的可检查点工作流之中，实现智能路由、基于质量门控的回溯机制，以及通过 Graph-of-Thought 扩展实现的自适应多路径推理。
-
+<br>
 LangGraph-Agentic-Graph RAG 是一个智能混合 RAG 平台，由 **LangGraph + SGLang** 驱动，无缝集成知识检索与工具执行。
 
 系统特性：
