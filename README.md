@@ -8,6 +8,7 @@
 English | [한국어](README/README_KO.md) | [中文](README/README_ZH.md)
 </div> 
 <br>
+
 **A stateful, graph-orchestrated hybrid RAG platform that unifies retrieval, reasoning, and tool execution under a single agentic workflow.**
 
 ## Introduction

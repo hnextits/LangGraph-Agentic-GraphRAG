@@ -8,6 +8,7 @@
 [English](../README.md) | 한국어 | [中文](README_ZH.md)
 </div>
 <br>
+
 **검색, 추론, 도구 실행을 하나의 상태 기반 그래프 워크플로우로 통합한 하이브리드 에이전틱 RAG 플랫폼**
 
 ## Introduction
