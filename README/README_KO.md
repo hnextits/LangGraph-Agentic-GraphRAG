@@ -8,7 +8,9 @@
 [English](../README.md) | 한국어 | [中文](README_ZH.md)
 </div>
 
-LangGraph-Agentic-Graph RAG는 **LangGraph + SGLang** 기반의 지능형 하이브리드 RAG 플랫폼으로, 지식 검색과 계산 툴 실행을 seamless하게 통합합니다. 주요 특징:
+LangGraph-Agentic-Graph RAG는 **LangGraph + SGLang** 기반의 지능형 하이브리드 RAG 플랫폼으로, 지식 검색과 툴 실행을 seamless하게 통합합니다. 
+
+주요 특징:
 
 - **이중 모드 쿼리 처리**: LLM 기반 의도 분류를 통해 지식 기반 RAG 검색과 계산 툴 실행 사이를 자동으로 라우팅
 - **고급 문서 수집**: 원시 문서(PDF/이미지/오디오)를 LangGraph 상태 머신과 체크포인트 영속성을 통해 Markdown 청크 및 구조화된 그래프 메타데이터로 변환
@@ -148,26 +150,9 @@ planner → tool_router ┬→ rag_router →┬→ vector_retriever  ──→�
 - **Fallback 메커니즘**: LLM 분류 실패 시 휴리스틱 키워드 매칭
 
 **Tool Executor** (`backend/notebooklm/tools/tool_executor.py`):
-- **MCP 통합**: `MCP_SERVER_ENABLED=true`일 때 MCP 서버 REST API를 통한 주요 실행
-- **로컬 fallback**: MCP를 사용할 수 없을 때 로컬 구현으로 자동 fallback
-- **의도 분류**: 신뢰성을 위한 휴리스틱 fallback을 갖춘 LLM 기반
-- **지원 툴**:
-  - **계산기** (완전 구현):
-    - AST 기반 안전 표현식 평가 (`eval()` 보안 위험 없음)
-    - 고급 수학 함수: `sqrt`, `cbrt`, `abs`, `log`, `ln`, `log10`, `exp`, `sin`, `cos`, `tan`, `sigma`
-    - 자연어 파싱: "144의 제곱근" → `sqrt(144)`, "2의 3제곱" → `2 ** 3`
-    - 연산자 지원: `+`, `-`, `*`, `/`, `**`, `%`
-  - **API 호출기** (경량 구현):
-    - HTTP GET/POST 요청 실행
-    - 자연어 프롬프트에서 URL 추출
-    - 설정 가능한 타임아웃 및 오류 처리
-  - **코드 러너** (샌드박스 구현):
-    - 제한된 Python 실행 환경
-    - 필터링된 built-in (`eval`, `exec`, `__import__` 없음)
-    - 토큰 기반 보안 필터링
-  - **SQL 실행기** (플레이스홀더):
-    - `not_implemented` 상태 반환
-    - 향후 데이터베이스 통합을 위해 예약됨
+- MCP 서버 통합 및 로컬 fallback
+- 지원: 계산기, API 호출기, 코드 러너, SQL 실행기 (예정)
+- 상세 내용은 아래 쿼리 처리 흐름 섹션 참조
 
 ---
 
@@ -186,109 +171,6 @@ planner → tool_router ┬→ rag_router →┬→ vector_retriever  ──→�
    - `GraphSchemaManager`가 Weaviate GraphEntity/GraphEvent/GraphRelation 컬렉션을 Cross-Reference(source/target/event)와 함께 생성
    - `LegacyGraphIngestor` / `Neo4jManager`가 결정론적 UUID로 Neo4j에 노드/관계를 MERGE
 5. **Late Chunking & 임베딩**: `embedding_text.py`가 Markdown을 청크로 분할하고 `SharedEmbeddingModel`을 통해 Weaviate TextDocument 컬렉션에 업로드합니다(`EMBEDDING_MODEL`로 모델 설정 가능).
-
----
-
-## 쿼리 / 추론 레이어
-
-`GraphReasoner` (`graph_reasoner.py`)가 `MemorySaver` 체크포인팅과 지능형 백트래킹으로 처리합니다:
-
-1. **플래너** (`planner` 노드):
-   - **쿼리 분석**: 사용자 쿼리를 검사하고 핵심 개념 추출
-   - **계획 기록**: 고수준 검색 전략 및 추론 단계 로깅
-   - **히스토리 추적**: 다중 턴 대화를 위한 쿼리 컨텍스트 유지
-   - **참고**: 홉 분류를 수행하지 않음 (더 나은 관심사 분리를 위해 `rag_router`로 이동)
-
-2. **Tool Router** (`tool_router` 노드):
-   - **의도 분류**: `ToolExecutor.classify_intent()`를 통한 LLM 기반 쿼리 의도 감지
-   - **분류 카테고리**:
-     - `knowledge`: 문서 검색이 필요한 사실 질문 → `rag_router`로 라우팅
-     - `calculation`: 수학 연산 → `tool_executor`로 라우팅 (계산기)
-     - `database`: SQL 쿼리 → `tool_executor`로 라우팅 (SQL 실행기)
-     - `api_call`: 외부 API 요청 → `tool_executor`로 라우팅 (API 호출기)
-     - `code_exec`: 코드 실행 요청 → `tool_executor`로 라우팅 (코드 러너)
-   - **라우팅 결정**: 지식 쿼리는 RAG 파이프라인으로 진행; 계산 작업은 RAG를 건너뛰고 툴을 직접 실행
-
-3. **RAG Router** (`rag_router` 노드, 지식 쿼리만):
-   - **홉 분류**: 쿼리 복잡도를 추정하는 하이브리드 LLM + 휴리스틱 접근 방식
-     - **LLM 분류기**: SGLang 서버를 통한 주요 분류 (1–`GRAPH_MAX_HOPS`)
-     - **휴리스틱 fallback**: 키워드 기반 점수화 (화살표 개수, 개념 구분자, 관계 지표)
-     - **최종 홉 수**: 보수적 라우팅을 위한 `min(llm_estimate, heuristic_estimate, GRAPH_MAX_HOPS)`
-   - **경로 선택**: 홉 수를 최적의 검색 전략에 매핑
-     - 홉 ≤ 2 → Path 1 (VectorRetriever)
-     - 홉 3–5 → Path 2 (CrossRefRetriever)
-     - 홉 ≥ 6 → Path 3 (GraphDBRetriever)
-   - **상태 업데이트**: `max_hops`, `retrieval_path` 설정 및 `tried_paths` 추적 초기화
-
-4. **Tool Executor** (`tool_executor` 노드, 계산 작업용):
-   - **툴 매핑**: 의도를 특정 툴 구현에 매핑
-   - **입력 준비**: 쿼리에서 관련 매개변수 추출 (표현식, URL, 코드 스니펫, SQL)
-   - **실행 전략**:
-     - **MCP 우선**: MCP 서버 REST API를 통한 실행 시도
-     - **로컬 fallback**: MCP를 사용할 수 없거나 실패하면 로컬 구현으로 fallback
-   - **결과 포맷팅**: 상태, 결과 값, 메타데이터를 갖춘 구조화된 결과 반환
-   - **오류 처리**: 실행 오류를 캡처하고 실패 메시지 반환 (RAG로 fallback하지 않음)
-
-5. **검색 노드** (지식 쿼리용):
-   - **Path 1 – Vector RAG** (`vector_retriever`):
-     - TextDocument 컬렉션에서 BM25 기반 의미 검색
-     - 관련성 최적화를 위한 리랭커 후처리
-     - 단순 사실 쿼리를 위한 빠른 실행
-   - **Path 2 – Cross-Ref GraphRAG** (`crossref_retriever`):
-     - GraphEntity 컬렉션에서 BM25 시드 엔티티 검색
-     - Weaviate `QueryReference`를 통한 멀티홉 cross-reference 탐색
-     - source/target/event 관계를 걸어 연결된 엔티티 표면화
-     - Neo4j escalation 전에 Weaviate 내에서 쿼리 인접 컨텍스트 수집
-   - **Path 3 – Neo4j GraphDB** (`graphdb_retriever`):
-     - `LegacyGraphClient`를 통한 심층 Cypher 기반 그래프 탐색
-     - 스키마 집중 관계 추론
-     - 광범위한 그래프 탐색이 필요한 복잡한 다중 엔티티 쿼리 처리
-
-6. **품질 게이트** (`quality_gate` 노드, 지식 쿼리용):
-   - **품질 평가**: 관찰자 LLM이 검색 결과를 점수화 (0.0–1.0)
-     - Path 1은 불필요한 LLM 호출을 피하기 위해 위임 시 기본값 1.0
-     - Path 2와 3은 품질 평가를 위해 항상 평가됨
-   - **통과 조건**: 품질 ≥ `QUALITY_GATE_THRESHOLD` → aggregator 또는 thought expander로 진행
-   - **지능형 백트래킹**: 품질 < threshold가 스마트 경로 선택을 트리거
-     - `PathSelector.select_best_path()`가 남은 미시도 경로 분석
-     - 쿼리 키워드, 홉 수, 경로 특성을 기반으로 점수화
-     - 가장 적합한 대체 경로 선택 (무작위 재시도 아님)
-   - **종료 조건**:
-     - 모든 경로 소진 → 최선의 컨텍스트로 계속 진행
-     - `MAX_BACKTRACK_COUNT` 한도 도달 → `answer_notes`에 품질 저하 플래그
-   - **상태 추적**: `tried_paths` 목록이 실패한 전략의 재시도를 방지
-
-7. **GoT Thought Expander** (`thought_expander` 노드, `GOT_MODE_ENABLED=true`일 때):
-   - **그래프 형태 탐색**: 복잡한 분석 쿼리를 위한 멀티 브랜치 추론
-   - **브랜치 생성**: 각 단계에서 `GOT_BRANCH_FACTOR`개의 후보 쿼리를 병렬로 확장
-   - **품질 점수화**: 관찰자 LLM이 각 브랜치를 평가 (0.0–1.0):
-     - 원본 쿼리와의 관련성
-     - 새로운 정보의 범위
-     - 기존 브랜치와 비교한 참신성
-   - **지능형 병합**: `GOT_THOUGHT_SCORE_THRESHOLD` 이상의 브랜치를 전략을 통해 병합:
-     - `top_k`: 최고 점수 상위 K개 브랜치 선택
-     - `weighted_union`: 점수 기반 가중치로 병합
-     - `vote`: 브랜치 간 민주적 선택
-   - **엣지 가지치기**: 키워드 오버랩 점수화를 통해 저품질 연결 (< `GOT_EDGE_PRUNE_THRESHOLD`) 제거
-   - **스냅샷 기반 백트래킹**: 연속적인 전체 브랜치 실패가 상태 롤백을 트리거
-     - `GOT_MAX_CONSECUTIVE_FAILURES`를 통한 연속 실패 추적
-     - 마지막 성공적인 병합 지점으로 롤백
-     - 무한 탐색 루프 방지
-
-8. **어그리게이터** (`aggregator` 노드):
-   - **컨텍스트 구축**: 검색 결과 또는 툴 출력에서 컨텍스트 스니펫 조립
-   - **RAG 쿼리용**: 엔티티, 이벤트, 관계, 사고 단계를 일관된 컨텍스트로 병합
-   - **툴 쿼리용**: 툴 결과를 자연어 응답으로 포맷팅
-     - 계산기: "표현식 = 결과" 형식 (예: "sqrt(144) = 12.0")
-     - API/코드: 결과 값 또는 성공 메시지
-     - 오류: 사용자 친화적 오류 메시지
-   - **메타데이터 수집**: 디버깅을 위한 `context_snippets`, `thought_steps`, `backtrack_count`, `tried_paths` 수집
-
-9. **생성** (`generator.py`):
-   - **답변 합성**: 원본 쿼리 + 컨텍스트 스니펫 (또는 툴 결과)을 병합하여 최종 답변 생성
-   - **RAG 쿼리용**: LLM이 검색된 컨텍스트에서 답변 생성
-   - **툴 쿼리용**: 포맷팅된 툴 결과를 직접 반환 (LLM 생성 불필요)
-   - **후처리**: `refiner.py`를 통한 선택적 정제 및 `evaluator.py`를 통한 품질 평가
 
 ---
 
@@ -482,37 +364,6 @@ backend/
    - **디버깅 지원**: 추적성을 위해 노출된 모든 워크플로우 상태
 
 5. **클라이언트로 반환**: 답변, 메타데이터, 디버깅 정보를 갖춘 JSON 응답
-
----
-
-## 설치 & 실행
-
-```bash
-cd backend
-pip install -r requirements.txt
-
-# 환경 변수 설정 (see .env.example)
-export GRAPH_RAG_ENABLED=true
-export LANGGRAPH_ENABLED=true
-export GOT_MODE_ENABLED=true
-export LEGACY_GRAPH_ENABLED=true
-export LEGACY_GRAPH_URI=bolt://localhost:7687
-export LEGACY_GRAPH_USER=neo4j
-export LEGACY_GRAPH_PASSWORD=your_password
-
-python main.py
-# SGLang 임베딩/리랭커 서버는 첫 요청 시 자동으로 시작됩니다.
-```
-
-Neo4j 로컬 실행:
-
-```bash
-docker run -d --name neo4j-dev \
-  -p7474:7474 -p7687:7687 \
-  -e NEO4J_AUTH=neo4j/your_password \
-  -v neo4j-data:/data \
-  neo4j:5
-```
 
 ---
 

@@ -8,7 +8,9 @@
 [English](../README.md) | [한국어](README_KO.md) | 中文
 </div>
 
-LangGraph-Agentic-Graph RAG 是一个基于 **LangGraph + SGLang** 的智能混合 RAG 平台，无缝集成知识检索和计算工具执行。主要特性：
+LangGraph-Agentic-Graph RAG 是一个智能混合 RAG 平台，由 **LangGraph + SGLang** 驱动，无缝集成知识检索与工具执行。
+
+系统特性：
 
 - **双模式查询处理**：通过基于 LLM 的意图分类在知识型 RAG 检索和计算工具执行之间自动路由
 - **高级文档摄取**：通过 LangGraph 状态机和检查点持久化将原始文档（PDF/图像/音频）转换为 Markdown 块和结构化图元数据
@@ -148,26 +150,9 @@ planner → tool_router ┬→ rag_router →┬→ vector_retriever  ──→�
 - **Fallback 机制**：LLM 分类失败时使用启发式关键词匹配
 
 **Tool Executor**（`backend/notebooklm/tools/tool_executor.py`）：
-- **MCP 集成**：当 `MCP_SERVER_ENABLED=true` 时通过 MCP 服务器 REST API 主执行
-- **本地 fallback**：MCP 不可用时自动回退到本地实现
-- **意图分类**：基于 LLM，带有启发式 fallback 以提高可靠性
-- **支持的工具**：
-  - **计算器**（完全实现）：
-    - 基于 AST 的安全表达式评估（无 `eval()` 安全风险）
-    - 高级数学函数：`sqrt`、`cbrt`、`abs`、`log`、`ln`、`log10`、`exp`、`sin`、`cos`、`tan`、`sigma`
-    - 自然语言解析："144의 제곱근" → `sqrt(144)`、"2의 3제곱" → `2 ** 3`
-    - 运算符支持：`+`、`-`、`*`、`/`、`**`、`%`
-  - **API 调用器**（轻量实现）：
-    - 执行 HTTP GET/POST 请求
-    - 从自然语言提示中提取 URL
-    - 可配置超时和错误处理
-  - **代码运行器**（沙箱实现）：
-    - 受限 Python 执行环境
-    - 过滤的 built-in（无 `eval`、`exec`、`__import__`）
-    - 基于令牌的安全过滤
-  - **SQL 执行器**（占位符）：
-    - 返回 `not_implemented` 状态
-    - 为未来数据库集成保留
+- MCP 服务器集成及本地 fallback
+- 支持：计算器、API 调用器、代码运行器、SQL 执行器（计划中）
+- 详细信息见下方查询处理流程章节
 
 ---
 
@@ -186,109 +171,6 @@ planner → tool_router ┬→ rag_router →┬→ vector_retriever  ──→�
    - `GraphSchemaManager` 确保 Weaviate GraphEntity/GraphEvent/GraphRelation 集合存在，带有交叉引用（source/target/event）
    - `LegacyGraphIngestor` / `Neo4jManager` 使用确定性 UUID 将节点/关系 MERGE 到 Neo4j
 5. **延迟分块与嵌入**：`embedding_text.py` 将 Markdown 分割成块，并通过 `SharedEmbeddingModel` 上传到 Weaviate TextDocument 集合（模型可通过 `EMBEDDING_MODEL` 配置）。
-
----
-
-## 查询 / 推理层
-
-由 `GraphReasoner`（`graph_reasoner.py`）配合 `MemorySaver` 检查点和智能回溯处理：
-
-1. **规划器**（`planner` 节点）：
-   - **查询分析**：检查用户查询并提取核心概念
-   - **计划记录**：记录高级检索策略和推理步骤
-   - **历史跟踪**：维护多轮对话的查询上下文
-   - **注意**：不执行跳数分类（为了更好的关注点分离已移至 `rag_router`）
-
-2. **Tool Router**（`tool_router` 节点）：
-   - **意图分类**：通过 `ToolExecutor.classify_intent()` 进行基于 LLM 的查询意图检测
-   - **分类类别**：
-     - `knowledge`：需要文档检索的事实问题 → 路由到 `rag_router`
-     - `calculation`：数学运算 → 路由到 `tool_executor`（计算器）
-     - `database`：SQL 查询 → 路由到 `tool_executor`（SQL 执行器）
-     - `api_call`：外部 API 请求 → 路由到 `tool_executor`（API 调用器）
-     - `code_exec`：代码执行请求 → 路由到 `tool_executor`（代码运行器）
-   - **路由决策**：知识查询进入 RAG 管道；计算任务跳过 RAG 直接执行工具
-
-3. **RAG Router**（`rag_router` 节点，仅知识查询）：
-   - **跳数分类**：混合 LLM + 启发式方法估计查询复杂度
-     - **LLM 分类器**：通过 SGLang 服务器主分类（1–`GRAPH_MAX_HOPS`）
-     - **启发式 fallback**：基于关键词的评分（箭头数、概念分隔符、关系指标）
-     - **最终跳数**：`min(llm_estimate, heuristic_estimate, GRAPH_MAX_HOPS)` 用于保守路由
-   - **路径选择**：将跳数映射到最优检索策略
-     - 跳数 ≤ 2 → 路径 1（VectorRetriever）
-     - 跳数 3–5 → 路径 2（CrossRefRetriever）
-     - 跳数 ≥ 6 → 路径 3（GraphDBRetriever）
-   - **状态更新**：设置 `max_hops`、`retrieval_path` 并初始化 `tried_paths` 跟踪
-
-4. **Tool Executor**（`tool_executor` 节点，用于计算任务）：
-   - **工具映射**：将意图映射到特定工具实现
-   - **输入准备**：从查询中提取相关参数（表达式、URL、代码片段、SQL）
-   - **执行策略**：
-     - **MCP 优先**：尝试通过 MCP 服务器 REST API 执行
-     - **本地 fallback**：MCP 不可用或失败时回退到本地实现
-   - **结果格式化**：返回带有状态、结果值和元数据的结构化结果
-   - **错误处理**：捕获执行错误并返回失败消息（不回退到 RAG）
-
-5. **检索节点**（用于知识查询）：
-   - **路径 1 – Vector RAG**（`vector_retriever`）：
-     - TextDocument 集合中基于 BM25 的语义搜索
-     - 重排序器后处理以优化相关性
-     - 简单事实查询的快速执行
-   - **路径 2 – Cross-Ref GraphRAG**（`crossref_retriever`）：
-     - GraphEntity 集合中 BM25 种子实体搜索
-     - 通过 Weaviate `QueryReference` 进行多跳 cross-reference 遍历
-     - 沿 source/target/event 关系行走以浮现连接的实体
-     - 在 Neo4j escalation 之前在 Weaviate 内收集查询相邻上下文
-   - **路径 3 – Neo4j GraphDB**（`graphdb_retriever`）：
-     - 通过 `LegacyGraphClient` 进行深度基于 Cypher 的图遍历
-     - 模式化关系推理
-     - 处理需要广泛图探索的复杂多实体查询
-
-6. **质量门**（`quality_gate` 节点，用于知识查询）：
-   - **质量评估**：观察者 LLM 对检索结果评分（0.0–1.0）
-     - 路径 1 委托时默认为 1.0 以避免不必要的 LLM 调用
-     - 路径 2 和 3 始终评估质量
-   - **通过条件**：质量 ≥ `QUALITY_GATE_THRESHOLD` → 进入 aggregator 或 thought expander
-   - **智能回溯**：质量 < threshold 触发智能路径选择
-     - `PathSelector.select_best_path()` 分析剩余未尝试路径
-     - 根据查询关键词、跳数和路径特征评分
-     - 选择最合适的替代路径（非随机重试）
-   - **终止条件**：
-     - 所有路径耗尽 → 继续使用最佳上下文
-     - 达到 `MAX_BACKTRACK_COUNT` 限制 → 在 `answer_notes` 中标记降级
-   - **状态跟踪**：`tried_paths` 列表防止重试失败的策略
-
-7. **GoT Thought Expander**（`thought_expander` 节点，当 `GOT_MODE_ENABLED=true` 时）：
-   - **图形化探索**：用于复杂分析查询的多分支推理
-   - **分支生成**：每步并行扩展 `GOT_BRANCH_FACTOR` 个候选查询
-   - **质量评分**：观察者 LLM 评估每个分支（0.0–1.0）：
-     - 与原始查询的相关性
-     - 新信息的覆盖度
-     - 相对于现有分支的新颖性
-   - **智能合并**：通过策略合并高于 `GOT_THOUGHT_SCORE_THRESHOLD` 的分支：
-     - `top_k`：选择得分最高的前 K 个分支
-     - `weighted_union`：按分数加权合并
-     - `vote`：分支间民主选择
-   - **边缘剪枝**：通过关键词重叠评分移除低质量连接（< `GOT_EDGE_PRUNE_THRESHOLD`）
-   - **基于快照的回溯**：连续全分支失败触发状态回滚
-     - 通过 `GOT_MAX_CONSECUTIVE_FAILURES` 跟踪连续失败
-     - 回滚到最后成功的合并点
-     - 防止无限探索循环
-
-8. **聚合器**（`aggregator` 节点）：
-   - **上下文构建**：从检索结果或工具输出组装上下文片段
-   - **用于 RAG 查询**：将实体、事件、关系、思维步骤合并为连贯上下文
-   - **用于工具查询**：将工具结果格式化为自然语言响应
-     - 计算器："表达式 = 结果" 格式（例如 "sqrt(144) = 12.0"）
-     - API/代码：结果值或成功消息
-     - 错误：用户友好的错误消息
-   - **元数据收集**：收集 `context_snippets`、`thought_steps`、`backtrack_count`、`tried_paths` 用于调试
-
-9. **生成**（`generator.py`）：
-   - **答案合成**：合并原始查询 + 上下文片段（或工具结果）以生成最终答案
-   - **用于 RAG 查询**：LLM 从检索的上下文生成答案
-   - **用于工具查询**：直接返回格式化的工具结果（无需 LLM 生成）
-   - **后处理**：通过 `refiner.py` 可选精炼和通过 `evaluator.py` 质量评估
 
 ---
 
@@ -480,37 +362,6 @@ backend/
    - **调试支持**：所有工作流状态暴露以实现可追溯性
 
 5. **返回客户端**：带有答案、元数据和调试信息的 JSON 响应
-
----
-
-## 安装与运行
-
-```bash
-cd backend
-pip install -r requirements.txt
-
-# 环境变量设置（参见 .env.example）
-export GRAPH_RAG_ENABLED=true
-export LANGGRAPH_ENABLED=true
-export GOT_MODE_ENABLED=true
-export LEGACY_GRAPH_ENABLED=true
-export LEGACY_GRAPH_URI=bolt://localhost:7687
-export LEGACY_GRAPH_USER=neo4j
-export LEGACY_GRAPH_PASSWORD=your_password
-
-python main.py
-# SGLang 嵌入/重排序服务器在首次请求时自动启动。
-```
-
-本地启动 Neo4j：
-
-```bash
-docker run -d --name neo4j-dev \
-  -p7474:7474 -p7687:7687 \
-  -e NEO4J_AUTH=neo4j/your_password \
-  -v neo4j-data:/data \
-  neo4j:5
-```
 
 ---
 
