@@ -8,6 +8,15 @@
 English | [한국어](README/README_KO.md) | [中文](README/README_ZH.md)
 </div> 
 
+**A stateful, graph-orchestrated hybrid RAG platform that unifies retrieval, reasoning, and tool execution under a single agentic workflow.**
+
+## Introduction
+
+> Traditional RAG systems often struggle with multi-hop reasoning, tool-dependent queries, and dynamic knowledge integration. Vector similarity search alone is insufficient for complex analytical tasks that require structured graph traversal, conditional branching, and computational execution. 
+>
+> LangGraph-Agentic-Graph RAG introduces a stateful graph-orchestrated architecture built on LangGraph and powered by SGLang.
+>
+> The system unifies knowledge retrieval and tool execution within a single checkpointed workflow, enabling intelligent routing, quality-gated backtracking, and Graph-of-Thought expansion for adaptive multi-path reasoning.
 
 LangGraph-Agentic-Graph RAG is an intelligent hybrid RAG platform powered by **LangGraph + SGLang** that seamlessly integrates knowledge retrieval with tool execution. 
 
