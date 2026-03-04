@@ -519,7 +519,7 @@ docker run -d --name neo4j-dev \
 
 ---
 
-## API 요약
+## API 주요 엔드포인트
 
 | 엔드포인트 | 설명 |
 |---|---|
@@ -531,7 +531,7 @@ docker run -d --name neo4j-dev \
 
 ---
 
-## 로깅 & 운영
+## 로깅 및 운영
 
 - `sglang_embedding_server.log`, `sglang_reranker_server.log` – SGLang 모델 서버 상태.
 - `Results/8.graph_metadata/*.graph.json` – LLM 추출 결과 아카이브.
