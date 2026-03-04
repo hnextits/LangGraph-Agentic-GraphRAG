@@ -53,7 +53,7 @@ LangGraph-Agentic-Graph RAG 是一个智能混合 RAG 平台，由 **LangGraph +
   - **状态跟踪**：`tried_paths` 字段防止重试失败的策略
 
 - **3 路检索路由**：查询复杂度（跳数）决定最优检索策略：
-  - **路径 1 – Vector RAG（≤ 2 跳）**：late-chunked TextDocument 语料上快速语义相似度搜索。适合直接事实问题。
+  - **路径 1 – Vector RAG（≤ 2 跳）**：搜索 late-chunked Text Document corpus 中的快速语义相似性。适合直接事实问题。
   - **路径 2 – Weaviate Cross-Reference GraphRAG（3–5 跳）**：BM25 种子实体搜索后在 Weaviate 内进行多跳 cross-reference 遍历（source/target/event refs）。通过关系行走浮现查询相邻的实体和事件。
   - **路径 3 – Neo4j Deep Graph Traversal（≥ 6 跳）**：基于 Cypher 的深度图遍历，用于模式化关系推理。处理需要广泛图探索的复杂多实体查询。
   - **跳数分类**：混合 LLM + 启发式方法估计查询复杂度，LLM 主分类配合基于关键词的 fallback
