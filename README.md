@@ -168,7 +168,7 @@ planner → tool_router ┬→ rag_router →┬→ vector_retriever  ──→�
 
 ---
 
-## Input / Preprocessing Layer
+## Input / Preprocessing
 
 Handled by `LangGraphUploadPipeline` (`langgraph_upload_pipeline.py`) with `MemorySaver` checkpointing across all nodes:
 

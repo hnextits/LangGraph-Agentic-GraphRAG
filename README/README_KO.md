@@ -156,7 +156,7 @@ planner → tool_router ┬→ rag_router →┬→ vector_retriever  ──→�
 
 ---
 
-## 입력 / 전처리 레이어
+## 입력 / 전처리
 
 `LangGraphUploadPipeline` (`langgraph_upload_pipeline.py`)이 모든 노드에 걸쳐 `MemorySaver` 체크포인팅과 함께 처리합니다:
 
