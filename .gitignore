@@ -23,6 +23,7 @@ target/
 .idea/
 .vscode/
 *.ttf
+/backend/.env.example
 
 Jenkinsfile
 *.lock

@@ -105,10 +105,10 @@ LangGraph-Agentic-Graph RAG is an intelligent hybrid RAG platform powered by **L
                     │                            │
               Knowledge Query              Computational Task
                     │                            │
-        ┌───────────┴──────────┐        ┌───────┴────────┐
+        ┌───────────┴──────────────┐        ┌───────┴────────┐
         │   RAG Router (reasoner)  │        │ Tool Executor  │
-        │ HopClassifier+PathSelect│        │ (MCP/Local)    │
-        └───────────┬──────────┘        └────────────────┘
+        │ HopClassifier+PathSelect │        │ (MCP/Local)    │
+        └───────────┬──────────────┘        └────────────────┘
                     │
      ┌──────────────┼──────────────┐
      │              │              │
@@ -118,15 +118,15 @@ LangGraph-Agentic-Graph RAG is an intelligent hybrid RAG platform powered by **L
  (≤ 2 hop)     (3–5 hop)      (≥ 6 hop)
                     │
                     ▼
-   ┌────────────────────────────────────┐
-   │ Quality Gate (QualityEvaluator)   │
+   ┌───────────────────────────────────────┐
+   │ Quality Gate (QualityEvaluator)       │
    │ Observer LLM (QUALITY_GATE_THRESHOLD) │
-   └────────────────┬───────────────────┘
+   └────────────────┬──────────────────────┘
                     │
-          ┌─────────▼────────────┐
+          ┌─────────▼──────────────┐
           │ GoT Thought Expander   │
           │ Branch merge + pruning │
-          └─────────┬────────────┘
+          └─────────┬──────────────┘
                     │
              ┌──────▼──────┐
              │ LLM Answer  │
