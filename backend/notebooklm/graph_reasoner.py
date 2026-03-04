@@ -661,6 +661,8 @@ class GraphReasoner:
             payload["retrieval_path"] = result_state.get("retrieval_path", "unknown")
             payload["max_hops"] = result_state.get("max_hops", 1)
             payload["retrieval_quality"] = result_state.get("retrieval_quality", 0.0)
+            if result_state.get("tool_result") is not None:
+                payload["tool_result"] = result_state["tool_result"]
             if result_state.get("thought_steps"):
                 payload["thought_steps"] = list(result_state["thought_steps"])
             if result_state.get("backtrack_count", 0) > 0:

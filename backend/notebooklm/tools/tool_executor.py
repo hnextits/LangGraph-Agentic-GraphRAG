@@ -7,6 +7,7 @@ import ast
 import json
 import logging
 import re
+import math
 from typing import Any, Dict, Literal, Optional
 
 try:  
@@ -17,6 +18,31 @@ except ImportError:
 from .mcp_client import MCPClient
 
 logger = logging.getLogger(__name__)
+
+
+def _sigma_function(start: float, end: float) -> float:
+    """복잡한 수식 계산"""
+    start_i = int(round(start))
+    end_i = int(round(end))
+    if start_i > end_i:
+        start_i, end_i = end_i, start_i
+    count = end_i - start_i + 1
+    return (start_i + end_i) * count / 2
+
+
+ALLOWED_MATH_FUNCTIONS = {
+    "sqrt": math.sqrt,
+    "cbrt": lambda x: math.copysign(abs(x) ** (1 / 3), x),
+    "abs": abs,
+    "log": math.log,
+    "ln": math.log,
+    "log10": math.log10,
+    "exp": math.exp,
+    "sin": math.sin,
+    "cos": math.cos,
+    "tan": math.tan,
+    "sigma": _sigma_function,
+}
 
 
 class ToolExecutor:
@@ -166,7 +192,49 @@ class ToolExecutor:
 
     def _extract_math_expression(self, text: str) -> str:
         """텍스트에서 수식 추출."""
-        cleaned = re.sub(r"[^0-9+\-*/().%^]", " ", text)
+        if not text:
+            return ""
+
+        lowered = text.lower()
+        
+        # 제곱근 패턴 처리
+        sqrt_patterns = [
+            (r"(\d+)\s*의\s*제곱근", r"sqrt(\1)"),
+            (r"제곱근\s*(\d+)", r"sqrt(\1)"),
+            (r"루트\s*(\d+)", r"sqrt(\1)"),
+            (r"(\d+)\s*루트", r"sqrt(\1)"),
+            (r"sqrt\s*(\d+)", r"sqrt(\1)"),
+        ]
+        for pattern, replacement in sqrt_patterns:
+            lowered = re.sub(pattern, replacement, lowered)
+        
+        # 거듭제곱 패턴 처리
+        power_patterns = [
+            (r"(\d+)\s*의\s*(\d+)\s*제곱", r"\1 ** \2"),
+            (r"(\d+)\s*제곱", r"\1 ** 2"),
+        ]
+        for pattern, replacement in power_patterns:
+            lowered = re.sub(pattern, replacement, lowered)
+
+        # 기본 연산자 치환
+        replacements = {
+            " 곱하기 ": " * ",
+            " times ": " * ",
+            " multiply ": " * ",
+            " x ": " * ",
+            " 더하기 ": " + ",
+            " plus ": " + ",
+            " 빼기 ": " - ",
+            " minus ": " - ",
+            " 나누기 ": " / ",
+            " divide ": " / ",
+            " 나눗셈 ": " / ",
+        }
+        for key, value in replacements.items():
+            lowered = lowered.replace(key.strip(), value)
+
+        # 숫자, 연산자, 함수명만 남기기
+        cleaned = re.sub(r"[^0-9+\-*/().%^a-z]", " ", lowered)
         cleaned = re.sub(r"\s+", " ", cleaned).strip()
         return cleaned
 
@@ -240,6 +308,18 @@ class ToolExecutor:
                 return operand
             if isinstance(node.op, ast.USub):
                 return -operand
+        
+        if isinstance(node, ast.Call):
+            # 함수 호출 처리 (sqrt, log, sin 등)
+            if isinstance(node.func, ast.Name):
+                func_name = node.func.id
+                if func_name in ALLOWED_MATH_FUNCTIONS:
+                    func = ALLOWED_MATH_FUNCTIONS[func_name]
+                    args = [self._eval_ast(arg) for arg in node.args]
+                    return float(func(*args))
+                else:
+                    raise ValueError(f"지원하지 않는 함수: {func_name}")
+            raise ValueError("지원하지 않는 함수 호출 형식입니다.")
         
         if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
             return float(node.value)

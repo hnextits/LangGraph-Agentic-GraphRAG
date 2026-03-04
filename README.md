@@ -9,7 +9,13 @@ English | [한국어](README/README_KO.md) | [中文](README/README_ZH.md)
 </div> 
 
 
-LangGraph-Agentic-Graph RAG is a vector–graph hybrid RAG platform powered by **LangGraph + SGLang**. The ingestion pipeline converts raw documents into Markdown chunks and graph metadata via LangGraph state machines with checkpoint persistence. During query time, a hop-based router with quality-gate backtracking selects among three retrieval paths—Vector, Weaviate GraphRAG, or Neo4j GraphDB—to generate answers.
+LangGraph-Agentic-Graph RAG is an intelligent hybrid RAG platform powered by **LangGraph + SGLang** that seamlessly integrates knowledge retrieval with computational tool execution. The system features:
+
+- **Dual-mode query processing**: Automatically routes between knowledge-based RAG retrieval and computational tool execution based on LLM-powered intent classification
+- **Advanced document ingestion**: Converts raw documents (PDF/images/audio) into Markdown chunks and structured graph metadata via LangGraph state machines with checkpoint persistence
+- **Intelligent retrieval routing**: Hop-based router with quality-gate backtracking dynamically selects among three retrieval paths (Vector, Weaviate Cross-Reference GraphRAG, or Neo4j Deep Graph Traversal) based on query complexity
+- **Tool calling framework**: MCP (Model Context Protocol) server integration with local fallback for calculator, API calls, code execution, and database queries
+- **Graph-of-Thought reasoning**: Multi-branch exploration with snapshot-based backtracking for complex analytical queries
 
 <div align="center">
 <img src="https://github.com/user-attachments/assets/441a4a4b-d239-45c1-b385-80ddd95f31e6" width="512" height="768" ></img><br/>
@@ -19,16 +25,61 @@ LangGraph-Agentic-Graph RAG is a vector–graph hybrid RAG platform powered by *
 
 ## Key Capabilities
 
-- **LangGraph state machines**: ingestion, query reasoning, summarization, and mindmap generation all run on LangGraph `StateGraph` with `MemorySaver` checkpointing.
-- **Checkpoint & backtracking**: every node transition is checkpointed; the quality gate and GoT snapshotting roll back to alternative retrieval paths or earlier expansions when quality is insufficient (configurable via `MAX_BACKTRACK_COUNT`).
-- **3-way retrieval routing**: based on query complexity (hop count), routes to Vector RAG, Weaviate Cross-Reference GraphQL, or Neo4j Deep Graph Traversal (thresholds configurable via `GRAPH_MAX_HOPS`). Hop boundaries mirror the underlying data model: semantic-only questions stay on the TextDocument embedding index, entity/attribute hops leverage Weaviate cross-references, and schema-heavy relationship reasoning (≥ 6 hops) escalates to Neo4j Cypher traversals. Path 1 and Path 2 both live inside Weaviate: Path 1 favors fast semantic similarity on the late-chunked corpus, whereas Path 2 deliberately walks Cross-Reference neighborhoods to surface query-linked entities/events within Weaviate before escalating to Neo4j.
-- **Observer LLM + GoT expansion**: an observer LLM scores each path result (0–1). Results above `QUALITY_GATE_THRESHOLD` trigger Graph-of-Thought branching/merging for deeper context.
-- **SGLang inference**: generator, embedding, reranker, hop classifier, and the observer LLM all run on SGLang servers with lazy loading (`LazyModelManager` + `SGLangServerManager`).
-  - **Lazy-loading**: servers auto-start on first request, idle timeout configurable via `SGLANG_IDLE_TIMEOUT` with GPU memory release
-  - **GPU allocation**: Generator (device/mem_fraction configurable), Embedding/Reranker/Refiner (device/mem_fraction configurable)
+- **LangGraph state machines**: All workflows (ingestion, query reasoning, tool execution, summarization, mindmap generation) run on LangGraph `StateGraph` with `MemorySaver` checkpointing for full state persistence and recovery.
+
+- **Intelligent query routing**: LLM-powered intent classification automatically determines whether a query requires knowledge retrieval or computational tool execution:
+  - **Knowledge queries** → RAG pipeline with 3-way retrieval routing
+  - **Calculation queries** → Calculator tool with AST-based safe evaluation supporting advanced math (sqrt, log, trig, sigma)
+  - **Database queries** → SQL executor (planned)
+  - **API calls** → HTTP API caller with configurable endpoints
+  - **Code execution** → Python sandbox with restricted built-ins
+
+- **Checkpoint & intelligent backtracking**: Every node transition is checkpointed; the quality gate evaluates retrieval results and triggers intelligent path selection when quality is insufficient:
+  - **Quality evaluation**: Observer LLM scores each path result (0.0–1.0) against `QUALITY_GATE_THRESHOLD`
+  - **Smart path selection**: `PathSelector` analyzes remaining untried paths based on query keywords, hop count, and path characteristics to select the most suitable alternative
+  - **Backtrack limits**: Configurable via `MAX_BACKTRACK_COUNT` to prevent infinite loops
+  - **State tracking**: `tried_paths` field prevents re-attempting failed strategies
+
+- **3-way retrieval routing**: Query complexity (hop count) determines the optimal retrieval strategy:
+  - **Path 1 – Vector RAG (≤ 2 hops)**: Fast semantic similarity search on late-chunked TextDocument corpus via BM25 + reranker. Ideal for direct factual questions.
+  - **Path 2 – Weaviate Cross-Reference GraphRAG (3–5 hops)**: BM25 seed entity search followed by multi-hop cross-reference traversal (source/target/event refs) within Weaviate. Surfaces query-adjacent entities and events through relationship walking.
+  - **Path 3 – Neo4j Deep Graph Traversal (≥ 6 hops)**: Cypher-based deep graph exploration for schema-intensive relationship reasoning. Handles complex multi-entity queries requiring extensive graph traversal.
+  - **Hop classification**: Hybrid LLM + heuristic approach estimates query complexity, with LLM primary classification and keyword-based fallback
+
+- **Graph-of-Thought expansion**: Multi-branch reasoning with snapshot-based backtracking for complex analytical queries:
+  - **Branch exploration**: Each step fans out `GOT_BRANCH_FACTOR` candidate queries in parallel
+  - **Quality scoring**: Observer LLM evaluates each branch (0.0–1.0) for relevance, coverage, and novelty
+  - **Intelligent merging**: Branches above `GOT_THOUGHT_SCORE_THRESHOLD` are merged via configurable strategy (`top_k`/`weighted_union`/`vote`)
+  - **Edge pruning**: Low-quality connections removed by keyword-overlap scoring (`GOT_EDGE_PRUNE_THRESHOLD`)
+  - **Failure recovery**: Consecutive all-branch failures trigger snapshot rollback to last successful merge point
+
+- **SGLang inference ecosystem**: All LLM operations (generation, embedding, reranking, hop classification, quality evaluation) run on SGLang servers with intelligent lifecycle management:
+  - **Lazy-loading architecture**: Servers auto-start on first request, eliminating cold-start overhead during initialization
+  - **Idle timeout**: GPU memory automatically released after `SGLANG_IDLE_TIMEOUT` (default 60s) of inactivity
+  - **GPU allocation**: Configurable device assignment and memory fractions per server (generator, embedding, reranker, refiner)
+  - **Keepalive mechanism**: Background thread maintains server health during long-running operations
   - **Chunk retry logic**: LLM metadata extraction auto-retries failed chunks with server restart (configurable via `GRAPH_EXTRACTOR_RETRY_ON_FAILURE`)
-- **Automatic graph upsert**: OCR → LLM entity/event/relation extraction → simultaneous Weaviate + Neo4j ingestion.
-- **Async job monitoring**: upload, OCR, and embedding progress tracked through task APIs.
+
+- **Tool calling framework**: MCP (Model Context Protocol) server integration with local fallback:
+  - **MCP-first architecture**: Primary execution via MCP server when available (`MCP_SERVER_ENABLED=true`)
+  - **Local fallback**: Automatic fallback to local implementations when MCP server is unavailable
+  - **Calculator**: AST-based safe expression evaluation supporting advanced math functions (sqrt, cbrt, log, exp, sin, cos, tan, sigma)
+  - **Natural language parsing**: Converts Korean/English math expressions ("144의 제곱근", "루트 144") to executable code
+  - **API caller**: HTTP request execution with configurable endpoints and methods
+  - **Code runner**: Python sandbox with restricted built-ins and token filtering for security
+  - **SQL executor**: Placeholder for future database query support
+
+- **Automatic graph construction**: End-to-end pipeline from raw documents to queryable knowledge graph:
+  - **OCR processing**: SGLang-powered OCRFlux converts documents to Markdown
+  - **LLM extraction**: Entity/event/relation extraction from Markdown chunks with configurable chunk size and timeout
+  - **Dual storage**: Simultaneous upsert to Weaviate (cross-reference graph) and Neo4j (deep graph) with deterministic UUIDs
+  - **Schema management**: Automatic Weaviate collection creation with cross-reference definitions
+
+- **Async job monitoring**: Full task lifecycle tracking through REST APIs:
+  - **Upload progress**: Real-time status for file upload and processing stages
+  - **OCR progress**: Per-page OCR completion tracking
+  - **Embedding progress**: Chunk-level indexing status
+  - **Task cancellation**: Graceful termination of long-running operations
 
 ---
 
@@ -100,16 +151,35 @@ planner → tool_router ┬→ rag_router →┬→ vector_retriever  ──→�
                       └→ tool_executor ────────────────────────────────────────→ aggregator → END
 ```
 
-**Tool Router**: Classifies query intent (knowledge/calculation/database/api_call/code_exec) using LLM (configurable via `TOOL_INTENT_CLASSIFIER_ENDPOINT`). Routes to RAG pipeline for knowledge queries or to tool executor for computational tasks.
+**Tool Router**: LLM-powered intent classification determines query routing strategy:
+- **Classification endpoint**: Configurable via `TOOL_INTENT_CLASSIFIER_ENDPOINT` (defaults to SGLang generator)
+- **Intent categories**: `knowledge`, `calculation`, `database`, `api_call`, `code_exec`
+- **Routing logic**:
+  - `knowledge` → RAG pipeline (3-way retrieval routing)
+  - Other intents → Tool executor (MCP/local fallback)
+- **Fallback mechanism**: Heuristic keyword matching when LLM classification fails
 
-**Tool Executor** (`backend/notebooklm/tools/`):
-- MCP server integration (if `MCP_SERVER_ENABLED=true`) or local fallback
-- Intent classification: LLM-based with heuristic fallback
-- Currently supports:
-- Calculator (AST-based safe evaluation)
-- SQL executor (stub)
-- API caller (stub)
-- Code runner (stub)
+**Tool Executor** (`backend/notebooklm/tools/tool_executor.py`):
+- **MCP integration**: Primary execution via MCP server REST API when `MCP_SERVER_ENABLED=true`
+- **Local fallback**: Automatic fallback to local implementations when MCP unavailable
+- **Intent classification**: LLM-based with heuristic fallback for reliability
+- **Supported tools**:
+  - **Calculator** (fully implemented):
+    - AST-based safe expression evaluation (no `eval()` security risks)
+    - Advanced math functions: `sqrt`, `cbrt`, `abs`, `log`, `ln`, `log10`, `exp`, `sin`, `cos`, `tan`, `sigma`
+    - Natural language parsing: "144의 제곱근" → `sqrt(144)`, "2의 3제곱" → `2 ** 3`
+    - Operator support: `+`, `-`, `*`, `/`, `**`, `%`
+  - **API Caller** (lightweight implementation):
+    - HTTP GET/POST request execution
+    - URL extraction from natural language prompts
+    - Configurable timeout and error handling
+  - **Code Runner** (sandbox implementation):
+    - Restricted Python execution environment
+    - Filtered built-ins (no `eval`, `exec`, `__import__`)
+    - Token-based security filtering
+  - **SQL Executor** (placeholder):
+    - Returns `not_implemented` status
+    - Reserved for future database integration
 
 ---
 
@@ -135,31 +205,102 @@ Handled by `LangGraphUploadPipeline` (`langgraph_upload_pipeline.py`) with `Memo
 
 Handled by `GraphReasoner` (`graph_reasoner.py`) with `MemorySaver` checkpointing and intelligent backtracking:
 
-1. **Hop Classifier (LLM + Heuristic Hybrid)** (`HopClassifier`): 
-   - **Primary**: LLM-based classifier estimates query complexity (1–`GRAPH_MAX_HOPS`) via SGLang server.
-   - **Fallback**: Heuristic scoring based on keywords, arrow count, and concept separators.
-   - The estimated hop count determines the initial retrieval path.
-2. **Planner**: analyzes the query, sets `max_hops` dynamically based on LLM+Heuristic classification (capped by `GRAPH_MAX_HOPS`), and initializes the search plan.
-3. **Router**: selects Path 1/2/3 based on hop classification and query characteristics.
-   - **Initial routing**: hop ≤ 2 → Path 1 (VectorRetriever), 3–5 → Path 2 (CrossRefRetriever), ≥ 6 → Path 3 (GraphDBRetriever).
-   - **Backtracking routing**: evaluates remaining untried paths using `PathSelector.select_best_path()`, which scores each path based on query keywords and hop count to select the most suitable alternative.
-4. **Retrieval Nodes**:
-   - **Path 1 – Vector RAG**: `rag_pipeline`'s TextSearcher + Reranker.
-   - **Path 2 – Cross-Ref GraphRAG**: BM25 seed entities → Weaviate Cross-Reference `QueryReference` multi-hop traversal (source/target/event refs) to collect query-adjacent entities/events within Weaviate before escalating to Neo4j.
-   - **Path 3 – Neo4j GraphDB**: deep traversal via `legacy_graph_client.py` Cypher templates for ≥ 6-hop schema-intensive reasoning or when Weaviate cross-references exhaust.
-5. **Quality Gate + Observer LLM**: every path result is scored 0.0–1.0 by the observer LLM (Path 1 defaults to 1.0 when delegated). 
-   - **Pass condition**: quality ≥ `QUALITY_GATE_THRESHOLD` → proceeds to next stage.
-   - **Backtracking**: quality < `QUALITY_GATE_THRESHOLD` → `PathSelector.select_best_path()` evaluates remaining paths based on query characteristics (keywords, hop count) and selects the most suitable alternative path.
-   - **Termination**: after all paths are exhausted or `MAX_BACKTRACK_COUNT` limit is reached, continues with best-effort context and flags degradation in `answer_notes`.
-   - **Path tracking**: `tried_paths` state field prevents re-trying the same path.
-6. **GoT Thought Expander** (`GOT_MODE_ENABLED=true`): graph-shaped thought exploration with branching, scoring, and merging.
-   - Each step fans out up to `GOT_BRANCH_FACTOR` candidate queries in parallel.
-   - An observer LLM scores each branch (0.0–1.0) for relevance, coverage, and novelty.
-   - Branches above `GOT_THOUGHT_SCORE_THRESHOLD` are merged via `GOT_MERGE_STRATEGY` (`top_k` / `weighted_union` / `vote`).
-   - Low-quality edges are pruned by `GOT_EDGE_PRUNE_THRESHOLD` keyword-overlap scoring.
-   - Consecutive all-branch failures (tracked by `GOT_MAX_CONSECUTIVE_FAILURES`) trigger snapshot-based backtracking (state rollback to last successful merge).
-7. **Aggregator**: builds context snippets from entities/events/relations for LLM generation.
-8. **Generation** (`generator.py`): merges thought/path snippets with the original query to produce the answer; `refiner.py` / `evaluator.py` optionally post-process the response.
+1. **Planner** (`planner` node):
+   - **Query analysis**: Examines user query and extracts key concepts
+   - **Plan recording**: Logs high-level search strategy and reasoning steps
+   - **History tracking**: Maintains query context for multi-turn conversations
+   - **Note**: Does NOT perform hop classification (moved to `rag_router` for better separation of concerns)
+
+2. **Tool Router** (`tool_router` node):
+   - **Intent classification**: LLM-powered query intent detection via `ToolExecutor.classify_intent()`
+   - **Classification categories**:
+     - `knowledge`: Factual questions requiring document retrieval → routes to `rag_router`
+     - `calculation`: Mathematical operations → routes to `tool_executor` (calculator)
+     - `database`: SQL queries → routes to `tool_executor` (SQL executor)
+     - `api_call`: External API requests → routes to `tool_executor` (API caller)
+     - `code_exec`: Code execution requests → routes to `tool_executor` (code runner)
+   - **Routing decision**: Knowledge queries proceed to RAG pipeline; computational tasks skip RAG and execute tools directly
+
+3. **RAG Router** (`rag_router` node, for knowledge queries only):
+   - **Hop classification**: Hybrid LLM + heuristic approach estimates query complexity
+     - **LLM classifier**: Primary classification via SGLang server (1–`GRAPH_MAX_HOPS`)
+     - **Heuristic fallback**: Keyword-based scoring (arrow count, concept separators, relationship indicators)
+     - **Final hop count**: `min(llm_estimate, heuristic_estimate, GRAPH_MAX_HOPS)` for conservative routing
+   - **Path selection**: Maps hop count to optimal retrieval strategy
+     - hop ≤ 2 → Path 1 (VectorRetriever)
+     - hop 3–5 → Path 2 (CrossRefRetriever)
+     - hop ≥ 6 → Path 3 (GraphDBRetriever)
+   - **State updates**: Sets `max_hops`, `retrieval_path`, and initializes `tried_paths` tracking
+
+4. **Tool Executor** (`tool_executor` node, for computational tasks):
+   - **Tool mapping**: Maps intent to specific tool implementation
+   - **Input preparation**: Extracts relevant parameters from query (expression, URL, code snippet, SQL)
+   - **Execution strategy**:
+     - **MCP-first**: Attempts execution via MCP server REST API
+     - **Local fallback**: Falls back to local implementation if MCP unavailable or fails
+   - **Result formatting**: Returns structured result with status, result value, and metadata
+   - **Error handling**: Captures execution errors and returns failure messages (does NOT fall back to RAG)
+
+5. **Retrieval Nodes** (for knowledge queries):
+   - **Path 1 – Vector RAG** (`vector_retriever`):
+     - BM25-based semantic search on TextDocument collection
+     - Reranker post-processing for relevance optimization
+     - Fast execution for simple factual queries
+   - **Path 2 – Cross-Ref GraphRAG** (`crossref_retriever`):
+     - BM25 seed entity search on GraphEntity collection
+     - Multi-hop cross-reference traversal via Weaviate `QueryReference`
+     - Walks source/target/event relationships to surface connected entities
+     - Collects query-adjacent context within Weaviate before Neo4j escalation
+   - **Path 3 – Neo4j GraphDB** (`graphdb_retriever`):
+     - Deep Cypher-based graph traversal via `LegacyGraphClient`
+     - Schema-intensive relationship reasoning
+     - Handles complex multi-entity queries requiring extensive graph exploration
+
+6. **Quality Gate** (`quality_gate` node, for knowledge queries):
+   - **Quality evaluation**: Observer LLM scores retrieval results (0.0–1.0)
+     - Path 1 defaults to 1.0 when delegated to avoid unnecessary LLM calls
+     - Paths 2 and 3 always evaluated for quality assessment
+   - **Pass condition**: quality ≥ `QUALITY_GATE_THRESHOLD` → proceeds to aggregator or thought expander
+   - **Intelligent backtracking**: quality < threshold triggers smart path selection
+     - `PathSelector.select_best_path()` analyzes remaining untried paths
+     - Scoring based on query keywords, hop count, and path characteristics
+     - Selects most suitable alternative path (not random retry)
+   - **Termination conditions**:
+     - All paths exhausted → continues with best-effort context
+     - `MAX_BACKTRACK_COUNT` limit reached → flags degradation in `answer_notes`
+   - **State tracking**: `tried_paths` list prevents re-attempting failed strategies
+
+7. **GoT Thought Expander** (`thought_expander` node, when `GOT_MODE_ENABLED=true`):
+   - **Graph-shaped exploration**: Multi-branch reasoning for complex analytical queries
+   - **Branch generation**: Each step fans out `GOT_BRANCH_FACTOR` candidate queries in parallel
+   - **Quality scoring**: Observer LLM evaluates each branch (0.0–1.0) for:
+     - Relevance to original query
+     - Coverage of new information
+     - Novelty compared to existing branches
+   - **Intelligent merging**: Branches above `GOT_THOUGHT_SCORE_THRESHOLD` merged via strategy:
+     - `top_k`: Select top-K highest-scoring branches
+     - `weighted_union`: Merge with score-based weighting
+     - `vote`: Democratic selection across branches
+   - **Edge pruning**: Low-quality connections (< `GOT_EDGE_PRUNE_THRESHOLD`) removed via keyword-overlap scoring
+   - **Snapshot-based backtracking**: Consecutive all-branch failures trigger state rollback
+     - Tracks consecutive failures via `GOT_MAX_CONSECUTIVE_FAILURES`
+     - Rolls back to last successful merge point
+     - Prevents infinite exploration loops
+
+8. **Aggregator** (`aggregator` node):
+   - **Context building**: Assembles context snippets from retrieval results or tool outputs
+   - **For RAG queries**: Merges entities, events, relations, and thought steps into coherent context
+   - **For tool queries**: Formats tool result into natural language response
+     - Calculator: "expression = result" format (e.g., "sqrt(144) = 12.0")
+     - API/Code: Result value or success message
+     - Errors: User-friendly error messages
+   - **Metadata collection**: Gathers `context_snippets`, `thought_steps`, `backtrack_count`, `tried_paths` for debugging
+
+9. **Generation** (`generator.py`):
+   - **Answer synthesis**: Merges original query + context snippets (or tool result) to produce final answer
+   - **For RAG queries**: LLM generates answer from retrieved context
+   - **For tool queries**: Returns formatted tool result directly (no LLM generation needed)
+   - **Post-processing**: Optional refinement via `refiner.py` and quality evaluation via `evaluator.py`
 
 ---
 
@@ -256,28 +397,102 @@ backend/
 
 ## Query Processing Flow
 
-1. `POST /v1/chat` → `rag_pipeline.retrieve()` is invoked.
-2. `graph_reasoner.py` runs the LangGraph workflow:
-   - **planner** → analyzes the query and records high-level plan/history.
-   - **tool_router** → LLM classifies query intent (knowledge/calculation/database/api_call/code_exec):
-     - If `knowledge` → routes to **rag_router**
-     - If computational task → routes to **tool_executor**
-   - **rag_router** (for knowledge queries) → performs hop classification (LLM + heuristic), sets `max_hops`, and selects the initial path (Vector/Cross-Ref/GraphDB):
-     - hop ≤ 2 → `vector_retriever`
-     - hop 3-5 → `crossref_retriever`
-     - hop ≥ 6 → `graphdb_retriever`
-   - **tool_executor** (for computational tasks) → executes tools via MCP server (preferred) or local fallback:
-     - Calculator: AST-based safe math evaluation (완료)
-     - API Caller / Code Runner: lightweight local implementations for quick testing (full MCP versions recommended)
-     - SQL Executor: currently `not_implemented` placeholder
-   - **retrieval node** (Path 1/2/3) → executes selected retrieval strategy.
-   - **quality_gate** → Observer LLM scores result (0.0–1.0).
-     - If quality < `QUALITY_GATE_THRESHOLD` → **intelligent backtracking**: `_select_best_path()` evaluates remaining paths based on query keywords and hop count, selects the most suitable alternative (max `MAX_BACKTRACK_COUNT` retries).
-   - If GoT enabled → **thought_expander** with snapshot-based backtracking.
-   - **aggregator** → builds context snippets (for RAG) or formats tool result.
-3. `generator.py` produces the answer from original query + context snippets (or tool result).
-4. (Optional) `refiner.py` polishes the answer; `evaluator.py` logs quality notes.
-5. Response includes `plan`, `hops`, `notes`, `context_snippets`, `backtrack_count`, `tried_paths`, `thought_steps`, and `tool_result` (if applicable) for debugging.
+1. **Request initiation**: `POST /v1/chat` → `RAGPipeline.process_query()` invokes `GraphReasoner.retrieve()`
+
+2. **LangGraph workflow execution** (`graph_reasoner.py`):
+
+   **Step 1: Planner** (`planner` node)
+   - Analyzes user query and extracts key concepts
+   - Records high-level search plan and reasoning steps
+   - Initializes query history for multi-turn context
+   - **Output**: `plan`, `query_analysis`
+
+   **Step 2: Tool Router** (`tool_router` node)
+   - LLM classifies query intent via `ToolExecutor.classify_intent()`:
+     - `knowledge` → routes to **rag_router** (knowledge retrieval path)
+     - `calculation` → routes to **tool_executor** (calculator)
+     - `database` → routes to **tool_executor** (SQL executor)
+     - `api_call` → routes to **tool_executor** (API caller)
+     - `code_exec` → routes to **tool_executor** (code runner)
+   - **Output**: `intent`, routing decision
+
+   **Branch A: Knowledge Query Path**
+
+   **Step 3a: RAG Router** (`rag_router` node, for knowledge queries)
+   - Performs hop classification (LLM + heuristic hybrid)
+   - Sets `max_hops` = `min(llm_estimate, heuristic_estimate, GRAPH_MAX_HOPS)`
+   - Selects initial retrieval path:
+     - hop ≤ 2 → `vector_retriever` (Path 1)
+     - hop 3–5 → `crossref_retriever` (Path 2)
+     - hop ≥ 6 → `graphdb_retriever` (Path 3)
+   - **Output**: `max_hops`, `retrieval_path`, `tried_paths`
+
+   **Step 4a: Retrieval Execution** (Path 1/2/3)
+   - **Path 1**: BM25 semantic search + reranker on TextDocument
+   - **Path 2**: BM25 seed search + Weaviate cross-reference multi-hop traversal
+   - **Path 3**: Neo4j Cypher deep graph traversal
+   - **Output**: `context_snippets`, `entities`, `events`, `relations`
+
+   **Step 5a: Quality Gate** (`quality_gate` node)
+   - Observer LLM scores retrieval result (0.0–1.0)
+   - **If quality ≥ `QUALITY_GATE_THRESHOLD`**:
+     - Proceeds to aggregator or thought expander (if GoT enabled)
+   - **If quality < threshold**:
+     - Triggers intelligent backtracking:
+       - `PathSelector.select_best_path()` analyzes remaining paths
+       - Scores based on query keywords, hop count, path characteristics
+       - Selects most suitable alternative (not random)
+       - Returns to Step 4a with new path
+     - **Termination**: After `MAX_BACKTRACK_COUNT` retries or all paths exhausted
+   - **Output**: `retrieval_quality`, `backtrack_count`, `tried_paths`
+
+   **Step 6a: Thought Expander** (`thought_expander` node, if `GOT_MODE_ENABLED=true`)
+   - Fans out `GOT_BRANCH_FACTOR` candidate queries in parallel
+   - Observer LLM scores each branch (0.0–1.0)
+   - Merges branches above `GOT_THOUGHT_SCORE_THRESHOLD` via strategy
+   - Prunes low-quality edges (< `GOT_EDGE_PRUNE_THRESHOLD`)
+   - Snapshot-based backtracking on consecutive failures
+   - **Output**: `thought_steps`, expanded context
+
+   **Branch B: Tool Execution Path**
+
+   **Step 3b: Tool Executor** (`tool_executor` node, for computational tasks)
+   - Maps intent to specific tool:
+     - `calculation` → Calculator (AST-based safe evaluation)
+     - `api_call` → API Caller (HTTP requests)
+     - `code_exec` → Code Runner (Python sandbox)
+     - `database` → SQL Executor (placeholder)
+   - Prepares tool inputs:
+     - Calculator: Extracts math expression, converts natural language ("144의 제곱근" → `sqrt(144)`)
+     - API Caller: Extracts URL from prompt
+     - Code Runner: Extracts code snippet
+   - Executes tool:
+     - **MCP-first**: Attempts execution via MCP server REST API
+     - **Local fallback**: Falls back to local implementation if MCP unavailable
+   - **Output**: `tool_result` with status (`ok`/`error`), result value, metadata
+   - **Note**: Tool failures return error messages; does NOT fall back to RAG
+
+   **Step 7: Aggregator** (`aggregator` node)
+   - **For RAG queries**: Builds context snippets from entities/events/relations/thoughts
+   - **For tool queries**: Formats tool result into natural language:
+     - Calculator: `"expression = result"` (e.g., `"sqrt(144) = 12.0"`)
+     - API/Code: Result value or success message
+     - Errors: User-friendly error messages
+   - Collects metadata: `context_snippets`, `thought_steps`, `backtrack_count`, `tried_paths`, `tool_result`
+   - **Output**: Aggregated context or formatted tool result
+
+3. **Answer generation**:
+   - **For RAG queries**: `generator.py` synthesizes answer from original query + context snippets
+   - **For tool queries**: Returns formatted tool result directly (no LLM generation needed)
+   - **Optional post-processing**: `refiner.py` polishes answer, `evaluator.py` logs quality notes
+
+4. **Response construction** (`RAGPipeline._build_response()` or `_build_tool_only_response()`):
+   - **For RAG queries**: Full response with answer, context, snippets, search results
+   - **For tool queries**: Streamlined response with tool result as answer
+   - **Metadata included**: `plan`, `max_hops`, `retrieval_quality`, `backtrack_count`, `tried_paths`, `thought_steps`, `tool_result` (if applicable)
+   - **Debugging support**: All workflow state exposed for traceability
+
+5. **Return to client**: JSON response with answer, metadata, and debugging information
 
 ---
 

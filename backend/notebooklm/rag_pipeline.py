@@ -199,6 +199,47 @@ class RAGPipeline:
             },
         }
 
+    def _build_tool_only_response(self, graph_payload: Dict[str, Any]) -> Dict[str, Any]:
+        """GraphReasoner가 Tool 결과만 반환한 경우 응답 생성."""
+        tool_result = graph_payload.get("tool_result")
+        
+        # Tool 결과를 자연어 답변으로 변환
+        if tool_result.get("status") == "ok":
+            result_value = tool_result.get("result")
+            expression = tool_result.get("expression")
+            
+            if expression and result_value is not None:
+                # 계산기 결과
+                tool_answer = f"{expression} = {result_value}"
+            elif result_value is not None:
+                # 기타 툴 결과
+                tool_answer = str(result_value)
+            else:
+                tool_answer = "작업이 성공적으로 완료되었습니다."
+        else:
+            # 실패한 경우
+            error_msg = tool_result.get("message", "알 수 없는 오류")
+            tool_answer = f"툴 실행 실패: {error_msg}"
+
+        notes = graph_payload.get("notes") or []
+        response = {
+            "answer": tool_answer,
+            "tool_result": tool_result,
+            "graph_reasoner": graph_payload,
+            "answer_notes": notes,
+            "context": "",
+            "context_snippets": graph_payload.get("context_snippets", []),
+            "search_results": {
+                "text_documents": [],
+                "image_documents": [],
+                "metadata": {
+                    "search_mode": "tool",
+                    "retrieval_path": graph_payload.get("retrieval_path", "tool"),
+                },
+            },
+        }
+        return response
+
     def process_query(
         self,
         query: str,
@@ -243,6 +284,9 @@ class RAGPipeline:
                 quality = graph_payload.get("retrieval_quality", 0.0)
                 logger.info("GraphReasoner 결과: path=%s, hops=%d, quality=%.2f, snippets=%d",
                             rp, mh, quality, len(graph_payload.get("context_snippets", [])))
+                if graph_payload.get("tool_result") is not None:
+                    return self._build_tool_only_response(graph_payload)
+
                 if rp == "vector":
                     logger.info(
                         "GraphReasoner [%s] → 기존 벡터 검색으로 위임 (max_hops=%d)",
