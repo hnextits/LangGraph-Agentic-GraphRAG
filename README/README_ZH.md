@@ -121,6 +121,14 @@ LangGraph-Agentic-Graph RAG 是一个基于 **LangGraph + SGLang** 的智能混�
                            └─────────────┘
 ```
 
+### 核心组件
+
+**Reasoner 模块**（`backend/notebooklm/reasoner/`）：
+- `HopClassifier`：查询复杂度估计（LLM + 启发式 fallback）
+- `PathSelector`：回溯的最优检索路径选择
+- `QualityEvaluator`：基于 Observer LLM 的结果质量评估
+- `VectorRetriever`、`CrossRefRetriever`、`GraphDBRetriever`：模块化检索实现
+
 ### 工作流图（查询）
 
 ```

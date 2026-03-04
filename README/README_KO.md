@@ -121,6 +121,14 @@ LangGraph-Agentic-Graph RAG는 **LangGraph + SGLang** 기반의 지능형 하이
                            └─────────────┘
 ```
 
+### 핵심 컴포넌트
+
+**Reasoner 모듈** (`backend/notebooklm/reasoner/`):
+- `HopClassifier`: 쿼리 복잡도 추정 (LLM + 휴리스틱 fallback)
+- `PathSelector`: 백트래킹을 위한 최적 검색 경로 선택
+- `QualityEvaluator`: Observer LLM 기반 결과 품질 평가
+- `VectorRetriever`, `CrossRefRetriever`, `GraphDBRetriever`: 모듈화된 검색 구현
+
 ### 워크플로우 그래프 (쿼리)
 
 ```
