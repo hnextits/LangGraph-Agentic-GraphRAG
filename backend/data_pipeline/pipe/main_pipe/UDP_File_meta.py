@@ -18,7 +18,7 @@ import sys
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from backend.nextits_data.pipe.bootstrap import ensure_backend_root, configure_logging
+from backend.data_pipeline.pipe.bootstrap import ensure_backend_root, configure_logging
 
 ensure_backend_root()
 configure_logging()

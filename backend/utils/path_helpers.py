@@ -22,14 +22,14 @@ def get_notebooklm_dir() -> Path:
 
 
 @lru_cache(maxsize=1)
-def get_nextits_data_dir() -> Path:
-    """Return the nextits_data directory."""
-    return get_backend_dir() / "nextits_data"
+def get_data_pipeline_dir() -> Path:
+    """Return the data_pipeline directory."""
+    return get_backend_dir() / "data_pipeline"
 
 
 __all__ = [
     "get_backend_dir",
     "get_project_root",
     "get_notebooklm_dir",
-    "get_nextits_data_dir",
+    "get_data_pipeline_dir",
 ]

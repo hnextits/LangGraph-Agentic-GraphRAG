@@ -331,7 +331,7 @@ backend/
 │   ├── rag_text/                    # 文本搜索 + 重排序器
 │   └── rag_image/                   # 图像搜索 + 重排序器
 │
-├── nextits_data/                    # 数据处理管道
+├── data_pipeline/                    # 数据处理管道
 │   └── pipe/
 │       ├── langgraph_upload_pipeline.py  # LangGraph 上传工作流（带检查点）
 │       ├── llm_metadata_extractor.py     # 实体/事件/关系提取

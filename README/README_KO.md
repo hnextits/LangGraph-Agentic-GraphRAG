@@ -333,7 +333,7 @@ backend/
 │   ├── rag_text/                    # 텍스트 검색 + 리랭커
 │   └── rag_image/                   # 이미지 검색 + 리랭커
 │
-├── nextits_data/                    # 데이터 처리 파이프라인
+├── data_pipeline/                    # 데이터 처리 파이프라인
 │   └── pipe/
 │       ├── langgraph_upload_pipeline.py  # LangGraph 업로드 워크플로우 (체크포인팅)
 │       ├── llm_metadata_extractor.py     # 엔티티/이벤트/관계 추출

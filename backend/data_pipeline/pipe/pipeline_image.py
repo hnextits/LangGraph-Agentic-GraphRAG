@@ -13,11 +13,11 @@ import sys
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from backend.nextits_data.pipe.bootstrap import (
+from backend.data_pipeline.pipe.bootstrap import (
     ensure_backend_root,
     configure_logging,
     get_backend_dir,
-    get_nextits_data_dir,
+    get_data_pipeline_dir,
 )
 
 ensure_backend_root()
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 # 경로 기본값
 BACKEND_DIR = get_backend_dir()
-NEXTITS_DATA_DIR = get_nextits_data_dir()
+NEXTITS_DATA_DIR = get_data_pipeline_dir()
 
 class Config:
     # 입출력 디렉토리 설정

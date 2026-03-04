@@ -37,9 +37,9 @@ def get_backend_dir() -> Path:
     return ensure_backend_root()
 
 
-def get_nextits_data_dir() -> Path:
-    """Return the nextits_data directory under backend."""
-    return ensure_backend_root() / "nextits_data"
+def get_data_pipeline_dir() -> Path:
+    """Return the data_pipeline directory under backend."""
+    return ensure_backend_root() / "data_pipeline"
 
 
 def get_project_root() -> Path:
@@ -51,6 +51,6 @@ __all__ = [
     "ensure_backend_root",
     "configure_logging",
     "get_backend_dir",
-    "get_nextits_data_dir",
+    "get_data_pipeline_dir",
     "get_project_root",
 ]

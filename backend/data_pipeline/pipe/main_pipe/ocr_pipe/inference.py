@@ -19,13 +19,13 @@ try:
 except ImportError:
     sgl = None
 
-from backend.nextits_data.pipe.bootstrap import ensure_backend_root
+from backend.data_pipeline.pipe.bootstrap import ensure_backend_root
 
 ensure_backend_root()
 
-import backend.nextits_data.pipe.main_pipe.ocr_pipe.image_utils as image_utils
-import backend.nextits_data.pipe.main_pipe.ocr_pipe.table_format as table_format
-import backend.nextits_data.pipe.main_pipe.ocr_pipe.prompts as prompts
+import backend.data_pipeline.pipe.main_pipe.ocr_pipe.image_utils as image_utils
+import backend.data_pipeline.pipe.main_pipe.ocr_pipe.table_format as table_format
+import backend.data_pipeline.pipe.main_pipe.ocr_pipe.prompts as prompts
 
 # 함수 참조 간소화
 get_page_image = image_utils.get_page_image
@@ -41,8 +41,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent.parent
 
 # ============= 설정 구간 =============
 CONFIG = {
-    "input_image_folder": str(BASE_DIR / "backend" / "nextits_data" / "Results" / "1.Converted_images" / "PDF" / "RL_Slides_13_RLHF_DPO_r2"),
-    "output_folder": str(BASE_DIR / "backend" / "nextits_data" / "Results" / "4.OCR_results"),
+    "input_image_folder": str(BASE_DIR / "backend" / "data_pipeline" / "Results" / "1.Converted_images" / "PDF" / "RL_Slides_13_RLHF_DPO_r2"),
+    "output_folder": str(BASE_DIR / "backend" / "data_pipeline" / "Results" / "4.OCR_results"),
     "model": "ChatDOC/OCRFlux-3B",
     "batch_size": 32,
     "max_new_tokens": 8192,

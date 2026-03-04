@@ -38,8 +38,8 @@ except ImportError:
 # [수정] routes.py와 동일한 방식으로 기본 경로 설정
 # .../backend/notebooklm/weaviate_utils.py -> .../backend/
 BASE_DIR = Path(__file__).resolve().parent.parent
-# .../backend/nextits_data/
-NEXTITS_DATA_DIR = BASE_DIR / "nextits_data"
+# .../backend/data_pipeline/
+NEXTITS_DATA_DIR = BASE_DIR / "data_pipeline"
 logger.info(f"weaviate_utils: NEXTITS_DATA_DIR 설정됨: {NEXTITS_DATA_DIR}")
 
 

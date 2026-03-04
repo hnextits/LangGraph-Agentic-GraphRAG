@@ -24,7 +24,7 @@ import sys
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from backend.nextits_data.pipe.bootstrap import ensure_backend_root, configure_logging
+from backend.data_pipeline.pipe.bootstrap import ensure_backend_root, configure_logging
 
 ensure_backend_root()
 configure_logging()
@@ -59,9 +59,9 @@ MAX_BOX_SIZE = {
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
 # 상대 경로로 디렉토리 설정
-LAYOUT_DETECTION_DIR = BASE_DIR / "nextits_data" / "Results" / "2.LayoutDetection"
-CROP_IMAGE_DIR = BASE_DIR / "nextits_data" / "Results" / "3.Crop_image"
-OCR_RESULTS_DIR = BASE_DIR / "nextits_data" / "Results" / "4.OCR_results"
+LAYOUT_DETECTION_DIR = BASE_DIR / "data_pipeline" / "Results" / "2.LayoutDetection"
+CROP_IMAGE_DIR = BASE_DIR / "data_pipeline" / "Results" / "3.Crop_image"
+OCR_RESULTS_DIR = BASE_DIR / "data_pipeline" / "Results" / "4.OCR_results"
 
 # 기본값 설정 (명령행 인자로 재정의 가능)
 INPUT_DIR = LAYOUT_DETECTION_DIR
@@ -303,7 +303,7 @@ def create_metadata(crop_path, original_json_path, pdf_folder_name, label, box_c
     # 순서번호는 2자리수로 표시 (01, 02, ...)
     file_name = f"{pdf_folder_name}_{display_page_num}_{index_num:02d}"
     
-    # 파일 경로를 상대 경로로 변환 (/backend/nextits_data/... 형식)
+    # 파일 경로를 상대 경로로 변환 (/backend/data_pipeline/... 형식)
     # BASE_DIR (backend/ 디렉토리)를 기준으로 상대 경로 계산
     try:
         relative_crop_path = f"/backend/{crop_path.relative_to(BASE_DIR)}"

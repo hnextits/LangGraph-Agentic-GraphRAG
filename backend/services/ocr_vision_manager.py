@@ -33,7 +33,7 @@ class OCRVisionManager:
         
         try:
             # inference.py의 get_ocrflux_engine 사용
-            from backend.nextits_data.pipe.main_pipe.ocr_pipe.inference import get_ocrflux_engine
+            from backend.data_pipeline.pipe.main_pipe.ocr_pipe.inference import get_ocrflux_engine
             
             logger.info("Loading OCR Vision Engine (Offline)...")
             self.engine = get_ocrflux_engine(self.config)
@@ -50,7 +50,7 @@ class OCRVisionManager:
             return
         
         try:
-            from backend.nextits_data.pipe.main_pipe.ocr_pipe.inference import shutdown_engine
+            from backend.data_pipeline.pipe.main_pipe.ocr_pipe.inference import shutdown_engine
             
             logger.info("Shutting down OCR Vision Engine...")
             shutdown_engine()

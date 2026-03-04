@@ -439,10 +439,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 def main():
     parser = argparse.ArgumentParser(description="레이아웃 감지 실행")
     parser.add_argument("--input_dir", type=str, 
-                      default=str(BASE_DIR / "nextits_data" / "Results" / "1.Converted_images"), 
+                      default=str(BASE_DIR / "data_pipeline" / "Results" / "1.Converted_images"), 
                       help="변환된 PNG 이미지가 있는 디렉토리")
     parser.add_argument("--output_dir", type=str, 
-                      default=str(BASE_DIR / "nextits_data" / "Results" / "2.LayoutDetection"), 
+                      default=str(BASE_DIR / "data_pipeline" / "Results" / "2.LayoutDetection"), 
                       help="레이아웃 감지 결과를 저장할 디렉토리")
     parser.add_argument("--skip_existing", action="store_true", help="이미 처리된 파일은 건너뛸기")
     parser.add_argument("--no_skip_existing", action="store_false", dest="skip_existing", help="이미 처리된 파일도 다시 처리하기")

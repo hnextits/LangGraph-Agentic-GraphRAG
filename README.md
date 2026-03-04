@@ -352,7 +352,7 @@ backend/
 │   ├── rag_text/                    # Text search + reranker
 │   └── rag_image/                   # Image search + reranker
 │
-├── nextits_data/                    # Data processing pipeline
+├── data_pipeline/                    # Data processing pipeline
 │   └── pipe/
 │       ├── langgraph_upload_pipeline.py  # LangGraph upload workflow (checkpointed)
 │       ├── llm_metadata_extractor.py     # Entity/event/relation extraction

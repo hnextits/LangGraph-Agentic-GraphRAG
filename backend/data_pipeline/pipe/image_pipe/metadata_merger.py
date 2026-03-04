@@ -138,8 +138,8 @@ def merge_metadata_files(metadata_files, output_dir):
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
 # 상대 경로로 디렉토리 설정
-CROP_IMAGE_DIR = BASE_DIR / "nextits_data" / "Results" / "3.Crop_image"
-COMPLETION_RESULTS_DIR = BASE_DIR / "nextits_data" / "Results" / "5.Completion_results" / "image"
+CROP_IMAGE_DIR = BASE_DIR / "data_pipeline" / "Results" / "3.Crop_image"
+COMPLETION_RESULTS_DIR = BASE_DIR / "data_pipeline" / "Results" / "5.Completion_results" / "image"
 
 def main():
     parser = argparse.ArgumentParser(description='이미지 메타데이터 JSON 파일을 병합하는 도구')

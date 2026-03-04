@@ -52,9 +52,9 @@ class RAGConfig:
         #############################################
         # 1. 경로 및 파일 설정
         #############################################
-        from utils.path_helpers import get_project_root, get_nextits_data_dir
+        from utils.path_helpers import get_project_root, get_data_pipeline_dir
         self.PROJECT_ROOT = get_project_root()
-        self.DATA_ROOT = get_nextits_data_dir()
+        self.DATA_ROOT = get_data_pipeline_dir()
         self.DATA_PATH = self.DATA_ROOT
         self.SESSIONS_ROOT = self.DATA_ROOT / "sessions"
         self.DEFAULT_DOC_DIR = self.DATA_ROOT / "doc"

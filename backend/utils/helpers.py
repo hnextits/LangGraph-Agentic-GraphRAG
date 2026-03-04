@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 import os
 _env_paths = os.getenv('IMAGE_BASE_PATHS', '')
 IMAGE_BASE_PATHS = [p.strip() for p in _env_paths.split(',')] if _env_paths else [
-    './nextits_data/Results/5.Completion_results/image',
-    './nextits_data/Results',
-    './nextits_data',
+    './data_pipeline/Results/5.Completion_results/image',
+    './data_pipeline/Results',
+    './data_pipeline',
     './backend',
     './frontend/public/images',
     './images'
@@ -48,8 +48,8 @@ def find_image_file(image_path: str) -> Optional[str]:
     
     # 메타데이터에서 이미지 경로 찾기 시도
     metadata_paths = [
-        './nextits_data/Results/5.Completion_results/image_metadata.json',
-        './nextits_data/image_metadata.json'
+        './data_pipeline/Results/5.Completion_results/image_metadata.json',
+        './data_pipeline/image_metadata.json'
     ]
     
     for metadata_path in metadata_paths:

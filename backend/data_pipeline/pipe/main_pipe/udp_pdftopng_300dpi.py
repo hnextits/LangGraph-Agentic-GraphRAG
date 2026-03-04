@@ -14,11 +14,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from backend.nextits_data.pipe.bootstrap import (
+from backend.data_pipeline.pipe.bootstrap import (
     ensure_backend_root,
     configure_logging,
     get_backend_dir,
-    get_nextits_data_dir,
+    get_data_pipeline_dir,
 )
 
 ensure_backend_root()
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 
 BACKEND_DIR = get_backend_dir()
-NEXTITS_DATA_DIR = get_nextits_data_dir()
+NEXTITS_DATA_DIR = get_data_pipeline_dir()
 
 # 입력 PDF 파일 경로
 PDF_PATH = NEXTITS_DATA_DIR / "doc" / "원가회계데이터샘플-250401.pdf"

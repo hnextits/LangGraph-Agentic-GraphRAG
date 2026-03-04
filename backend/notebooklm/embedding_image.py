@@ -880,4 +880,4 @@ if __name__ == "__main__":
         print("  # 이미지 메타데이터 JSON 파일 처리 (기존 스키마에 추가)")
         print("  python embedding_image.py --json /path/to/image_metadata.json --type image")
         print("\n  # 디렉토리 내의 모든 JSON/TXT 파일 재귀적으로 처리 (스키마 재생성)")
-        print("  python embedding_image.py --json /home/jeonghs/workspace/nextitslm/backend/nextits_data/Results/5.Completion_results/image --recreate")
+        print("  python embedding_image.py --json /home/jeonghs/workspace/nextitslm/backend/data_pipeline/Results/5.Completion_results/image --recreate")

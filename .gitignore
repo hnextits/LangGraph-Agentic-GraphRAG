@@ -31,16 +31,16 @@ Jenkinsfile
 /logs
 
 #backend 항목
-/backend/nextits_data/UVDoc/data/doc3D/*
-/backend/nextits_data/UVDoc/data/UVDoc/*
-/backend/nextits_data/temp/*
-/backend/nextits_data/pipe/parser/test_result
-/backend/nextits_data/pipe/parser/test_doc
-/backend/nextits_data/Results
-/backend/nextits_data/doc
+/backend/data_pipeline/UVDoc/data/doc3D/*
+/backend/data_pipeline/UVDoc/data/UVDoc/*
+/backend/data_pipeline/temp/*
+/backend/data_pipeline/pipe/parser/test_result
+/backend/data_pipeline/pipe/parser/test_doc
+/backend/data_pipeline/Results
+/backend/data_pipeline/doc
 /backend/skill
 /backend/api
 
 #sessions
-/backend/nextits_data/sessions
+/backend/data_pipeline/sessions
 
