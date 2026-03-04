@@ -8,8 +8,13 @@
 [English](../README.md) | [한국어](README_KO.md) | 中文
 </div>
 
-LangGraph-Graph RAG 是一个基于 **LangGraph + SGLang** 的向量–图混合 RAG 平台。
-数据摄取管道通过带有检查点持久化的 LangGraph 状态机将原始文档转换为 Markdown 块和图元数据。在查询阶段，带有质量门控回溯的跳数路由器从 Vector、Weaviate GraphRAG 或 Neo4j GraphDB 三条检索路径中选择一条来生成答案。
+LangGraph-Agentic-Graph RAG 是一个基于 **LangGraph + SGLang** 的智能混合 RAG 平台，无缝集成知识检索和计算工具执行。主要特性：
+
+- **双模式查询处理**：通过基于 LLM 的意图分类在知识型 RAG 检索和计算工具执行之间自动路由
+- **高级文档摄取**：通过 LangGraph 状态机和检查点持久化将原始文档（PDF/图像/音频）转换为 Markdown 块和结构化图元数据
+- **智能检索路由**：根据查询复杂度在三条检索路径（Vector、Weaviate Cross-Reference GraphRAG、Neo4j Deep Graph Traversal）中动态选择，配合质量门控回溯
+- **工具调用框架**：集成 MCP（Model Context Protocol）服务器和本地 fallback，支持计算器、API 调用、代码执行和数据库查询
+- **Graph-of-Thought 推理**：用于复杂分析查询的多分支探索和基于快照的回溯
 
 <div align="center">
 <img src="https://github.com/user-attachments/assets/441a4a4b-d239-45c1-b385-80ddd95f31e6" width="512" height="768" ></img><br/>
@@ -19,16 +24,61 @@ LangGraph-Graph RAG 是一个基于 **LangGraph + SGLang** 的向量–图混合
 
 ## 核心功能
 
-- **LangGraph 状态机**：数据摄取、查询推理、摘要生成和思维导图生成均运行在带有 `MemorySaver` 检查点的 LangGraph `StateGraph` 上。
-- **检查点与回溯**：每个节点转换都会被检查点；当质量不足时，质量门和 GoT 快照会回滚到替代检索路径或更早的扩展（可通过 `MAX_BACKTRACK_COUNT` 配置）。
-- **3 路检索路由**：根据查询复杂度（hop 数）路由到 Vector RAG、Weaviate Cross-Reference GraphQL 或 Neo4j Deep Graph Traversal（阈值可通过 `GRAPH_MAX_HOPS` 配置）。跳数边界映射了底层数据模型：纯语义问题保留在 TextDocument 嵌入索引，实体/属性推理利用 Weaviate 交叉引用，≥ 6 跳的模式化关系推理会升级到 Neo4j Cypher 查询。Path 1 与 Path 2 均运行在 Weaviate 内：Path 1 偏向于在 late-chunk 语料上执行快速语义相似度，Path 2 则显式遍历 Cross-Reference 邻域，在不进入 Neo4j 的情况下先挖掘与查询关联的实体/事件。
-- **观察者 LLM + GoT 扩展**：观察者 LLM 对每个路径结果评分（0–1）。超过 `QUALITY_GATE_THRESHOLD` 的结果会触发 Graph-of-Thought 分支/合并以获取更深层次的上下文。
-- **SGLang 推理**：生成器、嵌入、重排序器、跳数分类器和观察者 LLM 均运行在带有延迟加载（`LazyModelManager` + `SGLangServerManager`）的 SGLang 服务器上。
-  - **延迟加载**：服务器在首次请求时自动启动，空闲超时可通过 `SGLANG_IDLE_TIMEOUT` 配置，释放 GPU 内存
-  - **GPU 分配**：Generator (device/mem_fraction 可配置)，Embedding/Reranker/Refiner (device/mem_fraction 可配置)）
-  - **分块重试逻辑**：LLM 元数据提取失败时自动重启服务器并重试（可通过 `GRAPH_EXTRACTOR_RETRY_ON_FAILURE` 配置）
-- **自动图更新插入**：OCR → LLM 实体/事件/关系提取 → 同步写入 Weaviate + Neo4j。
-- **异步任务监控**：通过任务 API 跟踪上传、OCR 和嵌入的处理进度。
+- **LangGraph 状态机**：所有工作流（摄取、查询推理、工具执行、摘要、思维导图生成）均运行在带有 `MemorySaver` 检查点的 LangGraph `StateGraph` 上，实现完整的状态持久化和恢复。
+
+- **智能查询路由**：基于 LLM 的意图分类自动确定查询需要知识检索还是计算工具执行：
+  - **知识查询** → 带有 3 路检索路由的 RAG 管道
+  - **计算查询** → 计算器工具，支持高级数学（sqrt、log、trig、sigma）的 AST 安全评估
+  - **数据库查询** → SQL 执行器（计划中）
+  - **API 调用** → 可配置端点的 HTTP API 调用器
+  - **代码执行** → 受限 built-in 的 Python 沙箱
+
+- **检查点与智能回溯**：所有节点转换都被检查点，质量门评估检索结果并在质量不足时触发智能路径选择：
+  - **质量评估**：观察者 LLM 对每个路径结果相对于 `QUALITY_GATE_THRESHOLD` 评分 0.0–1.0
+  - **智能路径选择**：`PathSelector` 根据查询关键词、跳数和路径特征分析剩余未尝试路径，选择最合适的替代方案
+  - **回溯限制**：可通过 `MAX_BACKTRACK_COUNT` 配置以防止无限循环
+  - **状态跟踪**：`tried_paths` 字段防止重试失败的策略
+
+- **3 路检索路由**：查询复杂度（跳数）决定最优检索策略：
+  - **路径 1 – Vector RAG（≤ 2 跳）**：通过 BM25 + 重排序器在 late-chunked TextDocument 语料上快速语义相似度搜索。适合直接事实问题。
+  - **路径 2 – Weaviate Cross-Reference GraphRAG（3–5 跳）**：BM25 种子实体搜索后在 Weaviate 内进行多跳 cross-reference 遍历（source/target/event refs）。通过关系行走浮现查询相邻的实体和事件。
+  - **路径 3 – Neo4j Deep Graph Traversal（≥ 6 跳）**：基于 Cypher 的深度图遍历，用于模式化关系推理。处理需要广泛图探索的复杂多实体查询。
+  - **跳数分类**：混合 LLM + 启发式方法估计查询复杂度，LLM 主分类配合基于关键词的 fallback
+
+- **Graph-of-Thought 扩展**：带有基于快照回溯的多分支推理，用于复杂分析查询：
+  - **分支探索**：每步并行扩展 `GOT_BRANCH_FACTOR` 个候选查询
+  - **质量评分**：观察者 LLM 对每个分支的相关性、覆盖度和新颖性评分 0.0–1.0
+  - **智能合并**：通过可配置策略（`top_k`/`weighted_union`/`vote`）合并高于 `GOT_THOUGHT_SCORE_THRESHOLD` 的分支
+  - **边缘剪枝**：通过关键词重叠评分（`GOT_EDGE_PRUNE_THRESHOLD`）移除低质量连接
+  - **失败恢复**：连续全分支失败触发快照回滚到最后成功的合并点
+
+- **SGLang 推理生态系统**：所有 LLM 操作（生成、嵌入、重排序、跳数分类、质量评估）在带有智能生命周期管理的 SGLang 服务器上运行：
+  - **延迟加载架构**：服务器在首次请求时自动启动，消除初始化期间的冷启动开销
+  - **空闲超时**：非活动 `SGLANG_IDLE_TIMEOUT`（默认 60 秒）后自动释放 GPU 内存
+  - **GPU 分配**：每个服务器（generator、embedding、reranker、refiner）可配置设备分配和内存比例
+  - **保活机制**：后台线程在长时间运行操作期间维护服务器状态
+  - **分块重试逻辑**：LLM 元数据提取在服务器重启时自动重试失败的块（可通过 `GRAPH_EXTRACTOR_RETRY_ON_FAILURE` 配置）
+
+- **工具调用框架**：集成 MCP（Model Context Protocol）服务器和本地 fallback：
+  - **MCP 优先架构**：当 MCP 服务器可用时（`MCP_SERVER_ENABLED=true`）通过 MCP 服务器主执行
+  - **本地 fallback**：MCP 不可用时自动回退到本地实现
+  - **计算器**：AST 安全表达式评估，支持高级数学函数（sqrt、cbrt、log、exp、sin、cos、tan、sigma）
+  - **自然语言解析**：将韩语/英语数学表达式（"144의 제곱근"、"루트 144"）转换为可执行代码
+  - **API 调用器**：执行 HTTP 请求，可配置端点和方法
+  - **代码运行器**：Python 沙箱，受限 built-in 和令牌过滤以确保安全
+  - **SQL 执行器**：未来数据库查询支持的占位符
+
+- **自动图构建**：从原始文档到可查询知识图的端到端管道：
+  - **OCR 处理**：基于 SGLang 的 OCRFlux 将文档转换为 Markdown
+  - **LLM 提取**：从 Markdown 块中提取实体/事件/关系，可配置块大小和超时
+  - **双存储**：同步更新插入到 Weaviate（cross-reference 图）和 Neo4j（深度图），使用确定性 UUID
+  - **模式管理**：自动创建 Weaviate 集合，带有 cross-reference 定义
+
+- **异步任务监控**：通过 REST API 跟踪完整任务生命周期：
+  - **上传进度**：文件上传和处理阶段的实时状态
+  - **OCR 进度**：逐页 OCR 完成跟踪
+  - **嵌入进度**：块级索引状态
+  - **任务取消**：优雅终止长时间运行的操作
 
 ---
 
@@ -81,13 +131,35 @@ planner → tool_router ┬→ rag_router →┬→ vector_retriever  ──→�
                       └→ tool_executor ────────────────────────────────────────→ aggregator → END
 ```
 
-**Tool Router**：使用 LLM 分类查询意图（knowledge/calculation/database/api_call/code_exec）（可通过 `TOOL_INTENT_CLASSIFIER_ENDPOINT` 配置）。将知识查询路由到 RAG 管道，将计算任务路由到工具执行器。
+**Tool Router**：基于 LLM 的意图分类决定查询路由策略：
+- **分类端点**：可通过 `TOOL_INTENT_CLASSIFIER_ENDPOINT` 配置（默认为 SGLang generator）
+- **意图类别**：`knowledge`、`calculation`、`database`、`api_call`、`code_exec`
+- **路由逻辑**：
+  - `knowledge` → RAG 管道（3 路检索路由）
+  - 其他意图 → 工具执行器（MCP/本地 fallback）
+- **Fallback 机制**：LLM 分类失败时使用启发式关键词匹配
 
-**Tool Executor**：通过 MCP 服务器（如果 `MCP_SERVER_ENABLED=true`）或本地 fallback 执行工具。当前支持：
-- Calculator（基于 AST 的安全评估）
-- SQL executor（存根）
-- API caller（存根）
-- Code runner（存根）
+**Tool Executor**（`backend/notebooklm/tools/tool_executor.py`）：
+- **MCP 集成**：当 `MCP_SERVER_ENABLED=true` 时通过 MCP 服务器 REST API 主执行
+- **本地 fallback**：MCP 不可用时自动回退到本地实现
+- **意图分类**：基于 LLM，带有启发式 fallback 以提高可靠性
+- **支持的工具**：
+  - **计算器**（完全实现）：
+    - 基于 AST 的安全表达式评估（无 `eval()` 安全风险）
+    - 高级数学函数：`sqrt`、`cbrt`、`abs`、`log`、`ln`、`log10`、`exp`、`sin`、`cos`、`tan`、`sigma`
+    - 自然语言解析："144의 제곱근" → `sqrt(144)`、"2의 3제곱" → `2 ** 3`
+    - 运算符支持：`+`、`-`、`*`、`/`、`**`、`%`
+  - **API 调用器**（轻量实现）：
+    - 执行 HTTP GET/POST 请求
+    - 从自然语言提示中提取 URL
+    - 可配置超时和错误处理
+  - **代码运行器**（沙箱实现）：
+    - 受限 Python 执行环境
+    - 过滤的 built-in（无 `eval`、`exec`、`__import__`）
+    - 基于令牌的安全过滤
+  - **SQL 执行器**（占位符）：
+    - 返回 `not_implemented` 状态
+    - 为未来数据库集成保留
 
 ---
 
@@ -113,31 +185,102 @@ planner → tool_router ┬→ rag_router →┬→ vector_retriever  ──→�
 
 由 `GraphReasoner`（`graph_reasoner.py`）配合 `MemorySaver` 检查点和智能回溯处理：
 
-1. **跳数分类器（LLM + 启发式混合）** (`HopClassifier`)：
-   - **主要**：基于 LLM 的分类器通过 SGLang 服务器估计查询复杂度（1–`GRAPH_MAX_HOPS`）。
-   - **备用**：基于关键词、箭头数量和概念分隔符的启发式评分。
-   - 估计的跳数决定初始检索路径。
-2. **规划器**：分析查询，根据 LLM+启发式分类动态设置 `max_hops`（由 `GRAPH_MAX_HOPS` 限制），并初始化搜索计划。
-3. **路由器**：根据跳数分类和查询特征选择 Path 1/2/3。
-   - **初始路由**：跳数 ≤ 2 → Path 1（VectorRetriever），3–5 → Path 2（CrossRefRetriever），≥ 6 → Path 3（GraphDBRetriever）。
-   - **回溯路由**：使用 `PathSelector.select_best_path()` 评估剩余未尝试路径，根据查询关键词和跳数对每条路径评分以选择最合适的替代方案。
-4. **检索节点**：
-   - **路径 1 – Vector RAG**：委托给 `rag_pipeline` 现有的 TextSearcher + Reranker（quality=1.0）。
-   - **路径 2 – Cross-Ref GraphRAG**：BM25 种子实体 → Weaviate Cross-Reference `QueryReference` 多跳遍历（source/target/event refs），在升级到 Neo4j 之前先在 Weaviate 内收集与查询相邻的实体/事件。
-   - **路径 3 – Neo4j GraphDB**：通过 `legacy_graph_client.py` Cypher 模板执行 ≥ 6 跳的模式化深度推理，或在 Weaviate cross-reference 结果枯竭后继续深化。
-5. **质量门 + 观察者 LLM** (`QualityEvaluator`)：每个路径结果由观察者 LLM 评分 0.0–1.0（Path 1 委托时默认为 1.0）。
-   - **通过条件**：质量 ≥ `QUALITY_GATE_THRESHOLD` → 进入下一阶段。
-   - **回溯**：质量 < `QUALITY_GATE_THRESHOLD` → `PathSelector.select_best_path()` 根据查询特征（关键词、跳数）评估剩余路径并选择最合适的替代路径。
-   - **终止**：所有路径耗尽或达到 `MAX_BACKTRACK_COUNT` 限制后，继续使用最佳上下文并在 `answer_notes` 中标记降级。
-   - **路径跟踪**：`tried_paths` 状态字段防止重试相同路径。
-6. **GoT 思维扩展器**（`GOT_MODE_ENABLED=true`）：通过分支、评分和合并进行图形化思维探索。
-   - 每步最多并行扩展 `GOT_BRANCH_FACTOR` 个候选查询。
-   - 观察者 LLM 对每个分支的相关性、覆盖度和新颖性评分（0.0–1.0）。
-   - 高于 `GOT_THOUGHT_SCORE_THRESHOLD` 的分支通过 `GOT_MERGE_STRATEGY`（`top_k` / `weighted_union` / `vote`）合并。
-   - 低质量边缘通过 `GOT_EDGE_PRUNE_THRESHOLD` 关键词重叠评分修剪。
-   - 连续全分支失败（由 `GOT_MAX_CONSECUTIVE_FAILURES` 跟踪）触发基于快照的回溯（状态回滚到上次成功合并）。
-7. **聚合器**：从实体/事件/关系构建用于 LLM 生成的上下文片段。
-8. **生成**（`generator.py`）：将思维/路径片段与原始查询合并以生成答案；`refiner.py` / `evaluator.py` 可选地对响应进行后处理。
+1. **规划器**（`planner` 节点）：
+   - **查询分析**：检查用户查询并提取核心概念
+   - **计划记录**：记录高级检索策略和推理步骤
+   - **历史跟踪**：维护多轮对话的查询上下文
+   - **注意**：不执行跳数分类（为了更好的关注点分离已移至 `rag_router`）
+
+2. **Tool Router**（`tool_router` 节点）：
+   - **意图分类**：通过 `ToolExecutor.classify_intent()` 进行基于 LLM 的查询意图检测
+   - **分类类别**：
+     - `knowledge`：需要文档检索的事实问题 → 路由到 `rag_router`
+     - `calculation`：数学运算 → 路由到 `tool_executor`（计算器）
+     - `database`：SQL 查询 → 路由到 `tool_executor`（SQL 执行器）
+     - `api_call`：外部 API 请求 → 路由到 `tool_executor`（API 调用器）
+     - `code_exec`：代码执行请求 → 路由到 `tool_executor`（代码运行器）
+   - **路由决策**：知识查询进入 RAG 管道；计算任务跳过 RAG 直接执行工具
+
+3. **RAG Router**（`rag_router` 节点，仅知识查询）：
+   - **跳数分类**：混合 LLM + 启发式方法估计查询复杂度
+     - **LLM 分类器**：通过 SGLang 服务器主分类（1–`GRAPH_MAX_HOPS`）
+     - **启发式 fallback**：基于关键词的评分（箭头数、概念分隔符、关系指标）
+     - **最终跳数**：`min(llm_estimate, heuristic_estimate, GRAPH_MAX_HOPS)` 用于保守路由
+   - **路径选择**：将跳数映射到最优检索策略
+     - 跳数 ≤ 2 → 路径 1（VectorRetriever）
+     - 跳数 3–5 → 路径 2（CrossRefRetriever）
+     - 跳数 ≥ 6 → 路径 3（GraphDBRetriever）
+   - **状态更新**：设置 `max_hops`、`retrieval_path` 并初始化 `tried_paths` 跟踪
+
+4. **Tool Executor**（`tool_executor` 节点，用于计算任务）：
+   - **工具映射**：将意图映射到特定工具实现
+   - **输入准备**：从查询中提取相关参数（表达式、URL、代码片段、SQL）
+   - **执行策略**：
+     - **MCP 优先**：尝试通过 MCP 服务器 REST API 执行
+     - **本地 fallback**：MCP 不可用或失败时回退到本地实现
+   - **结果格式化**：返回带有状态、结果值和元数据的结构化结果
+   - **错误处理**：捕获执行错误并返回失败消息（不回退到 RAG）
+
+5. **检索节点**（用于知识查询）：
+   - **路径 1 – Vector RAG**（`vector_retriever`）：
+     - TextDocument 集合中基于 BM25 的语义搜索
+     - 重排序器后处理以优化相关性
+     - 简单事实查询的快速执行
+   - **路径 2 – Cross-Ref GraphRAG**（`crossref_retriever`）：
+     - GraphEntity 集合中 BM25 种子实体搜索
+     - 通过 Weaviate `QueryReference` 进行多跳 cross-reference 遍历
+     - 沿 source/target/event 关系行走以浮现连接的实体
+     - 在 Neo4j escalation 之前在 Weaviate 内收集查询相邻上下文
+   - **路径 3 – Neo4j GraphDB**（`graphdb_retriever`）：
+     - 通过 `LegacyGraphClient` 进行深度基于 Cypher 的图遍历
+     - 模式化关系推理
+     - 处理需要广泛图探索的复杂多实体查询
+
+6. **质量门**（`quality_gate` 节点，用于知识查询）：
+   - **质量评估**：观察者 LLM 对检索结果评分（0.0–1.0）
+     - 路径 1 委托时默认为 1.0 以避免不必要的 LLM 调用
+     - 路径 2 和 3 始终评估质量
+   - **通过条件**：质量 ≥ `QUALITY_GATE_THRESHOLD` → 进入 aggregator 或 thought expander
+   - **智能回溯**：质量 < threshold 触发智能路径选择
+     - `PathSelector.select_best_path()` 分析剩余未尝试路径
+     - 根据查询关键词、跳数和路径特征评分
+     - 选择最合适的替代路径（非随机重试）
+   - **终止条件**：
+     - 所有路径耗尽 → 继续使用最佳上下文
+     - 达到 `MAX_BACKTRACK_COUNT` 限制 → 在 `answer_notes` 中标记降级
+   - **状态跟踪**：`tried_paths` 列表防止重试失败的策略
+
+7. **GoT Thought Expander**（`thought_expander` 节点，当 `GOT_MODE_ENABLED=true` 时）：
+   - **图形化探索**：用于复杂分析查询的多分支推理
+   - **分支生成**：每步并行扩展 `GOT_BRANCH_FACTOR` 个候选查询
+   - **质量评分**：观察者 LLM 评估每个分支（0.0–1.0）：
+     - 与原始查询的相关性
+     - 新信息的覆盖度
+     - 相对于现有分支的新颖性
+   - **智能合并**：通过策略合并高于 `GOT_THOUGHT_SCORE_THRESHOLD` 的分支：
+     - `top_k`：选择得分最高的前 K 个分支
+     - `weighted_union`：按分数加权合并
+     - `vote`：分支间民主选择
+   - **边缘剪枝**：通过关键词重叠评分移除低质量连接（< `GOT_EDGE_PRUNE_THRESHOLD`）
+   - **基于快照的回溯**：连续全分支失败触发状态回滚
+     - 通过 `GOT_MAX_CONSECUTIVE_FAILURES` 跟踪连续失败
+     - 回滚到最后成功的合并点
+     - 防止无限探索循环
+
+8. **聚合器**（`aggregator` 节点）：
+   - **上下文构建**：从检索结果或工具输出组装上下文片段
+   - **用于 RAG 查询**：将实体、事件、关系、思维步骤合并为连贯上下文
+   - **用于工具查询**：将工具结果格式化为自然语言响应
+     - 计算器："表达式 = 结果" 格式（例如 "sqrt(144) = 12.0"）
+     - API/代码：结果值或成功消息
+     - 错误：用户友好的错误消息
+   - **元数据收集**：收集 `context_snippets`、`thought_steps`、`backtrack_count`、`tried_paths` 用于调试
+
+9. **生成**（`generator.py`）：
+   - **答案合成**：合并原始查询 + 上下文片段（或工具结果）以生成最终答案
+   - **用于 RAG 查询**：LLM 从检索的上下文生成答案
+   - **用于工具查询**：直接返回格式化的工具结果（无需 LLM 生成）
+   - **后处理**：通过 `refiner.py` 可选精炼和通过 `evaluator.py` 质量评估
 
 ---
 
@@ -233,26 +376,102 @@ backend/
 
 ## 查询处理流程
 
-1. `POST /v1/chat` → 调用 `rag_pipeline.retrieve()`。
-2. **跳数分类（LLM + 启发式）**：
-   - 基于 LLM 的分类器（通过 SGLang）估计查询复杂度（1–6 跳）。
-   - 启发式备用方案使用关键词模式和查询结构分析。
-3. `graph_reasoner.py` 运行 LangGraph 工作流：
-   - **planner** → 仅负责分析查询并记录计划/历史。
-   - **tool_router** → LLM 判别 query intent（knowledge/calculation/database/api_call/code_exec），决定进入 RAG 或 Tool。
-   - **rag_router** → 基于 LLM+启发式跳数分类设置 `max_hops`，并选择 Vector/Cross-Ref/GraphDB 路径。
-   - **检索节点**（路径 1/2/3）→ 执行选定的检索策略。
-   - **quality_gate** → 观察者 LLM 对结果评分（0.0–1.0）。
-   - 如果 quality < threshold → **智能回溯**：`_select_best_path()` 基于查询关键词和跳数评估剩余路径，选择最合适的替代方案（最多 MAX_BACKTRACK 次重试）。
-   - 如果启用 GoT → 带有基于快照回溯的 **thought_expander**。
-   - **tool_executor** → 优先调用 MCP 服务器，失败时回退到本地实现：
-     - 计算器：AST 安全计算（已完成）
-     - API 调用/代码执行：轻量本地实现（适合 PoC，建议配合 MCP 正式工具）
-     - SQL 执行：当前为 `not_implemented`
-   - **aggregator** 构建上下文片段或格式化工具结果。
-4. `generator.py` 从原始查询 + 上下文片段生成答案。
-5. （可选）`refiner.py` 润色答案；`evaluator.py` 记录质量说明。
-6. 响应包含用于调试的 `plan`、`hops`、`notes`、`context_snippets`、`backtrack_count`、`tried_paths` 和 `thought_steps`。
+1. **请求启动**：`POST /v1/chat` → `RAGPipeline.process_query()` 调用 `GraphReasoner.retrieve()`
+
+2. **LangGraph 工作流执行**（`graph_reasoner.py`）：
+
+   **步骤 1：规划器**（`planner` 节点）
+   - 分析用户查询并提取核心概念
+   - 记录高级检索计划和推理步骤
+   - 初始化多轮上下文的查询历史
+   - **输出**：`plan`、`query_analysis`
+
+   **步骤 2：Tool Router**（`tool_router` 节点）
+   - 通过 `ToolExecutor.classify_intent()` 进行 LLM 查询意图分类：
+     - `knowledge` → 路由到 **rag_router**（知识检索路径）
+     - `calculation` → 路由到 **tool_executor**（计算器）
+     - `database` → 路由到 **tool_executor**（SQL 执行器）
+     - `api_call` → 路由到 **tool_executor**（API 调用器）
+     - `code_exec` → 路由到 **tool_executor**（代码运行器）
+   - **输出**：`intent`、路由决策
+
+   **分支 A：知识查询路径**
+
+   **步骤 3a：RAG Router**（`rag_router` 节点，用于知识查询）
+   - 执行跳数分类（LLM + 启发式混合）
+   - 设置 `max_hops` = `min(llm_estimate, heuristic_estimate, GRAPH_MAX_HOPS)`
+   - 初始检索路径选择：
+     - 跳数 ≤ 2 → `vector_retriever`（路径 1）
+     - 跳数 3–5 → `crossref_retriever`（路径 2）
+     - 跳数 ≥ 6 → `graphdb_retriever`（路径 3）
+   - **输出**：`max_hops`、`retrieval_path`、`tried_paths`
+
+   **步骤 4a：检索执行**（路径 1/2/3）
+   - **路径 1**：TextDocument 中 BM25 语义搜索 + 重排序器
+   - **路径 2**：BM25 种子搜索 + Weaviate cross-reference 多跳遍历
+   - **路径 3**：Neo4j Cypher 深度图遍历
+   - **输出**：`context_snippets`、`entities`、`events`、`relations`
+
+   **步骤 5a：质量门**（`quality_gate` 节点）
+   - 观察者 LLM 对检索结果评分（0.0–1.0）
+   - **如果质量 ≥ `QUALITY_GATE_THRESHOLD`**：
+     - 进入 aggregator 或 thought expander（如果启用 GoT）
+   - **如果质量 < threshold**：
+     - 触发智能回溯：
+       - `PathSelector.select_best_path()` 分析剩余路径
+       - 根据查询关键词、跳数和路径特征评分
+       - 选择最合适的替代方案（非随机）
+       - 用新路径返回步骤 4a
+     - **终止**：`MAX_BACKTRACK_COUNT` 次重试后或所有路径耗尽
+   - **输出**：`retrieval_quality`、`backtrack_count`、`tried_paths`
+
+   **步骤 6a：Thought Expander**（`thought_expander` 节点，如果 `GOT_MODE_ENABLED=true`）
+   - 并行扩展 `GOT_BRANCH_FACTOR` 个候选查询
+   - 观察者 LLM 对每个分支评分（0.0–1.0）
+   - 通过策略合并高于 `GOT_THOUGHT_SCORE_THRESHOLD` 的分支
+   - 剪枝低质量边缘（< `GOT_EDGE_PRUNE_THRESHOLD`）
+   - 连续失败时基于快照的回溯
+   - **输出**：`thought_steps`、扩展的上下文
+
+   **分支 B：工具执行路径**
+
+   **步骤 3b：Tool Executor**（`tool_executor` 节点，用于计算任务）
+   - 将意图映射到特定工具：
+     - `calculation` → 计算器（AST 安全评估）
+     - `api_call` → API 调用器（HTTP 请求）
+     - `code_exec` → 代码运行器（Python 沙箱）
+     - `database` → SQL 执行器（占位符）
+   - 准备工具输入：
+     - 计算器：提取数学表达式，自然语言转换（"144의 제곱근" → `sqrt(144)`）
+     - API 调用器：从提示中提取 URL
+     - 代码运行器：提取代码片段
+   - 执行工具：
+     - **MCP 优先**：尝试通过 MCP 服务器 REST API 执行
+     - **本地 fallback**：MCP 不可用时回退到本地实现
+   - **输出**：带有状态（`ok`/`error`）、结果值和元数据的 `tool_result`
+   - **注意**：工具失败返回错误消息；不回退到 RAG
+
+   **步骤 7：聚合器**（`aggregator` 节点）
+   - **用于 RAG 查询**：从实体/事件/关系/思维构建上下文片段
+   - **用于工具查询**：将工具结果格式化为自然语言：
+     - 计算器：`"表达式 = 结果"`（例如 `"sqrt(144) = 12.0"`）
+     - API/代码：结果值或成功消息
+     - 错误：用户友好的错误消息
+   - 收集元数据：`context_snippets`、`thought_steps`、`backtrack_count`、`tried_paths`、`tool_result`
+   - **输出**：聚合的上下文或格式化的工具结果
+
+3. **答案生成**：
+   - **用于 RAG 查询**：`generator.py` 从原始查询 + 上下文片段合成答案
+   - **用于工具查询**：直接返回格式化的工具结果（无需 LLM 生成）
+   - **可选后处理**：`refiner.py` 润色答案，`evaluator.py` 记录质量说明
+
+4. **响应构建**（`RAGPipeline._build_response()` 或 `_build_tool_only_response()`）：
+   - **用于 RAG 查询**：带有答案、上下文、片段、检索结果的完整响应
+   - **用于工具查询**：带有工具结果作为答案的简化响应
+   - **包含的元数据**：`plan`、`max_hops`、`retrieval_quality`、`backtrack_count`、`tried_paths`、`thought_steps`、`tool_result`（如适用）
+   - **调试支持**：所有工作流状态暴露以实现可追溯性
+
+5. **返回客户端**：带有答案、元数据和调试信息的 JSON 响应
 
 ---
 
