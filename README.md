@@ -23,7 +23,7 @@ LangGraph-Agentic-Graph RAG is an intelligent hybrid RAG platform powered by **L
 
 The system features:
 
-- **Dual-mode query processing**: Automatically routes between knowledge-based RAG retrieval and computational tool execution based on LLM-powered intent classification
+- **Dual-mode query processing**: Automatically routes between knowledge-based RAG retrieval and tool execution based on LLM-powered intent classification
 - **Advanced document ingestion**: Converts raw documents (PDF/images/audio) into Markdown chunks and structured graph metadata via LangGraph state machines with checkpoint persistence
 - **Intelligent retrieval routing**: Hop-based router with quality-gate backtracking dynamically selects among three retrieval paths (Vector, Weaviate Cross-Reference GraphRAG, or Neo4j Deep Graph Traversal) based on query complexity
 - **Tool calling framework**: MCP (Model Context Protocol) server integration with local fallback for calculator, API calls, code execution, and database queries
