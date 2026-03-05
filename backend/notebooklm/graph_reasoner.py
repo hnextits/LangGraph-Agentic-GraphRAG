@@ -153,7 +153,7 @@ class GraphReasoner:
                 }
 
             tool_name = reasoner.tool_executor.map_intent_to_tool(intent)
-            inputs = reasoner.tool_executor.prepare_tool_inputs(intent, query)
+            inputs = reasoner.tool_executor.prepare_tool_inputs(intent, query, llm_endpoint, llm_model)
             logger.info("Tool Router: intent=%s → tool=%s", intent, tool_name or "none")
             return {
                 "dispatch_target": "tool",
@@ -1640,6 +1640,3 @@ class GraphReasoner:
 
 
 __all__ = ["GraphReasoner"]
-
-# GraphReasonerState는 reasoner.state 모듈에서 import하여 사용
-# from notebooklm.reasoner.state import GraphReasonerState

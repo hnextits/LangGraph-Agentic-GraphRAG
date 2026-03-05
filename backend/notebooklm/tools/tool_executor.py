@@ -172,7 +172,7 @@ class ToolExecutor:
         }
         return mapping.get(intent, "")
 
-    def prepare_tool_inputs(self, intent: str, query: str) -> Dict[str, Any]:
+    def prepare_tool_inputs(self, intent: str, query: str, llm_endpoint: Optional[str] = None, llm_model: str = "default") -> Dict[str, Any]:
         """Tool 입력 파라미터 준비."""
         if intent == "calculation":
             expression = self._extract_math_expression(query)
@@ -187,9 +187,93 @@ class ToolExecutor:
                 "prompt": query,
             }
         if intent == "code_exec":
-            return {"snippet": query}
+            # 코드 추출: 마크다운 → LLM → 전체 메시지 순으로 시도
+            code = self._extract_code_from_message(query, llm_endpoint, llm_model)
+            return {"snippet": code, "raw_query": query}
         return {"prompt": query}
 
+    def _extract_code_from_message(self, message: str, llm_endpoint: Optional[str] = None, llm_model: str = "default") -> str:
+        """메시지에서 실행 가능한 코드만 추출.
+        
+        Args:
+            message: 사용자 메시지
+            llm_endpoint: LLM 엔드포인트
+            llm_model: LLM 모델명
+            
+        Returns:
+            추출된 코드
+        """
+        # 1차: 마크다운 코드 블록 찾기
+        code_block_pattern = r"```(?:python)?\s*\n(.*?)\n```"
+        matches = re.findall(code_block_pattern, message, re.DOTALL)
+        if matches:
+            code = matches[0].strip()
+            logger.info("마크다운 코드 블록에서 코드 추출: %d자", len(code))
+            return code
+        
+        # 2차: 인라인 코드 찾기 (단일 코드만 있을 경우)
+        inline_pattern = r"`([^`]+)`"
+        matches = re.findall(inline_pattern, message)
+        if len(matches) == 1 and len(matches[0]) > 10:  # 10자 이상인 경우만
+            code = matches[0].strip()
+            logger.info("인라인 코드에서 코드 추출: %d자", len(code))
+            return code
+        
+        # 3차: LLM으로 코드 추출
+        if llm_endpoint:
+            extracted = self._extract_code_with_llm(message, llm_endpoint, llm_model)
+            if extracted:
+                logger.info("LLM으로 코드 추출 성공: %d자", len(extracted))
+                return extracted
+        
+        # 4차: 전체 메시지를 코드로 간주 (fallback)
+        logger.warning("코드 추출 실패 → 전체 메시지를 코드로 간주")
+        return message
+    
+    def _extract_code_with_llm(self, message: str, endpoint: str, model: str) -> Optional[str]:
+        """LLM을 사용해 메시지에서 코드만 추출."""
+        system_prompt = (
+            "Extract ONLY the executable Python code from the user's message.\n"
+            "Remove any explanatory text, questions, or markdown formatting.\n"
+            "Output ONLY the raw Python code that can be executed directly.\n"
+            "If there is no code in the message, output 'NO_CODE'."
+        )
+        
+        try:
+            resp = requests.post(
+                f"{endpoint}/v1/chat/completions",
+                json={
+                    "model": model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": message},
+                    ],
+                    "max_tokens": 2048,
+                    "temperature": 0.0,
+                    "chat_template_kwargs": {"enable_thinking": False},
+                },
+                timeout=15,
+            )
+            resp.raise_for_status()
+            extracted = resp.json()["choices"][0]["message"]["content"].strip()
+            
+            # NO_CODE 응답 처리
+            if "NO_CODE" in extracted.upper():
+                logger.warning("LLM이 코드를 찾지 못함")
+                return None
+            
+            # 마크다운 코드 블록이 포함되어 있으면 제거
+            if "```" in extracted:
+                code_match = re.search(r"```(?:python)?\s*\n(.*?)\n```", extracted, re.DOTALL)
+                if code_match:
+                    extracted = code_match.group(1).strip()
+            
+            return extracted if extracted else None
+            
+        except Exception as exc:
+            logger.warning("LLM 코드 추출 실패: %s", exc)
+            return None
+    
     def _extract_math_expression(self, text: str) -> str:
         """텍스트에서 수식 추출."""
         if not text:
