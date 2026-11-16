@@ -44,7 +44,7 @@ def _load_models(device):
 
     _diarization_pipeline = Pipeline.from_pretrained(
         "pyannote/speaker-diarization-3.1",
-        token="REMOVED_SECRET",
+        token=os.getenv("HF_TOKEN"),
     ).to(torch.device(device))
 
     print("STT 모델 LazyLoading 완료")

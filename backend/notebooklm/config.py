@@ -360,7 +360,7 @@ class RAGConfig:
         #############################################
         # 6. API 및 토큰 설정
         #############################################
-        self.HF_TOKEN = "REMOVED_SECRET"
+        self.HF_TOKEN = os.getenv("HF_TOKEN", "")
         self.OLLAMA_API_URL = "http://localhost:11434"
         self.GENERATE_ENDPOINT = "/api/generate"
         
@@ -386,7 +386,7 @@ class RAGConfig:
         #############################################      
         # Google Search API 설정
         self.ENABLE_GOOGLE_SEARCH = True
-        self.GOOGLE_API_KEY = "REMOVED_SECRET"
+        self.GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
         self.GOOGLE_CX_ID = "f00b2a2eaff4b4fbf"
         
         # 연결 관리 설정

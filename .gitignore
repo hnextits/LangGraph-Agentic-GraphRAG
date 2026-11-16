@@ -44,3 +44,4 @@ Jenkinsfile
 #sessions
 /backend/data_pipeline/sessions
 
+.next/
